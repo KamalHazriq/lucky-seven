@@ -30,6 +30,7 @@ import QueenSwapModal from '../components/QueenSwapModal'
 import SlotPickerModal from '../components/SlotPickerModal'
 import JokerChaosModal from '../components/JokerChaosModal'
 import GameSettingsBar from '../components/GameSettings'
+import PowerGuideModal from '../components/PowerGuideModal'
 import TurnQueue from '../components/TurnQueue'
 import { useActionHighlight } from '../hooks/useActionHighlight'
 import { useFlyingCard } from '../hooks/useFlyingCard'
@@ -58,6 +59,7 @@ export default function Game() {
 
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalState>({ type: 'none' })
+  const [showPowerGuide, setShowPowerGuide] = useState(false)
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { flyingCard, triggerFly, clearFly } = useFlyingCard()
@@ -357,6 +359,14 @@ export default function Game() {
 
           {/* Right section — toggles + end game */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <button
+              onClick={() => setShowPowerGuide(true)}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-amber-900/30 border border-amber-600/40 text-amber-400 hover:bg-amber-900/50 transition-colors cursor-pointer"
+              aria-label="Power guide"
+              title="Power Guide"
+            >
+              ?
+            </button>
             <GameSettingsBar />
             {isMyTurn && game.status === 'active' && !hasDrawnCard && (
               <button
@@ -572,6 +582,13 @@ export default function Game() {
         localPlayerId={user.uid}
         onSelect={handleRearrangeSelect}
         onCancel={handleCancelPower}
+      />
+
+      {/* Power guide modal */}
+      <PowerGuideModal
+        open={showPowerGuide}
+        onClose={() => setShowPowerGuide(false)}
+        powerAssignments={powerAssignments}
       />
 
       {/* Flying card animation */}
