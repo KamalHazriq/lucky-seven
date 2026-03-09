@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { Card, PowerEffectType, PowerRankKey, PowerAssignments } from '../lib/types'
@@ -5,22 +6,29 @@ import { getCardRankKey, EFFECT_LABELS, DEFAULT_POWER_ASSIGNMENTS } from '../lib
 
 interface DrawnCardModalProps {
   card: Card | null
+  open: boolean
   locks: [boolean, boolean, boolean]
   powerAssignments: PowerAssignments
   spentPowerCardIds: Record<string, boolean>
+  /** Player's known cards map (slot index string → Card) */
+  knownCards: Record<string, Card>
   onSwap: (slotIndex: number) => void
   onDiscard: () => void
   onUsePower: (rankKey: PowerRankKey, effectType: PowerEffectType) => void
+  onClose: () => void
 }
 
 export default function DrawnCardModal({
   card,
+  open,
   locks,
   powerAssignments,
   spentPowerCardIds,
+  knownCards,
   onSwap,
   onDiscard,
   onUsePower,
+  onClose,
 }: DrawnCardModalProps) {
   const rankKey = card ? getCardRankKey(card) : null
   const effectType = rankKey ? (powerAssignments ?? DEFAULT_POWER_ASSIGNMENTS)[rankKey] : null
@@ -28,27 +36,73 @@ export default function DrawnCardModal({
   const rankLabel = rankKey === 'JOKER' ? 'Joker' : rankKey
   const isSpent = card ? !!spentPowerCardIds[card.id] : false
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose()
+  }, [onClose])
+
+  useEffect(() => {
+    if (open) {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, handleKeyDown])
+
   return (
     <AnimatePresence>
-      {card && (
+      {card && open && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={onClose}
         >
           <motion.div
             initial={{ scale: 0.8, y: 40 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, y: 40 }}
-            className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
           >
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-sm"
+              aria-label="Cancel draw (choose again)"
+              title="Cancel draw (choose again)"
+            >
+              &times;
+            </button>
+
             <h3 className="text-center text-lg font-semibold text-slate-200 mb-4">
               You drew:
             </h3>
 
-            <div className="flex justify-center mb-5">
+            <div className="flex justify-center mb-4">
               <CardView card={card} faceUp size="lg" />
+            </div>
+
+            {/* Your hand — compact row showing known/unknown cards */}
+            <div className="mb-4">
+              <p className="text-[11px] text-slate-400 text-center mb-2 font-medium uppercase tracking-wide">
+                Your cards
+              </p>
+              <div className="flex gap-2 justify-center">
+                {[0, 1, 2].map((i) => {
+                  const known = knownCards[String(i)]
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <CardView
+                        card={known ?? undefined}
+                        faceUp={!!known}
+                        locked={locks[i]}
+                        size="sm"
+                      />
+                      <span className="text-[10px] text-slate-500 font-medium">#{i + 1}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -68,7 +122,7 @@ export default function DrawnCardModal({
                         : 'bg-indigo-600 hover:bg-indigo-500 text-white'
                     }`}
                   >
-                    {locks[i] ? '🔒' : ''} Swap #{i + 1}
+                    {locks[i] ? '\u{1F512}' : ''} Swap #{i + 1}
                   </button>
                 ))}
               </div>
@@ -91,6 +145,11 @@ export default function DrawnCardModal({
                   }`}
                 >
                   <span className="font-semibold">{rankLabel}: {effectInfo.label}</span>
+                  {isSpent && (
+                    <span className="inline-block ml-1.5 px-1.5 py-0.5 bg-slate-600/80 text-slate-400 text-[9px] font-bold rounded align-middle">
+                      SPENT
+                    </span>
+                  )}
                   <span className="block text-xs opacity-80 mt-0.5">
                     {isSpent ? 'Power already used for this card.' : effectInfo.desc}
                   </span>

@@ -5,6 +5,14 @@ import { Toaster } from 'react-hot-toast'
 import App from './App.tsx'
 import './index.css'
 
+// Apply stored theme immediately to avoid flash of wrong theme
+{
+  const storedTheme = localStorage.getItem('lucky7_theme')
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', storedTheme)
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename="/lucky-seven">

@@ -9,16 +9,63 @@
   --color-gold-dim: #92400e;
 }
 
+/* ─── Theme variables ─────────────────────────────────────── */
+:root {
+  /* Blue theme (default) */
+  --bg: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 50%, #16213e 100%);
+  --surface: rgba(30, 41, 59, 0.6);
+  --surface-solid: #1e293b;
+  --panel: rgba(30, 41, 59, 0.4);
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --border: rgba(51, 65, 85, 0.5);
+  --border-solid: #334155;
+  --accent: #f59e0b;
+  --accent2: #10b981;
+  --watermark: rgba(100, 116, 139, 0.4);
+}
+
+[data-theme="dark"] {
+  --bg: linear-gradient(135deg, #09090b 0%, #18181b 50%, #1c1917 100%);
+  --surface: rgba(39, 39, 42, 0.6);
+  --surface-solid: #27272a;
+  --panel: rgba(39, 39, 42, 0.4);
+  --text: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --border: rgba(63, 63, 70, 0.5);
+  --border-solid: #3f3f46;
+  --accent: #f59e0b;
+  --accent2: #10b981;
+  --watermark: rgba(113, 113, 122, 0.4);
+}
+
+[data-theme="light"] {
+  --bg: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+  --surface: rgba(255, 255, 255, 0.7);
+  --surface-solid: #ffffff;
+  --panel: rgba(241, 245, 249, 0.6);
+  --text: #1e293b;
+  --text-muted: #475569;
+  --text-dim: #94a3b8;
+  --border: rgba(203, 213, 225, 0.6);
+  --border-solid: #cbd5e1;
+  --accent: #d97706;
+  --accent2: #059669;
+  --watermark: rgba(148, 163, 184, 0.5);
+}
+
 body {
   margin: 0;
-  background: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 50%, #16213e 100%);
-  min-height: 100vh;
+  background: var(--bg);
+  min-height: 100dvh;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  color: #e2e8f0;
+  color: var(--text);
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 ::-webkit-scrollbar {
@@ -41,4 +88,16 @@ body {
   background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
   background-size: 200% 100%;
   animation: shimmer 3s infinite;
+}
+
+/* Theme select dropdown options — ensure readability */
+select option {
+  background: var(--surface-solid);
+  color: var(--text);
+}
+
+/* Respect prefers-reduced-motion at CSS level */
+@media (prefers-reduced-motion: reduce) {
+  .card-shimmer { animation: none; }
+  .animate-pulse { animation: none; }
 }

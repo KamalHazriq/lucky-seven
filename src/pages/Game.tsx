@@ -7,6 +7,7 @@ import { useGame } from '../hooks/useGame'
 import {
   drawFromPile,
   takeFromDiscard,
+  cancelDraw,
   swapWithSlot,
   discardDrawn,
   usePeekOne,
@@ -28,6 +29,8 @@ import PeekAllModal from '../components/PeekAllModal'
 import QueenSwapModal from '../components/QueenSwapModal'
 import SlotPickerModal from '../components/SlotPickerModal'
 import JokerChaosModal from '../components/JokerChaosModal'
+import GameSettingsBar from '../components/GameSettings'
+import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
 
@@ -51,6 +54,10 @@ export default function Game() {
   const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const revealedRef = useRef(false)
 
+  // Derived state
+  const drawnCard = privateState?.drawnCard ?? null
+  const hasDrawnCard = !!drawnCard
+
   // When game becomes finished, reveal own hand then redirect
   useEffect(() => {
     if (game?.status === 'finished' && gameId && user && !revealedRef.current) {
@@ -70,7 +77,6 @@ export default function Game() {
 
   const isMyTurn = game?.currentTurnPlayerId === user?.uid
   const turnPhase = game?.turnPhase
-  const drawnCard = privateState?.drawnCard ?? null
   const isDrawPhase = isMyTurn && turnPhase === 'draw'
   const isActionPhase = isMyTurn && turnPhase === 'action'
   const myPlayer = user ? players[user.uid] : null
@@ -78,6 +84,9 @@ export default function Game() {
   const powerAssignments = game?.settings?.powerAssignments ?? DEFAULT_GAME_SETTINGS.powerAssignments
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
+
+  // Draw pile/discard clickable during draw phase only
+  const canDraw = isDrawPhase && !busy
 
   // Player order with local player first (for modals)
   const modalPlayerOrder = game ? [
@@ -97,17 +106,28 @@ export default function Game() {
     }
   }, [busy])
 
-  const handleDrawPile = () => withBusy(() => drawFromPile(gameId!))
-  const handleTakeDiscard = () => withBusy(() => takeFromDiscard(gameId!))
+  const handleDrawPile = () => {
+    if (!canDraw) return
+    withBusy(async () => { await drawFromPile(gameId!); playSfx('draw'); vibrate() })
+  }
+  const handleTakeDiscard = () => {
+    if (!canDraw) return
+    withBusy(async () => { await takeFromDiscard(gameId!); playSfx('draw'); vibrate() })
+  }
+
+  // Cancel draw: undo the draw choice, return card to where it came from
+  const handleCancelDraw = () => {
+    withBusy(async () => { await cancelDraw(gameId!) })
+  }
 
   const handleSwap = (slotIndex: number) => {
     setModal({ type: 'none' })
-    withBusy(() => swapWithSlot(gameId!, slotIndex))
+    withBusy(async () => { await swapWithSlot(gameId!, slotIndex); playSfx('swap'); vibrate() })
   }
 
   const handleDiscard = () => {
     setModal({ type: 'none' })
-    withBusy(() => discardDrawn(gameId!))
+    withBusy(async () => { await discardDrawn(gameId!); playSfx('discard') })
   }
 
   // ─── Power handlers (route by effectType, not rank) ────
@@ -156,17 +176,17 @@ export default function Game() {
 
   const handleLockSelect = (targetPlayerId: string, slotIndex: number) => {
     setModal({ type: 'none' })
-    withBusy(() => useLock(gameId!, targetPlayerId, slotIndex))
+    withBusy(async () => { await useLock(gameId!, targetPlayerId, slotIndex); playSfx('lock'); vibrate(50) })
   }
 
   const handleUnlockSelect = (targetPlayerId: string, slotIndex: number) => {
     setModal({ type: 'none' })
-    withBusy(() => useUnlock(gameId!, targetPlayerId, slotIndex))
+    withBusy(async () => { await useUnlock(gameId!, targetPlayerId, slotIndex); playSfx('unlock') })
   }
 
   const handleRearrangeSelect = (targetPlayerId: string) => {
     setModal({ type: 'none' })
-    withBusy(() => useRearrange(gameId!, targetPlayerId))
+    withBusy(async () => { await useRearrange(gameId!, targetPlayerId); playSfx('swap'); vibrate(80) })
   }
 
   const handleCancelPower = () => {
@@ -178,12 +198,12 @@ export default function Game() {
     if (!confirm(
       'Are you sure? Every other player gets one more turn, then all cards are revealed.'
     )) return
-    withBusy(() => callEnd(gameId!))
+    withBusy(async () => { await callEnd(gameId!); playSfx('endGame') })
   }
 
   if (loading || !game || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
@@ -196,7 +216,7 @@ export default function Game() {
   // Show a "revealing" state if game just ended
   if (game.status === 'finished') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
@@ -215,140 +235,159 @@ export default function Game() {
     : null
 
   return (
-    <div className="min-h-screen flex flex-col p-3 md:p-4 max-w-5xl mx-auto">
-      {/* Top bar */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-bold text-amber-300">Lucky Seven</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">
-            Draw pile: <span className="text-slate-300 font-medium">{game.drawPileCount}</span>
-          </span>
-          {game.status === 'ending' && (
-            <span className="px-2 py-1 bg-amber-900/40 border border-amber-600/50 text-amber-300 rounded-lg text-xs font-medium animate-pulse">
-              Ending Round...
+    <div className="min-h-dvh flex flex-col max-w-5xl mx-auto">
+      {/* ─── Sticky Top Bar ───────────────────────────────────── */}
+      <div
+        className="sticky top-0 z-50 w-full backdrop-blur-md border-b"
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          background: 'color-mix(in srgb, var(--surface-solid) 85%, transparent)',
+          borderColor: 'var(--border-solid)',
+        }}
+      >
+        <div className="flex items-center justify-between px-3 md:px-6 py-2 min-h-[48px] max-w-5xl mx-auto gap-2">
+          {/* Left section — game info */}
+          <div className="flex items-center gap-3 shrink-0">
+            <h1 className="text-lg font-bold text-amber-300 leading-none">Lucky Seven</h1>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Pile: <span className="font-semibold" style={{ color: 'var(--text)' }}>{game.drawPileCount}</span>
             </span>
-          )}
-          {/* End button: only visible to the current turn player when game is active */}
-          {isMyTurn && game.status === 'active' && (
-            <button
-              onClick={handleCallEnd}
-              disabled={busy}
-              className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 border border-red-700/50 text-red-300 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-            >
-              End Game
-            </button>
-          )}
+            {game.status === 'ending' && (
+              <span className="px-2 py-0.5 bg-amber-900/40 border border-amber-600/50 text-amber-300 rounded-lg text-[10px] font-medium animate-pulse">
+                Ending...
+              </span>
+            )}
+          </div>
+
+          {/* Right section — toggles + end game */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <GameSettingsBar />
+            {isMyTurn && game.status === 'active' && !hasDrawnCard && (
+              <button
+                onClick={handleCallEnd}
+                disabled={busy}
+                className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 border border-red-700/50 text-red-300 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 min-h-[44px]"
+              >
+                End Game
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Turn indicator */}
-      <motion.div
-        key={game.currentTurnPlayerId}
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`text-center py-2 px-4 rounded-xl mb-4 text-sm font-medium ${
-          isMyTurn
-            ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
-            : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
-        }`}
-      >
-        {isMyTurn ? (
-          isDrawPhase
-            ? 'Your turn! Choose where to draw from.'
-            : 'Choose: swap with a card, discard, or use a power.'
-        ) : (
-          `Waiting for ${currentTurnName} to play...`
+      {/* ─── Main Content ─────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col p-3 md:p-4">
+
+        {/* Turn indicator */}
+        <motion.div
+          key={game.currentTurnPlayerId}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`text-center py-2 px-4 rounded-xl mb-4 text-sm font-medium ${
+            isMyTurn
+              ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
+              : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
+          }`}
+        >
+          {isMyTurn ? (
+            isDrawPhase
+              ? 'Your turn! Choose where to draw from.'
+              : 'Choose: swap with a card, discard, or use a power.'
+          ) : (
+            `Waiting for ${currentTurnName} to play...`
+          )}
+        </motion.div>
+
+        {/* Other players */}
+        {otherPlayers.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            {otherPlayers.map((pid) => (
+              <PlayerPanel
+                key={pid}
+                playerId={pid}
+                displayName={players[pid]?.displayName ?? 'Unknown'}
+                isCurrentTurn={game.currentTurnPlayerId === pid}
+                isLocalPlayer={false}
+                seatIndex={players[pid]?.seatIndex ?? 0}
+                connected={players[pid]?.connected ?? false}
+                locks={players[pid]?.locks ?? [false, false, false]}
+                lockedBy={players[pid]?.lockedBy}
+              />
+            ))}
+          </div>
         )}
-      </motion.div>
 
-      {/* Other players */}
-      {otherPlayers.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-          {otherPlayers.map((pid) => (
-            <PlayerPanel
-              key={pid}
-              playerId={pid}
-              displayName={players[pid]?.displayName ?? 'Unknown'}
-              isCurrentTurn={game.currentTurnPlayerId === pid}
-              isLocalPlayer={false}
-              seatIndex={players[pid]?.seatIndex ?? 0}
-              connected={players[pid]?.connected ?? false}
-              locks={players[pid]?.locks ?? [false, false, false]}
-              lockedBy={players[pid]?.lockedBy}
+        {/* Table area: Draw + Discard */}
+        <div className="flex items-center justify-center gap-8 mb-6 py-4">
+          {/* Draw pile */}
+          <div className="text-center">
+            <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
+            <CardView
+              faceUp={false}
+              size="lg"
+              onClick={canDraw ? handleDrawPile : undefined}
+              disabled={!canDraw}
+              highlight={canDraw}
+              label={`${game.drawPileCount} left`}
             />
-          ))}
-        </div>
-      )}
+          </div>
 
-      {/* Table area: Draw + Discard */}
-      <div className="flex items-center justify-center gap-8 mb-6 py-4">
-        {/* Draw pile */}
-        <div className="text-center">
-          <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
-          <CardView
-            faceUp={false}
-            size="lg"
-            onClick={isDrawPhase ? handleDrawPile : undefined}
-            disabled={!isDrawPhase || busy}
-            highlight={isDrawPhase}
-            label={`${game.drawPileCount} left`}
+          {/* Discard pile */}
+          <div className="text-center">
+            <p className="text-xs text-slate-500 mb-2">Discard</p>
+            {game.discardTop ? (
+              <CardView
+                card={game.discardTop}
+                faceUp
+                size="lg"
+                onClick={canDraw ? handleTakeDiscard : undefined}
+                disabled={!canDraw}
+                highlight={canDraw}
+              />
+            ) : (
+              <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
+                <span className="text-slate-600 text-xs">Empty</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Local player */}
+        <div className="mb-4">
+          <PlayerPanel
+            playerId={user.uid}
+            displayName={players[user.uid]?.displayName ?? 'You'}
+            isCurrentTurn={isMyTurn}
+            isLocalPlayer
+            privateState={privateState}
+            seatIndex={players[user.uid]?.seatIndex ?? 0}
+            connected
+            locks={myLocks}
+            lockedBy={myPlayer?.lockedBy}
+            onSlotClick={isActionPhase ? handleSwap : undefined}
+            slotClickable={isActionPhase && hasDrawnCard}
           />
         </div>
 
-        {/* Discard pile */}
-        <div className="text-center">
-          <p className="text-xs text-slate-500 mb-2">Discard</p>
-          {game.discardTop ? (
-            <CardView
-              card={game.discardTop}
-              faceUp
-              size="lg"
-              onClick={isDrawPhase ? handleTakeDiscard : undefined}
-              disabled={!isDrawPhase || busy}
-              highlight={isDrawPhase}
-            />
-          ) : (
-            <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
-              <span className="text-slate-600 text-xs">Empty</span>
-            </div>
-          )}
-        </div>
+        {/* Game Log */}
+        <GameLog log={game.log} />
       </div>
-
-      {/* Local player */}
-      <div className="mb-4">
-        <PlayerPanel
-          playerId={user.uid}
-          displayName={players[user.uid]?.displayName ?? 'You'}
-          isCurrentTurn={isMyTurn}
-          isLocalPlayer
-          privateState={privateState}
-          seatIndex={players[user.uid]?.seatIndex ?? 0}
-          connected
-          locks={myLocks}
-          lockedBy={myPlayer?.lockedBy}
-          onSlotClick={isActionPhase ? handleSwap : undefined}
-          slotClickable={isActionPhase && !!drawnCard}
-        />
-      </div>
-
-      {/* Game Log */}
-      <GameLog log={game.log} />
 
       {/* ─── Modals ─────────────────────────────────────────── */}
 
-      {/* Drawn Card Modal (main action chooser) */}
-      {isActionPhase && drawnCard && modal.type === 'none' && (
-        <DrawnCardModal
-          card={drawnCard}
-          locks={myLocks}
-          powerAssignments={powerAssignments}
-          spentPowerCardIds={spentPowerCardIds}
-          onSwap={handleSwap}
-          onDiscard={handleDiscard}
-          onUsePower={handleUsePower}
-        />
-      )}
+      {/* Drawn Card Modal (main action chooser) — open whenever drawnCard exists */}
+      <DrawnCardModal
+        card={isActionPhase ? drawnCard : null}
+        open={modal.type === 'none'}
+        locks={myLocks}
+        powerAssignments={powerAssignments}
+        spentPowerCardIds={spentPowerCardIds}
+        knownCards={myKnown}
+        onSwap={handleSwap}
+        onDiscard={handleDiscard}
+        onUsePower={handleUsePower}
+        onClose={handleCancelDraw}
+      />
 
       {/* Effect: peek_one — slot picker */}
       <PeekModal
@@ -423,6 +462,11 @@ export default function Game() {
         onSelect={handleRearrangeSelect}
         onCancel={handleCancelPower}
       />
+
+      {/* Watermark */}
+      <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
+        Kamal Hazriq 2026
+      </div>
     </div>
   )
 }

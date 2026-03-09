@@ -149,6 +149,7 @@ export async function createGame(
   const privateData: PrivatePlayerDoc = {
     hand: [],
     drawnCard: null,
+    drawnCardSource: null,
     known: {},
   }
 
@@ -188,6 +189,7 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
     tx.set(privateRef(gameId, user.uid), {
       hand: [],
       drawnCard: null,
+      drawnCardSource: null,
       known: {},
     } satisfies PrivatePlayerDoc)
   })
@@ -217,6 +219,7 @@ export async function startGame(gameId: string): Promise<void> {
       tx.set(privateRef(gameId, pid), {
         hand,
         drawnCard: null,
+        drawnCardSource: null,
         known: {},
       } satisfies PrivatePlayerDoc)
       // Reset locks
@@ -269,7 +272,7 @@ export async function drawFromPile(gameId: string): Promise<void> {
     const newPile = pile.slice(1)
 
     tx.update(drawPileRef(gameId), { cards: newPile })
-    tx.update(privateRef(gameId, user.uid), { drawnCard: drawn })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: drawn, drawnCardSource: 'pile' })
     tx.update(gameRef(gameId), {
       drawPileCount: newPile.length,
       turnPhase: 'action',
@@ -295,7 +298,7 @@ export async function takeFromDiscard(gameId: string): Promise<void> {
     if (game.status !== 'active' && game.status !== 'ending') throw new Error('Game not active')
     if (!game.discardTop) throw new Error('No discard card')
 
-    tx.update(privateRef(gameId, user.uid), { drawnCard: game.discardTop })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: game.discardTop, drawnCardSource: 'discard' })
     tx.update(gameRef(gameId), {
       discardTop: null,
       turnPhase: 'action',
@@ -303,6 +306,51 @@ export async function takeFromDiscard(gameId: string): Promise<void> {
       lastActionAt: Date.now(),
       log: arrayUnion(logEntry(`${pName} took from discard`)),
     })
+  })
+}
+
+// ─── Cancel Draw (undo draw choice) ─────────────────────────────
+export async function cancelDraw(gameId: string): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    const game = gameSnap.data() as GameDoc
+    const privSnap = await tx.get(privateRef(gameId, user.uid))
+    const priv = privSnap.data() as PrivatePlayerDoc
+    const pileSnap = await tx.get(drawPileRef(gameId))
+    const pile = pileSnap.data()?.cards as Card[]
+
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'action') throw new Error('Not in action phase')
+    if (!priv.drawnCard) throw new Error('No drawn card to cancel')
+
+    const source = priv.drawnCardSource ?? null
+    if (!source) throw new Error('Cannot determine draw source')
+
+    const cardToReturn = priv.drawnCard
+
+    if (source === 'pile') {
+      // Put card back on TOP of draw pile
+      const newPile = [cardToReturn, ...pile]
+      tx.update(drawPileRef(gameId), { cards: newPile })
+      tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
+      tx.update(gameRef(gameId), {
+        drawPileCount: newPile.length,
+        turnPhase: 'draw',
+        actionVersion: game.actionVersion + 1,
+        lastActionAt: Date.now(),
+      })
+    } else if (source === 'discard') {
+      // Put card back on discard pile
+      tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
+      tx.update(gameRef(gameId), {
+        discardTop: cardToReturn,
+        turnPhase: 'draw',
+        actionVersion: game.actionVersion + 1,
+        lastActionAt: Date.now(),
+      })
+    }
   })
 }
 
@@ -333,6 +381,7 @@ export async function swapWithSlot(gameId: string, slotIndex: number): Promise<v
     tx.update(privateRef(gameId, user.uid), {
       hand: newHand,
       drawnCard: null,
+      drawnCardSource: null,
       known: newKnown,
     })
 
@@ -360,7 +409,7 @@ export async function discardDrawn(gameId: string): Promise<void> {
     if (!priv.drawnCard) throw new Error('No drawn card')
 
     const discardCard = priv.drawnCard
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
     tx.update(gameRef(gameId), buildEndTurnUpdates(
       game, user.uid, discardCard,
       `${pName} discarded`,
@@ -421,7 +470,7 @@ export async function usePeekAll(gameId: string): Promise<Record<number, Card>> 
     }
 
     const discardCard = priv.drawnCard
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null, known: newKnown })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null, known: newKnown })
     tx.update(gameRef(gameId), {
       ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as peek_all`),
       ...spentField(discardCard.id),
@@ -455,7 +504,7 @@ export async function usePeekOne(gameId: string, slotIndex: number): Promise<Car
     newKnown[String(slotIndex)] = peekedCard
 
     const discardCard = priv.drawnCard
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null, known: newKnown })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null, known: newKnown })
     tx.update(gameRef(gameId), {
       ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as peek_one`),
       ...spentField(discardCard.id),
@@ -529,7 +578,7 @@ export async function useSwap(
       tx.update(privateRef(gameId, targetB.playerId), { hand: newHandB, known: newKnownB })
     }
 
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
 
     const discardCard = priv.drawnCard
     tx.update(gameRef(gameId), {
@@ -572,7 +621,7 @@ export async function useLock(
     tx.update(playerRef(gameId, targetPlayerId), { locks: newLocks, lockedBy: newLockedBy })
 
     const discardCard = priv.drawnCard
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
 
     const targetName = targetPlayerId === user.uid ? 'their own' : `${targetPD.displayName}'s`
     tx.update(gameRef(gameId), {
@@ -620,7 +669,7 @@ export async function useUnlock(
     }
 
     const discardCard = priv.drawnCard
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
 
     const logMsg = isActuallyLocked
       ? `${pd.displayName} used ${rankKey} as unlock on ${targetPlayerId === user.uid ? 'their own' : `${targetPD.displayName}'s`} card #${slotIndex + 1}`
@@ -682,7 +731,7 @@ export async function useRearrange(
     }
 
     const discardCard = priv.drawnCard
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
 
     tx.update(gameRef(gameId), {
       ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as rearrange on ${targetPD.displayName}'s cards!`),

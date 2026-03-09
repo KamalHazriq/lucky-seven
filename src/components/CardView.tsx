@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import type { Card, LockInfo } from '../lib/types'
 import { cardDisplay, suitColor } from '../lib/deck'
@@ -37,6 +37,30 @@ export default function CardView({
   const showFace = faceUp && card
   const [showTooltip, setShowTooltip] = useState(false)
   const lockerName = lockInfo?.lockerName
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
+
+  // Mobile: long-press to show tooltip
+  const handleTouchStart = useCallback(() => {
+    if (!lockerName) return
+    longPressRef.current = setTimeout(() => setShowTooltip(true), 400)
+  }, [lockerName])
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressRef.current) clearTimeout(longPressRef.current)
+  }, [])
+
+  // Close tooltip on outside tap
+  useEffect(() => {
+    if (!showTooltip) return
+    const handler = (e: TouchEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+        setShowTooltip(false)
+      }
+    }
+    document.addEventListener('touchstart', handler, { passive: true })
+    return () => document.removeEventListener('touchstart', handler)
+  }, [showTooltip])
 
   return (
     <motion.div
@@ -56,9 +80,16 @@ export default function CardView({
           : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700'
         }
       `}
+      style={{ perspective: '600px' }}
     >
       {showFace ? (
-        <>
+        <motion.div
+          initial={{ rotateY: 90 }}
+          animate={{ rotateY: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="flex flex-col items-center justify-center"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
           <span
             className="font-bold leading-tight"
             style={{ color: suitColor(card) }}
@@ -70,7 +101,7 @@ export default function CardView({
               0
             </span>
           )}
-        </>
+        </motion.div>
       ) : (
         <div className="card-shimmer absolute inset-0 rounded-xl">
           <div className="flex items-center justify-center h-full">
@@ -96,17 +127,24 @@ export default function CardView({
         </div>
       )}
 
-      {/* Lock tooltip trigger */}
+      {/* Lock tooltip trigger — hover + long-press */}
       {locked && lockerName && (
         <div
+          ref={tooltipRef}
           className="absolute inset-0 z-20 cursor-help"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          onTouchStart={() => setShowTooltip(true)}
-          onTouchEnd={() => setShowTooltip(false)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          role="group"
+          aria-describedby={showTooltip ? 'lock-tooltip' : undefined}
         >
           {showTooltip && (
-            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 border border-red-500/50 text-red-300 text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg whitespace-nowrap z-30 pointer-events-none">
+            <div
+              id="lock-tooltip"
+              role="tooltip"
+              className="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 border border-red-500/50 text-red-300 text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg whitespace-nowrap z-30 pointer-events-none"
+            >
               Locked by {lockerName}
             </div>
           )}

@@ -109,9 +109,13 @@ export interface PlayerDoc {
   lockedBy: [LockInfo, LockInfo, LockInfo]
 }
 
+export type DrawnCardSource = 'pile' | 'discard' | null
+
 export interface PrivatePlayerDoc {
   hand: Card[]
   drawnCard: Card | null
+  /** Where the drawn card came from — used for cancel-draw rollback */
+  drawnCardSource: DrawnCardSource
   known: Record<string, Card>
 }
 
