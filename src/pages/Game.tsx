@@ -422,6 +422,24 @@ export default function Game() {
         </div>
       </div>
 
+      {/* ─── Resume banner — visible when drawn card exists but sub-modal is active ─── */}
+      {hasDrawnCard && isActionPhase && modal.type !== 'none' && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mx-3 md:mx-4 mt-2"
+        >
+          <button
+            onClick={() => setModal({ type: 'none' })}
+            className="w-full py-2 px-4 bg-amber-900/40 border border-amber-600/50 rounded-xl text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 hover:bg-amber-900/60 transition-colors cursor-pointer"
+          >
+            <span className="text-sm">{'\u{1F0A0}'}</span>
+            You have a drawn card — tap to resume
+          </button>
+        </motion.div>
+      )}
+
       {/* ─── Main Content ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col p-3 md:p-4">
 

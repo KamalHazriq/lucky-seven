@@ -69,7 +69,7 @@ export default function DrawnCardModal({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button — only for discard-sourced draws (pile draws cannot be undone) */}
-            {canCancel && (
+            {canCancel ? (
               <button
                 onClick={onClose}
                 className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-sm"
@@ -78,6 +78,10 @@ export default function DrawnCardModal({
               >
                 &times;
               </button>
+            ) : (
+              <div className="absolute top-3 right-3 px-2 py-1 bg-slate-700/60 text-slate-500 text-[9px] font-semibold rounded-md select-none">
+                Pile draw — no undo
+              </div>
             )}
 
             <h3 className="text-center text-lg font-semibold text-slate-200 mb-4">
