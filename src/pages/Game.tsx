@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -11,6 +11,7 @@ import {
   discardDrawn,
   useJackPeek,
   callEnd,
+  revealHand,
 } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
@@ -29,13 +30,25 @@ export default function Game() {
   const [busy, setBusy] = useState(false)
   const [showPeekSelect, setShowPeekSelect] = useState(false)
   const [peekResult, setPeekResult] = useState<{ card: Card; slot: number } | null>(null)
+  const revealedRef = useRef(false)
 
-  // Redirect on game end
+  // When game becomes finished, reveal own hand then redirect
   useEffect(() => {
-    if (game?.status === 'finished') {
-      navigate(`/results/${gameId}`, { replace: true })
+    if (game?.status === 'finished' && gameId && user && !revealedRef.current) {
+      revealedRef.current = true
+      revealHand(gameId)
+        .then(() => {
+          // Small delay to let other players also reveal
+          setTimeout(() => {
+            navigate(`/results/${gameId}`, { replace: true })
+          }, 1500)
+        })
+        .catch((e) => {
+          console.error('Failed to reveal hand:', e)
+          navigate(`/results/${gameId}`, { replace: true })
+        })
     }
-  }, [game?.status, gameId, navigate])
+  }, [game?.status, gameId, user, navigate])
 
   const isMyTurn = game?.currentTurnPlayerId === user?.uid
   const turnPhase = game?.turnPhase
@@ -86,6 +99,22 @@ export default function Game() {
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full"
         />
+      </div>
+    )
+  }
+
+  // Show a "revealing" state if game just ended
+  if (game.status === 'finished') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full mx-auto mb-4"
+          />
+          <p className="text-amber-300 font-medium">Revealing all cards...</p>
+        </div>
       </div>
     )
   }
@@ -221,7 +250,6 @@ export default function Game() {
         onSelect={handlePeekSelect}
         onCancel={() => {
           setShowPeekSelect(false)
-          // If cancelled, just discard the Jack
           handleDiscard()
         }}
       />

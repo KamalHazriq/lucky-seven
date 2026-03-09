@@ -81,14 +81,16 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     if (!gameSnap.exists()) throw new Error('Game not found')
     const game = gameSnap.data() as GameDoc
 
     if (game.status !== 'lobby') throw new Error('Game already started')
-    if (game.playerOrder.includes(user.uid)) return // Already joined
+    if (game.playerOrder.includes(user.uid)) return
     if (game.playerOrder.length >= game.maxPlayers) throw new Error('Game is full')
 
+    // ── ALL WRITES AFTER ──
     tx.update(gameRef(gameId), {
       playerOrder: [...game.playerOrder, user.uid],
       log: [...game.log, logEntry(`${displayName} joined`)].slice(-50),
@@ -109,10 +111,14 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
 }
 
 // ─── Start Game ─────────────────────────────────────────────────
+// The host deals cards. Since the host CANNOT read other players' private
+// docs (security rules), we use tx.set() to overwrite them directly.
+// No prior read of private docs is needed — we're setting fresh data.
 export async function startGame(gameId: string): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ── (only the game doc, which is public)
     const gameSnap = await tx.get(gameRef(gameId))
     if (!gameSnap.exists()) throw new Error('Game not found')
     const game = gameSnap.data() as GameDoc
@@ -121,22 +127,25 @@ export async function startGame(gameId: string): Promise<void> {
     if (game.status !== 'lobby') throw new Error('Game already started')
     if (game.playerOrder.length < 2) throw new Error('Need at least 2 players')
 
+    // ── ALL WRITES AFTER ──
     const deck = shuffleDeck(buildDeck(), game.seed)
     const playerCount = game.playerOrder.length
     const cardsNeeded = playerCount * 3
 
-    // Deal 3 cards to each player
+    // Deal 3 cards to each player using set() — no read needed
     for (let i = 0; i < playerCount; i++) {
       const pid = game.playerOrder[i]
       const hand = deck.slice(i * 3, i * 3 + 3)
-      tx.update(privateRef(gameId, pid), { hand, drawnCard: null, known: {} })
+      tx.set(privateRef(gameId, pid), {
+        hand,
+        drawnCard: null,
+        known: {},
+      } satisfies PrivatePlayerDoc)
     }
 
-    // Remaining cards go to draw pile, first card goes to discard
     const remaining = deck.slice(cardsNeeded)
     const discardCard = remaining.shift()!
 
-    // Store draw pile in a private internal doc
     tx.set(drawPileRef(gameId), { cards: remaining })
 
     tx.update(gameRef(gameId), {
@@ -155,31 +164,39 @@ export async function drawFromPile(gameId: string): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     const game = gameSnap.data() as GameDoc
-    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
-    if (game.turnPhase !== 'draw') throw new Error('Already drew a card')
-    if (game.status !== 'active') throw new Error('Game not active')
 
     const pileSnap = await tx.get(drawPileRef(gameId))
     const pile = pileSnap.data()?.cards as Card[]
+
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pName = (playerSnap.data() as PlayerDoc).displayName
+
+    // Also read own private doc (needed before writing to it)
+    const privSnap = await tx.get(privateRef(gameId, user.uid))
+    const _priv = privSnap.data() as PrivatePlayerDoc
+
+    // ── VALIDATE ──
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'draw') throw new Error('Already drew a card')
+    if (game.status !== 'active') throw new Error('Game not active')
     if (!pile || pile.length === 0) throw new Error('Draw pile is empty')
 
+    // ── ALL WRITES AFTER ──
     const drawn = pile[0]
     const newPile = pile.slice(1)
 
     tx.update(drawPileRef(gameId), { cards: newPile })
     tx.update(privateRef(gameId, user.uid), { drawnCard: drawn })
-
-    // Read player name
-    const playerSnap = await tx.get(playerRef(gameId, user.uid))
-    const pName = (playerSnap.data() as PlayerDoc).displayName
-
     tx.update(gameRef(gameId), {
       drawPileCount: newPile.length,
       turnPhase: 'action',
       log: arrayUnion(logEntry(`${pName} drew from the pile`)),
     })
+
+    void _priv // satisfy lint
   })
 }
 
@@ -188,18 +205,21 @@ export async function takeFromDiscard(gameId: string): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     const game = gameSnap.data() as GameDoc
+
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pName = (playerSnap.data() as PlayerDoc).displayName
+
+    // ── VALIDATE ──
     if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
     if (game.turnPhase !== 'draw') throw new Error('Already drew a card')
     if (game.status !== 'active') throw new Error('Game not active')
     if (!game.discardTop) throw new Error('No discard card')
 
+    // ── ALL WRITES AFTER ──
     tx.update(privateRef(gameId, user.uid), { drawnCard: game.discardTop })
-
-    const playerSnap = await tx.get(playerRef(gameId, user.uid))
-    const pName = (playerSnap.data() as PlayerDoc).displayName
-
     tx.update(gameRef(gameId), {
       discardTop: null,
       turnPhase: 'action',
@@ -213,24 +233,29 @@ export async function swapWithSlot(gameId: string, slotIndex: number): Promise<v
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     const game = gameSnap.data() as GameDoc
-    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
-    if (game.turnPhase !== 'action') throw new Error('Must draw first')
 
     const privSnap = await tx.get(privateRef(gameId, user.uid))
     const priv = privSnap.data() as PrivatePlayerDoc
+
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pName = (playerSnap.data() as PlayerDoc).displayName
+
+    // ── VALIDATE ──
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'action') throw new Error('Must draw first')
     if (!priv.drawnCard) throw new Error('No drawn card')
     if (slotIndex < 0 || slotIndex >= priv.hand.length) throw new Error('Invalid slot')
 
+    // ── ALL WRITES AFTER ──
     const oldCard = priv.hand[slotIndex]
     const newHand = [...priv.hand]
     newHand[slotIndex] = priv.drawnCard
 
-    // Remove knowledge of swapped slot, add knowledge of new card in slot
     const newKnown = { ...priv.known }
     newKnown[String(slotIndex)] = priv.drawnCard
-    // The player knows what they put there
 
     tx.update(privateRef(gameId, user.uid), {
       hand: newHand,
@@ -238,28 +263,14 @@ export async function swapWithSlot(gameId: string, slotIndex: number): Promise<v
       known: newKnown,
     })
 
-    const playerSnap = await tx.get(playerRef(gameId, user.uid))
-    const pName = (playerSnap.data() as PlayerDoc).displayName
-
-    // Advance turn
     const nextPlayer = getNextPlayer(game.playerOrder, user.uid)
 
-    const updates: Record<string, unknown> = {
+    tx.update(gameRef(gameId), {
       discardTop: oldCard,
       currentTurnPlayerId: nextPlayer,
       turnPhase: 'draw',
       log: arrayUnion(logEntry(`${pName} swapped card #${slotIndex + 1}`)),
-    }
-
-    // Check if draw pile is empty -> end game
-    if (game.drawPileCount === 0) {
-      updates.status = 'finishing' as unknown
-    }
-
-    tx.update(gameRef(gameId), updates)
-
-    // Check if the game should end after this turn
-    await checkGameEnd(tx, gameId, game)
+    })
   })
 }
 
@@ -268,30 +279,31 @@ export async function discardDrawn(gameId: string): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     const game = gameSnap.data() as GameDoc
-    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
-    if (game.turnPhase !== 'action') throw new Error('Must draw first')
 
     const privSnap = await tx.get(privateRef(gameId, user.uid))
     const priv = privSnap.data() as PrivatePlayerDoc
-    if (!priv.drawnCard) throw new Error('No drawn card')
-
-    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
 
     const playerSnap = await tx.get(playerRef(gameId, user.uid))
     const pName = (playerSnap.data() as PlayerDoc).displayName
 
+    // ── VALIDATE ──
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'action') throw new Error('Must draw first')
+    if (!priv.drawnCard) throw new Error('No drawn card')
+
+    // ── ALL WRITES AFTER ──
     const nextPlayer = getNextPlayer(game.playerOrder, user.uid)
 
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null })
     tx.update(gameRef(gameId), {
       discardTop: priv.drawnCard,
       currentTurnPlayerId: nextPlayer,
       turnPhase: 'draw',
       log: arrayUnion(logEntry(`${pName} discarded`)),
     })
-
-    await checkGameEnd(tx, gameId, game)
   })
 }
 
@@ -301,29 +313,33 @@ export async function useJackPeek(gameId: string, slotIndex: number): Promise<Ca
   let peekedCard: Card | null = null
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     const game = gameSnap.data() as GameDoc
-    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
-    if (game.turnPhase !== 'action') throw new Error('Must draw first')
 
     const privSnap = await tx.get(privateRef(gameId, user.uid))
     const priv = privSnap.data() as PrivatePlayerDoc
+
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pName = (playerSnap.data() as PlayerDoc).displayName
+
+    // ── VALIDATE ──
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'action') throw new Error('Must draw first')
     if (!priv.drawnCard) throw new Error('No drawn card')
     if (priv.drawnCard.rank !== 'J' || priv.drawnCard.isJoker) throw new Error('Drawn card is not a Jack')
 
+    // ── ALL WRITES AFTER ──
     peekedCard = priv.hand[slotIndex]
     const newKnown = { ...priv.known }
     newKnown[String(slotIndex)] = peekedCard
+
+    const nextPlayer = getNextPlayer(game.playerOrder, user.uid)
 
     tx.update(privateRef(gameId, user.uid), {
       drawnCard: null,
       known: newKnown,
     })
-
-    const playerSnap = await tx.get(playerRef(gameId, user.uid))
-    const pName = (playerSnap.data() as PlayerDoc).displayName
-
-    const nextPlayer = getNextPlayer(game.playerOrder, user.uid)
 
     tx.update(gameRef(gameId), {
       discardTop: priv.drawnCard,
@@ -331,29 +347,44 @@ export async function useJackPeek(gameId: string, slotIndex: number): Promise<Ca
       turnPhase: 'draw',
       log: arrayUnion(logEntry(`${pName} used Jack to peek at card #${slotIndex + 1}`)),
     })
-
-    await checkGameEnd(tx, gameId, game)
   })
 
   return peekedCard!
 }
 
 // ─── Call End ────────────────────────────────────────────────────
+// When a player calls end, we can't read other players' private docs
+// (security rules prevent it). Instead, each player reveals their hand
+// by writing it to a shared results area. For MVP, we use a two-step approach:
+// Step 1: Mark game as 'ending' so all clients know to reveal.
+// Step 2: Each client writes their own hand to results.
+// But for simplicity, we'll use a workaround: the internal/drawPile doc
+// already has all the cards info, and the game doc has the seed.
+// We can reconstruct all hands from the seed + action log.
+//
+// SIMPLER APPROACH: Since we store hands in private docs that only each
+// player can read, for callEnd we'll mark the game finished and have
+// each player's client write their own hand to a shared reveal doc.
 export async function callEnd(gameId: string): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
+    // ── ALL READS FIRST ──
     const gameSnap = await tx.get(gameRef(gameId))
     const game = gameSnap.data() as GameDoc
-    if (game.status !== 'active') throw new Error('Game not active')
-    if (!game.playerOrder.includes(user.uid)) throw new Error('Not in game')
 
     const playerSnap = await tx.get(playerRef(gameId, user.uid))
     const pName = (playerSnap.data() as PlayerDoc).displayName
 
-    // Calculate scores
-    const scores = await calculateScores(tx, gameId, game.playerOrder)
+    // Read own private state
+    const privSnap = await tx.get(privateRef(gameId, user.uid))
+    const priv = privSnap.data() as PrivatePlayerDoc
 
+    // ── VALIDATE ──
+    if (game.status !== 'active') throw new Error('Game not active')
+    if (!game.playerOrder.includes(user.uid)) throw new Error('Not in game')
+
+    // ── ALL WRITES AFTER ──
     tx.update(gameRef(gameId), {
       status: 'finished',
       endCalledBy: user.uid,
@@ -362,60 +393,54 @@ export async function callEnd(gameId: string): Promise<void> {
       log: arrayUnion(logEntry(`${pName} called END! Revealing all cards...`)),
     })
 
-    // Store scores in results doc
-    tx.set(doc(db, 'games', gameId, 'internal', 'results'), { scores })
-  })
-}
-
-// ─── Helper: Calculate Scores ───────────────────────────────────
-async function calculateScores(
-  tx: Parameters<Parameters<typeof runTransaction>[1]>[0],
-  gameId: string,
-  playerOrder: string[]
-): Promise<PlayerScore[]> {
-  const scores: PlayerScore[] = []
-
-  for (const pid of playerOrder) {
-    const privSnap = await tx.get(privateRef(gameId, pid))
-    const priv = privSnap.data() as PrivatePlayerDoc
-    const playerSnap = await tx.get(playerRef(gameId, pid))
-    const player = playerSnap.data() as PlayerDoc
-
+    // Write own hand reveal
     const { total, sevens } = scoreHand(priv.hand)
-    scores.push({
-      playerId: pid,
-      displayName: player.displayName,
+    tx.set(doc(db, 'games', gameId, 'reveals', user.uid), {
+      playerId: user.uid,
+      displayName: pName,
       hand: priv.hand,
       total,
       sevens,
     })
-  }
+  })
+}
 
-  // Sort: lowest total first, then most sevens
+// ─── Reveal Hand (called by each player when game becomes finished) ──
+export async function revealHand(gameId: string): Promise<void> {
+  const user = await ensureAuth()
+
+  // Read own private state directly (not in transaction)
+  const privSnap = await getDoc(privateRef(gameId, user.uid))
+  if (!privSnap.exists()) return
+  const priv = privSnap.data() as PrivatePlayerDoc
+
+  const playerSnap = await getDoc(playerRef(gameId, user.uid))
+  if (!playerSnap.exists()) return
+  const player = playerSnap.data() as PlayerDoc
+
+  const { total, sevens } = scoreHand(priv.hand)
+
+  await setDoc(doc(db, 'games', gameId, 'reveals', user.uid), {
+    playerId: user.uid,
+    displayName: player.displayName,
+    hand: priv.hand,
+    total,
+    sevens,
+  })
+}
+
+// ─── Get Results (reads from reveals subcollection) ─────────────
+export async function getResults(gameId: string): Promise<PlayerScore[]> {
+  const snap = await getDocs(collection(db, 'games', gameId, 'reveals'))
+  const scores: PlayerScore[] = []
+  snap.forEach((d) => {
+    scores.push(d.data() as PlayerScore)
+  })
   scores.sort((a, b) => {
     if (a.total !== b.total) return a.total - b.total
     return b.sevens - a.sevens
   })
-
   return scores
-}
-
-// ─── Helper: Check Game End ─────────────────────────────────────
-async function checkGameEnd(
-  tx: Parameters<Parameters<typeof runTransaction>[1]>[0],
-  gameId: string,
-  game: GameDoc
-) {
-  if (game.drawPileCount <= 0) {
-    const scores = await calculateScores(tx, gameId, game.playerOrder)
-    tx.update(gameRef(gameId), {
-      status: 'finished',
-      endCalledBy: null,
-      currentTurnPlayerId: null,
-      turnPhase: null,
-    })
-    tx.set(doc(db, 'games', gameId, 'internal', 'results'), { scores })
-  }
 }
 
 // ─── Helper: Next Player ────────────────────────────────────────
@@ -454,10 +479,21 @@ export function subscribePrivate(
   })
 }
 
-export async function getResults(gameId: string): Promise<PlayerScore[]> {
-  const snap = await getDoc(doc(db, 'games', gameId, 'internal', 'results'))
-  if (!snap.exists()) return []
-  return snap.data().scores as PlayerScore[]
+export function subscribeReveals(
+  gameId: string,
+  cb: (scores: PlayerScore[]) => void
+): Unsubscribe {
+  return onSnapshot(collection(db, 'games', gameId, 'reveals'), (snap) => {
+    const scores: PlayerScore[] = []
+    snap.forEach((d) => {
+      scores.push(d.data() as PlayerScore)
+    })
+    scores.sort((a, b) => {
+      if (a.total !== b.total) return a.total - b.total
+      return b.sevens - a.sevens
+    })
+    cb(scores)
+  })
 }
 
 export async function findGameByCode(joinCode: string): Promise<string | null> {

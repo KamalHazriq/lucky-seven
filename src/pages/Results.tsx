@@ -3,21 +3,30 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { getResults } from '../lib/gameService'
+import { subscribeReveals, revealHand } from '../lib/gameService'
 import CardView from '../components/CardView'
 import type { PlayerScore } from '../lib/types'
 
 export default function Results() {
   const { gameId } = useParams<{ gameId: string }>()
   const { user } = useAuth()
-  const { game, loading } = useGame(gameId, user?.uid)
+  const { game, players, loading } = useGame(gameId, user?.uid)
   const navigate = useNavigate()
   const [scores, setScores] = useState<PlayerScore[]>([])
 
+  // Subscribe to reveals in real-time (players reveal asynchronously)
   useEffect(() => {
     if (!gameId) return
-    getResults(gameId).then(setScores).catch(console.error)
+    const unsub = subscribeReveals(gameId, setScores)
+    return unsub
   }, [gameId])
+
+  // Also reveal own hand when landing on results page directly
+  useEffect(() => {
+    if (gameId && game?.status === 'finished') {
+      revealHand(gameId).catch(console.error)
+    }
+  }, [gameId, game?.status])
 
   if (loading || !game) {
     return (
@@ -31,10 +40,9 @@ export default function Results() {
     )
   }
 
+  const totalPlayers = game.playerOrder.length
+  const allRevealed = scores.length >= totalPlayers
   const winnerScore = scores.length > 0 ? scores[0].total : null
-  const winners = scores.filter(
-    (s) => s.total === winnerScore && (scores[0].sevens === s.sevens || s.total !== winnerScore)
-  )
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -51,14 +59,25 @@ export default function Results() {
           >
             Game Over!
           </motion.h1>
-          {game.endCalledBy && (
-            <p className="text-slate-400 text-sm">Game ended by a player</p>
+          {!allRevealed && (
+            <motion.p
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-slate-400 text-sm"
+            >
+              Waiting for all players to reveal... ({scores.length}/{totalPlayers})
+            </motion.p>
+          )}
+          {allRevealed && game.endCalledBy && (
+            <p className="text-slate-400 text-sm">
+              Game ended by {players[game.endCalledBy]?.displayName ?? 'a player'}
+            </p>
           )}
         </div>
 
         <div className="space-y-4">
           {scores.map((score, rank) => {
-            const isWinner = rank === 0 || (score.total === winnerScore && score.sevens === winners[0]?.sevens)
+            const isWinner = allRevealed && (rank === 0 || score.total === winnerScore)
             const isYou = score.playerId === user?.uid
 
             return (
