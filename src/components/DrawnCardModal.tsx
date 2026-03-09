@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
-import type { Card, PowerEffectType, PowerRankKey, PowerAssignments } from '../lib/types'
+import type { Card, PowerEffectType, PowerRankKey, PowerAssignments, DrawnCardSource } from '../lib/types'
 import { getCardRankKey, EFFECT_LABELS, DEFAULT_POWER_ASSIGNMENTS } from '../lib/types'
 
 interface DrawnCardModalProps {
@@ -12,6 +12,8 @@ interface DrawnCardModalProps {
   spentPowerCardIds: Record<string, boolean>
   /** Player's known cards map (slot index string → Card) */
   knownCards: Record<string, Card>
+  /** Where the drawn card came from — hides close button for pile draws */
+  drawnCardSource: DrawnCardSource
   onSwap: (slotIndex: number) => void
   onDiscard: () => void
   onUsePower: (rankKey: PowerRankKey, effectType: PowerEffectType) => void
@@ -25,6 +27,7 @@ export default function DrawnCardModal({
   powerAssignments,
   spentPowerCardIds,
   knownCards,
+  drawnCardSource,
   onSwap,
   onDiscard,
   onUsePower,
@@ -35,10 +38,11 @@ export default function DrawnCardModal({
   const effectInfo = effectType ? EFFECT_LABELS[effectType] : null
   const rankLabel = rankKey === 'JOKER' ? 'Joker' : rankKey
   const isSpent = card ? !!spentPowerCardIds[card.id] : false
+  const canCancel = drawnCardSource === 'discard'
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') onClose()
-  }, [onClose])
+    if (e.key === 'Escape' && canCancel) onClose()
+  }, [onClose, canCancel])
 
   useEffect(() => {
     if (open) {
@@ -55,7 +59,7 @@ export default function DrawnCardModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={onClose}
+          onClick={canCancel ? onClose : undefined}
         >
           <motion.div
             initial={{ scale: 0.8, y: 40 }}
@@ -64,15 +68,17 @@ export default function DrawnCardModal({
             className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
-            <button
-              onClick={onClose}
-              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-sm"
-              aria-label="Cancel draw (choose again)"
-              title="Cancel draw (choose again)"
-            >
-              &times;
-            </button>
+            {/* Close button — only for discard-sourced draws (pile draws cannot be undone) */}
+            {canCancel && (
+              <button
+                onClick={onClose}
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-sm"
+                aria-label="Cancel draw (choose again)"
+                title="Cancel draw (choose again)"
+              >
+                &times;
+              </button>
+            )}
 
             <h3 className="text-center text-lg font-semibold text-slate-200 mb-4">
               You drew:

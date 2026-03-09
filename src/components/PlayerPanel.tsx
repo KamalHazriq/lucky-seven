@@ -1,6 +1,12 @@
 import { motion } from 'framer-motion'
 import CardView from './CardView'
 import type { Card, PrivatePlayerDoc, LockInfo } from '../lib/types'
+import { getSeatColor } from '../lib/playerColors'
+
+export interface ActionHighlight {
+  color: string
+  label: string
+}
 
 interface PlayerPanelProps {
   displayName: string
@@ -14,6 +20,8 @@ interface PlayerPanelProps {
   lockedBy?: [LockInfo, LockInfo, LockInfo]
   onSlotClick?: (slotIndex: number) => void
   slotClickable?: boolean
+  /** Temporary action highlight — pulsing colored ring with label */
+  actionHighlight?: ActionHighlight | null
 }
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
@@ -27,15 +35,18 @@ export default function PlayerPanel({
   isCurrentTurn,
   isLocalPlayer,
   privateState,
+  seatIndex,
   connected,
   locks,
   lockedBy,
   onSlotClick,
   slotClickable = false,
+  actionHighlight,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
+  const color = getSeatColor(seatIndex)
 
   return (
     <motion.div
@@ -51,10 +62,40 @@ export default function PlayerPanel({
               : 'bg-slate-800/40 border border-slate-700/50'
         }
       `}
+      style={{
+        borderLeftWidth: '4px',
+        borderLeftColor: color.solid,
+      }}
     >
+      {/* Action highlight overlay — temporary pulsing ring */}
+      {actionHighlight && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 1.2, repeat: 1 }}
+          className="absolute inset-0 rounded-2xl pointer-events-none z-10"
+          style={{
+            boxShadow: `inset 0 0 0 2px ${actionHighlight.color}, 0 0 12px ${actionHighlight.color}`,
+          }}
+        >
+          <span
+            className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+            style={{ backgroundColor: actionHighlight.color, color: '#fff' }}
+          >
+            {actionHighlight.label}
+          </span>
+        </motion.div>
+      )}
+
       <div className="flex items-center gap-2 mb-3">
-        <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-        <span className={`font-semibold text-sm ${isLocalPlayer ? 'text-amber-300' : 'text-slate-200'}`}>
+        <div
+          className="w-2.5 h-2.5 rounded-full ring-1 ring-white/20"
+          style={{ backgroundColor: connected ? color.solid : '#64748b' }}
+        />
+        <span
+          className="font-semibold text-sm"
+          style={{ color: isLocalPlayer ? '#fcd34d' : color.text }}
+        >
           {displayName}
         </span>
         {isLocalPlayer && (
@@ -111,6 +152,7 @@ export default function PlayerPanel({
               highlight={slotClickable && isLocalPlayer && !isLocked}
               disabled={slotClickable && isLocked}
               label={isLocalPlayer ? `#${i + 1}` : undefined}
+              ownerColor={color.tinted}
             />
           )
         })}

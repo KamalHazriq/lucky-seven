@@ -14,6 +14,8 @@ interface CardViewProps {
   highlight?: boolean
   size?: 'sm' | 'md' | 'lg'
   label?: string
+  /** Player owner color (tinted) — applied to face-down card border & center circle */
+  ownerColor?: string
 }
 
 const sizes = {
@@ -33,6 +35,7 @@ export default function CardView({
   highlight = false,
   size = 'md',
   label,
+  ownerColor,
 }: CardViewProps) {
   const showFace = faceUp && card
   const [showTooltip, setShowTooltip] = useState(false)
@@ -77,10 +80,13 @@ export default function CardView({
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
           ? 'bg-white border border-slate-200'
-          : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700'
+          : `bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2 ${ownerColor ? '' : 'border-blue-700'}`
         }
       `}
-      style={{ perspective: '600px' }}
+      style={{
+        perspective: '600px',
+        ...(!showFace && ownerColor ? { borderColor: ownerColor } : {}),
+      }}
     >
       {showFace ? (
         <motion.div
@@ -105,8 +111,18 @@ export default function CardView({
       ) : (
         <div className="card-shimmer absolute inset-0 rounded-xl">
           <div className="flex items-center justify-center h-full">
-            <div className="w-8 h-8 rounded-full border-2 border-blue-400/30 flex items-center justify-center">
-              <span className="text-blue-400/50 font-bold text-lg">7</span>
+            <div
+              className="w-8 h-8 rounded-full border-2 flex items-center justify-center"
+              style={{
+                borderColor: ownerColor ?? 'rgba(96,165,250,0.3)',
+              }}
+            >
+              <span
+                className="font-bold text-lg"
+                style={{ color: ownerColor ?? 'rgba(96,165,250,0.5)' }}
+              >
+                7
+              </span>
             </div>
           </div>
         </div>

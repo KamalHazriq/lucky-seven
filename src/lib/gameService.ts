@@ -402,7 +402,7 @@ export async function swapWithSlot(gameId: string, slotIndex: number): Promise<v
 
     tx.update(gameRef(gameId), buildEndTurnUpdates(
       game, user.uid, oldCard,
-      `${pd.displayName} swapped card #${slotIndex + 1}`,
+      `${pd.displayName} swapped their card #${slotIndex + 1}`,
     ))
   })
 }
@@ -597,7 +597,7 @@ export async function useSwap(
 
     const discardCard = priv.drawnCard
     tx.update(gameRef(gameId), {
-      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as swap`),
+      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as swap: ${playerAData.displayName}'s #${targetA.slotIndex + 1} ↔ ${playerBData.displayName}'s #${targetB.slotIndex + 1}`),
       ...spentField(discardCard.id),
     })
   })

@@ -1,17 +1,28 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { LogEntry } from '../lib/types'
+import type { LogEntry, PlayerDoc } from '../lib/types'
+import { renderLogMessage } from '../lib/logRenderer'
 
 interface GameLogProps {
   log: LogEntry[]
+  players: Record<string, PlayerDoc>
 }
 
-export default function GameLog({ log }: GameLogProps) {
+export default function GameLog({ log, players }: GameLogProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [log.length])
+
+  // Build player info list for name matching
+  const playerInfos = useMemo(() =>
+    Object.values(players).map((p) => ({
+      displayName: p.displayName,
+      seatIndex: p.seatIndex,
+    })),
+    [players],
+  )
 
   return (
     <div className="bg-slate-900/60 rounded-xl border border-slate-700/50 p-3 max-h-48 overflow-y-auto">
@@ -22,9 +33,9 @@ export default function GameLog({ log }: GameLogProps) {
             key={`${entry.ts}-${i}`}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-xs text-slate-400 py-0.5 border-b border-slate-800/50 last:border-0"
+            className="text-xs text-slate-400 py-1 border-b border-slate-800/50 last:border-0 leading-relaxed"
           >
-            {entry.msg}
+            {renderLogMessage(entry.msg, playerInfos)}
           </motion.div>
         ))}
       </AnimatePresence>

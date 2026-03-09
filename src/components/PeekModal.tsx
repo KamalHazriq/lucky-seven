@@ -45,7 +45,7 @@ export default function PeekModal({ open, onSelect, onCancel }: PeekModalProps) 
               onClick={onCancel}
               className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors"
             >
-              Cancel (just discard Jack instead)
+              Back
             </button>
           </motion.div>
         </motion.div>

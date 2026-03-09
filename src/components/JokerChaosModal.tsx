@@ -66,7 +66,7 @@ export default function JokerChaosModal({
               onClick={onCancel}
               className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition-colors cursor-pointer"
             >
-              Cancel (Discard instead)
+              Back
             </button>
           </motion.div>
         </motion.div>

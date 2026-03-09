@@ -30,6 +30,12 @@ import QueenSwapModal from '../components/QueenSwapModal'
 import SlotPickerModal from '../components/SlotPickerModal'
 import JokerChaosModal from '../components/JokerChaosModal'
 import GameSettingsBar from '../components/GameSettings'
+import TurnQueue from '../components/TurnQueue'
+import { useActionHighlight } from '../hooks/useActionHighlight'
+import { useFlyingCard } from '../hooks/useFlyingCard'
+import FlyingCard from '../components/FlyingCard'
+import { useReducedMotion } from '../hooks/useReducedMotion'
+import { getSeatColor } from '../lib/playerColors'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
@@ -53,6 +59,12 @@ export default function Game() {
   const [busy, setBusy] = useState(false)
   const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const revealedRef = useRef(false)
+  const { reduced } = useReducedMotion()
+  const { flyingCard, triggerFly, clearFly } = useFlyingCard()
+  const drawPileRef = useRef<HTMLDivElement>(null)
+  const discardPileRef = useRef<HTMLDivElement>(null)
+  const localPanelRef = useRef<HTMLDivElement>(null)
+  const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   // Derived state
   const drawnCard = privateState?.drawnCard ?? null
@@ -85,6 +97,65 @@ export default function Game() {
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
 
+  // Action highlights (temporary colored ring on actor's panel)
+  const actionHighlights = useActionHighlight(
+    game?.actionVersion ?? 0,
+    game?.log ?? [],
+    players,
+  )
+
+  // Remote player flying card detection
+  const prevActionVersion = useRef(game?.actionVersion ?? 0)
+  useEffect(() => {
+    const av = game?.actionVersion ?? 0
+    if (av === prevActionVersion.current || reduced) {
+      prevActionVersion.current = av
+      return
+    }
+    prevActionVersion.current = av
+
+    const lastEntry = game?.log?.[game.log.length - 1]
+    if (!lastEntry) return
+
+    const msg = lastEntry.msg
+
+    // Find actor from message
+    let actorId: string | null = null
+    for (const [pid, pd] of Object.entries(players)) {
+      if (msg.startsWith(pd.displayName)) {
+        actorId = pid
+        break
+      }
+    }
+
+    // Only animate for remote players (local player already has animations)
+    if (!actorId || actorId === user?.uid) return
+
+    const targetEl = otherPanelRefs.current[actorId]
+    if (!targetEl) return
+
+    const toRect = targetEl.getBoundingClientRect()
+    const actorColor = getSeatColor(players[actorId]?.seatIndex ?? 0).tinted
+
+    if (msg.includes('drew from the pile')) {
+      const fromEl = drawPileRef.current
+      if (fromEl) {
+        triggerFly(fromEl.getBoundingClientRect(), toRect, false, null, actorColor)
+      }
+    } else if (msg.includes('took from discard')) {
+      const fromEl = discardPileRef.current
+      if (fromEl) {
+        triggerFly(fromEl.getBoundingClientRect(), toRect, true, game?.discardTop ?? null, actorColor)
+      }
+    } else if (msg.includes('discarded')) {
+      const fromEl = otherPanelRefs.current[actorId]
+      const toEl = discardPileRef.current
+      if (fromEl && toEl) {
+        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false, null, actorColor)
+      }
+    }
+  }, [game?.actionVersion, game?.log, players, user?.uid, reduced, triggerFly, game?.discardTop])
+
   // Draw pile/discard clickable during draw phase only
   const canDraw = isDrawPhase && !busy
 
@@ -108,11 +179,28 @@ export default function Game() {
 
   const handleDrawPile = () => {
     if (!canDraw) return
-    withBusy(async () => { await drawFromPile(gameId!); playSfx('draw'); vibrate() })
+    const fromEl = drawPileRef.current
+    const toEl = localPanelRef.current
+    withBusy(async () => {
+      await drawFromPile(gameId!)
+      playSfx('draw'); vibrate()
+      if (!reduced && fromEl && toEl) {
+        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
+      }
+    })
   }
   const handleTakeDiscard = () => {
     if (!canDraw) return
-    withBusy(async () => { await takeFromDiscard(gameId!); playSfx('draw'); vibrate() })
+    const fromEl = discardPileRef.current
+    const toEl = localPanelRef.current
+    const discardCard = game?.discardTop ?? null
+    withBusy(async () => {
+      await takeFromDiscard(gameId!)
+      playSfx('draw'); vibrate()
+      if (!reduced && fromEl && toEl) {
+        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, discardCard)
+      }
+    })
   }
 
   // Cancel draw: undo the draw choice, return card to where it came from
@@ -127,7 +215,15 @@ export default function Game() {
 
   const handleDiscard = () => {
     setModal({ type: 'none' })
-    withBusy(async () => { await discardDrawn(gameId!); playSfx('discard') })
+    const fromEl = localPanelRef.current
+    const toEl = discardPileRef.current
+    withBusy(async () => {
+      await discardDrawn(gameId!)
+      playSfx('discard')
+      if (!reduced && fromEl && toEl) {
+        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
+      }
+    })
   }
 
   // ─── Power handlers (route by effectType, not rank) ────
@@ -189,9 +285,9 @@ export default function Game() {
     withBusy(async () => { await useRearrange(gameId!, targetPlayerId); playSfx('swap'); vibrate(80) })
   }
 
+  // Cancel power: return to DrawnCardModal without consuming the card
   const handleCancelPower = () => {
     setModal({ type: 'none' })
-    handleDiscard()
   }
 
   const handleCallEnd = () => {
@@ -278,6 +374,14 @@ export default function Game() {
       {/* ─── Main Content ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col p-3 md:p-4">
 
+        {/* Turn queue */}
+        <TurnQueue
+          playerOrder={game.playerOrder}
+          players={players}
+          currentTurnPlayerId={game.currentTurnPlayerId}
+          localPlayerId={user.uid}
+        />
+
         {/* Turn indicator */}
         <motion.div
           key={game.currentTurnPlayerId}
@@ -302,17 +406,22 @@ export default function Game() {
         {otherPlayers.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
             {otherPlayers.map((pid) => (
-              <PlayerPanel
+              <div
                 key={pid}
-                playerId={pid}
-                displayName={players[pid]?.displayName ?? 'Unknown'}
-                isCurrentTurn={game.currentTurnPlayerId === pid}
-                isLocalPlayer={false}
-                seatIndex={players[pid]?.seatIndex ?? 0}
-                connected={players[pid]?.connected ?? false}
-                locks={players[pid]?.locks ?? [false, false, false]}
-                lockedBy={players[pid]?.lockedBy}
-              />
+                ref={(el) => { otherPanelRefs.current[pid] = el }}
+              >
+                <PlayerPanel
+                  playerId={pid}
+                  displayName={players[pid]?.displayName ?? 'Unknown'}
+                  isCurrentTurn={game.currentTurnPlayerId === pid}
+                  isLocalPlayer={false}
+                  seatIndex={players[pid]?.seatIndex ?? 0}
+                  connected={players[pid]?.connected ?? false}
+                  locks={players[pid]?.locks ?? [false, false, false]}
+                  lockedBy={players[pid]?.lockedBy}
+                  actionHighlight={actionHighlights[pid] ?? null}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -320,7 +429,7 @@ export default function Game() {
         {/* Table area: Draw + Discard */}
         <div className="flex items-center justify-center gap-8 mb-6 py-4">
           {/* Draw pile */}
-          <div className="text-center">
+          <div className="text-center" ref={drawPileRef}>
             <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
             <CardView
               faceUp={false}
@@ -333,7 +442,7 @@ export default function Game() {
           </div>
 
           {/* Discard pile */}
-          <div className="text-center">
+          <div className="text-center" ref={discardPileRef}>
             <p className="text-xs text-slate-500 mb-2">Discard</p>
             {game.discardTop ? (
               <CardView
@@ -353,7 +462,7 @@ export default function Game() {
         </div>
 
         {/* Local player */}
-        <div className="mb-4">
+        <div className="mb-4" ref={localPanelRef}>
           <PlayerPanel
             playerId={user.uid}
             displayName={players[user.uid]?.displayName ?? 'You'}
@@ -366,11 +475,12 @@ export default function Game() {
             lockedBy={myPlayer?.lockedBy}
             onSlotClick={isActionPhase ? handleSwap : undefined}
             slotClickable={isActionPhase && hasDrawnCard}
+            actionHighlight={actionHighlights[user.uid] ?? null}
           />
         </div>
 
         {/* Game Log */}
-        <GameLog log={game.log} />
+        <GameLog log={game.log} players={players} />
       </div>
 
       {/* ─── Modals ─────────────────────────────────────────── */}
@@ -383,6 +493,7 @@ export default function Game() {
         powerAssignments={powerAssignments}
         spentPowerCardIds={spentPowerCardIds}
         knownCards={myKnown}
+        drawnCardSource={privateState?.drawnCardSource ?? null}
         onSwap={handleSwap}
         onDiscard={handleDiscard}
         onUsePower={handleUsePower}
@@ -462,6 +573,18 @@ export default function Game() {
         onSelect={handleRearrangeSelect}
         onCancel={handleCancelPower}
       />
+
+      {/* Flying card animation */}
+      {flyingCard.active && flyingCard.from && flyingCard.to && (
+        <FlyingCard
+          from={flyingCard.from}
+          to={flyingCard.to}
+          faceUp={flyingCard.faceUp}
+          card={flyingCard.card}
+          ownerColor={flyingCard.ownerColor}
+          onComplete={clearFly}
+        />
+      )}
 
       {/* Watermark */}
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
