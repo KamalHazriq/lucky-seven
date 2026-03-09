@@ -93,19 +93,19 @@ export default function PlayerPanel({
         )}
       </AnimatePresence>
 
-      {/* Action highlight overlay — temporary pulsing ring */}
+      {/* Action highlight overlay — expanding pulse ring */}
       {actionHighlight && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0.6, 1, 0.6] }}
-          transition={{ duration: 1.2, repeat: 1 }}
-          className="absolute inset-0 rounded-2xl pointer-events-none z-10"
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 rounded-2xl pointer-events-none z-10 action-pulse-ring"
           style={{
-            boxShadow: `inset 0 0 0 2px ${actionHighlight.color}, 0 0 12px ${actionHighlight.color}`,
+            boxShadow: `inset 0 0 0 2.5px ${actionHighlight.color}, 0 0 16px ${actionHighlight.color}, 0 0 32px ${actionHighlight.color}20`,
           }}
         >
           <span
-            className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap"
+            className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-md"
             style={{ backgroundColor: actionHighlight.color, color: '#fff' }}
           >
             {actionHighlight.label}
