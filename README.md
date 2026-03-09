@@ -111,26 +111,34 @@ npm run dev
 
 Open http://localhost:5173/lucky-seven/
 
-### 6. Deploy to GitHub Pages
+### 6. Deploy to GitHub Pages (Automatic via GitHub Actions)
 
-Update `vite.config.ts` base path if your repo name differs:
+Deployment is fully automated. Every push to `main` triggers a GitHub Actions workflow that builds and deploys to GitHub Pages.
 
-```ts
-export default defineConfig({
-  base: '/your-repo-name/',
-  // ...
-})
-```
+**One-time setup:**
 
-Also update the `basename` in `src/main.tsx` to match.
+1. Go to your GitHub repo **Settings > Pages**
+2. Under "Build and deployment", set **Source** to **GitHub Actions**
+3. Go to **Settings > Secrets and variables > Actions**
+4. Add these **Repository secrets** (values from your `.env` file):
 
-Then deploy:
+| Secret Name | Value |
+|---|---|
+| `VITE_FIREBASE_API_KEY` | Your Firebase API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `your-project.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | Your Firebase project ID |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `your-project.firebasestorage.app` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Your sender ID |
+| `VITE_FIREBASE_APP_ID` | Your Firebase app ID |
 
-```bash
-npm run deploy
-```
+5. Go to **Firebase Console > Authentication > Settings > Authorized domains**
+6. Add `<your-username>.github.io` to the authorized domains list
 
-This builds the app and publishes to the `gh-pages` branch. Make sure GitHub Pages is configured to serve from the `gh-pages` branch in your repo settings.
+After setup, every `git push origin main` will auto-deploy. You can also trigger a manual deploy from the **Actions** tab using "Run workflow".
+
+**Your live URL will be:** `https://<your-username>.github.io/lucky-seven/`
+
+> **Note:** The app uses `HashRouter` so all routes work correctly on GitHub Pages without a custom 404 page. URLs look like `https://user.github.io/lucky-seven/#/game/abc123`.
 
 ## Project Structure
 
@@ -140,29 +148,37 @@ src/
 │   ├── firebase.ts          # Firebase init + anonymous auth
 │   ├── types.ts             # TypeScript interfaces + power types
 │   ├── deck.ts              # Card deck, shuffle, scoring logic
-│   └── gameService.ts       # All Firestore operations (transactions)
+│   ├── gameService.ts       # All Firestore operations (transactions)
+│   └── sfx.ts               # WebAudio oscillator-based sound effects
 ├── hooks/
 │   ├── useAuth.ts           # Firebase auth hook
-│   └── useGame.ts           # Real-time game state subscriptions
+│   ├── useGame.ts           # Real-time game state subscriptions
+│   ├── useTheme.ts          # Theme switcher (blue/dark/light)
+│   └── useReducedMotion.ts  # Reduced motion preference (system/on/off)
 ├── components/
 │   ├── CardView.tsx          # Card component (face-up/face-down, lock indicator)
 │   ├── PlayerPanel.tsx       # Player's card area with lock state
 │   ├── GameLog.tsx           # Action log feed
+│   ├── GameSettings.tsx      # Toolbar settings (theme, motion, sound)
 │   ├── DrawnCardModal.tsx    # Modal when you draw a card (swap/discard/power)
 │   ├── PeekModal.tsx         # Jack: select which card to peek
 │   ├── PeekResultModal.tsx   # Jack: shows peeked card result
 │   ├── QueenSwapModal.tsx    # Queen: select two cards to swap
 │   ├── SlotPickerModal.tsx   # King/10: select a card slot to lock/unlock
 │   ├── JokerChaosModal.tsx   # Joker: select target player for chaos
+│   ├── Tooltip.tsx           # Reusable tooltip component
 │   └── HowToPlay.tsx        # Rules reference modal
 ├── pages/
 │   ├── Home.tsx              # Create or join game
 │   ├── Lobby.tsx             # Waiting room with join code
 │   ├── Game.tsx              # Main game board with power flows
 │   └── Results.tsx           # Final scores and winner
-├── App.tsx                   # Router
+├── App.tsx                   # Router (HashRouter)
 ├── main.tsx                  # Entry point
-└── index.css                 # Tailwind + custom styles
+└── index.css                 # Tailwind + theme CSS custom properties
+.github/
+└── workflows/
+    └── deploy.yml            # GitHub Actions: build + deploy to Pages
 ```
 
 ## Firestore Data Model
@@ -176,13 +192,25 @@ games/{gameId}
   ├── playerOrder: string[], log: LogEntry[]
   ├── endCalledBy, endRoundStartSeatIndex
   ├── actionVersion, lastActionAt
+  ├── settings: { powerAssignments, jokerCount }
+  ├── spentPowerCardIds: Record<cardId, true>
   │
-  ├── players/{playerId}     (public: name, seat, connected, locks)
-  ├── private/{playerId}     (secret: hand[], drawnCard, known{})
+  ├── players/{playerId}     (public: name, seat, connected, locks, lockedBy)
+  ├── private/{playerId}     (secret: hand[], drawnCard, drawnCardSource, known{})
   ├── reveals/{playerId}     (end-game: each player reveals their hand)
   └── internal/
       └── drawPile           (cards array)
 ```
+
+## Multi-Game Concurrency
+
+Multiple games can run simultaneously without interference:
+
+- **Game isolation**: All data lives under `games/{gameId}/` — each game has its own players, private hands, draw pile, and reveals subcollections. There is zero shared mutable state between games.
+- **Scoped subscriptions**: The `useGame` hook subscribes only to the specific `gameId` from the URL. Navigating between games cleanly unsubscribes/resubscribes.
+- **Unique join codes**: 6-character alphanumeric codes (36^6 = ~2.2 billion possibilities). On creation, the code is verified to be unique among active lobby games with automatic retry (up to 5 attempts).
+- **Transaction safety**: All game-mutating operations (draw, swap, discard, powers, cancel draw, call end) use Firestore transactions scoped to a single `games/{gameId}` document tree, preventing race conditions.
+- **Anonymous auth**: Each browser tab gets its own anonymous UID. A player can have multiple tabs open in different games simultaneously.
 
 ## Security Model
 

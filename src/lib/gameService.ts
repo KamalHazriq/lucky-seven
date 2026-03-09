@@ -101,6 +101,21 @@ function buildEndTurnUpdates(
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [EMPTY_LOCK_INFO, EMPTY_LOCK_INFO, EMPTY_LOCK_INFO]
 
+// ─── Unique join code helper ────────────────────────────────────
+async function generateUniqueJoinCode(maxAttempts = 5): Promise<string> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const code = nanoid(6).toUpperCase()
+    const q = query(
+      collection(db, 'games'),
+      where('joinCode', '==', code),
+      where('status', '==', 'lobby'),
+    )
+    const snap = await getDocs(q)
+    if (snap.empty) return code
+  }
+  throw new Error('Unable to generate unique join code. Please try again.')
+}
+
 // ─── Create Game ────────────────────────────────────────────────
 export async function createGame(
   displayName: string,
@@ -109,7 +124,7 @@ export async function createGame(
 ): Promise<string> {
   const user = await ensureAuth()
   const gameId = nanoid(8)
-  const joinCode = nanoid(6).toUpperCase()
+  const joinCode = await generateUniqueJoinCode()
   const seed = nanoid(12)
 
   const gameSettings: GameSettings = {
