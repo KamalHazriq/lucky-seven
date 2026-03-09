@@ -43,7 +43,8 @@ export default function DrawnCardModal({
   const rankLabel = rankKey === 'JOKER' ? 'Joker' : rankKey
   const isSpent = card ? !!spentPowerCardIds[card.id] : false
   const canCancel = drawnCardSource === 'discard'
-  const isPileDraw = drawnCardSource === 'pile'
+  // Treat null source as pile draw (card is committed; can dismiss but not cancel)
+  const isPileDraw = drawnCardSource === 'pile' || drawnCardSource === null
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {

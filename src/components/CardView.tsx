@@ -3,6 +3,21 @@ import { motion } from 'framer-motion'
 import type { Card, LockInfo } from '../lib/types'
 import { cardDisplay, suitColor } from '../lib/deck'
 
+/** Convert a hex color or rgba() string to rgba with custom alpha */
+function hexToRgba(color: string, alpha: number): string {
+  // If already rgba, parse and replace alpha
+  const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rgbaMatch) {
+    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha})`
+  }
+  // Hex color
+  const hex = color.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 interface CardViewProps {
   card?: Card | null
   faceUp?: boolean
@@ -80,12 +95,15 @@ export default function CardView({
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
           ? 'bg-white border border-slate-200'
-          : `bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2 ${ownerColor ? '' : 'border-blue-700'}`
+          : `border-2 ${ownerColor ? '' : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-blue-700'}`
         }
       `}
       style={{
         perspective: '600px',
-        ...(!showFace && ownerColor ? { borderColor: ownerColor } : {}),
+        ...(!showFace && ownerColor ? {
+          borderColor: ownerColor,
+          background: `linear-gradient(135deg, ${hexToRgba(ownerColor, 0.7)} 0%, ${hexToRgba(ownerColor, 0.45)} 50%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
+        } : {}),
       }}
     >
       {showFace ? (
@@ -119,12 +137,12 @@ export default function CardView({
             <div
               className="w-8 h-8 rounded-full border-2 flex items-center justify-center"
               style={{
-                borderColor: ownerColor ?? 'rgba(96,165,250,0.3)',
+                borderColor: ownerColor ? 'rgba(255,255,255,0.35)' : 'rgba(96,165,250,0.3)',
               }}
             >
               <span
                 className="font-bold text-lg"
-                style={{ color: ownerColor ?? 'rgba(96,165,250,0.5)' }}
+                style={{ color: ownerColor ? 'rgba(255,255,255,0.6)' : 'rgba(96,165,250,0.5)' }}
               >
                 7
               </span>

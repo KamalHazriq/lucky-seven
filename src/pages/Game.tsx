@@ -42,6 +42,7 @@ import { useChat } from '../hooks/useChat'
 import { useChatBubbles } from '../hooks/useChatBubbles'
 import { getSeatColor } from '../lib/playerColors'
 import { useLayout } from '../hooks/useLayout'
+import { getSeatPositions } from '../lib/seatPositions'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
@@ -68,7 +69,7 @@ export default function Game() {
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
-  const { layout, toggle: toggleLayout } = useLayout()
+  const { layout, toggle: toggleLayout, isMobile } = useLayout()
   const { flyingCard, triggerFly, clearFly } = useFlyingCard()
   const drawPileRef = useRef<HTMLDivElement>(null)
   const discardPileRef = useRef<HTMLDivElement>(null)
@@ -173,7 +174,7 @@ export default function Game() {
     if (!targetEl) return
 
     const toRect = targetEl.getBoundingClientRect()
-    const actorColor = getSeatColor(players[actorId]?.seatIndex ?? 0).tinted
+    const actorColor = getSeatColor(players[actorId]?.seatIndex ?? 0).solid
 
     if (msg.includes('drew from the pile')) {
       const fromEl = drawPileRef.current
@@ -417,14 +418,16 @@ export default function Game() {
             >
               ?
             </button>
-            <button
-              onClick={toggleLayout}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60 transition-colors cursor-pointer"
-              aria-label={`Switch to ${layout === 'classic' ? 'table' : 'classic'} layout`}
-              title={`Layout: ${layout === 'classic' ? 'Classic' : 'Table'}`}
-            >
-              {layout === 'classic' ? '\u{1FA91}' : '\u{1F4CB}'}
-            </button>
+            {!isMobile && (
+              <button
+                onClick={toggleLayout}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60 transition-colors cursor-pointer"
+                aria-label={`Switch to ${layout === 'classic' ? 'table' : 'classic'} layout`}
+                title={`Layout: ${layout === 'classic' ? 'Classic' : 'Table'}`}
+              >
+                {layout === 'classic' ? '\u{1FA91}' : '\u{1F4CB}'}
+              </button>
+            )}
             <GameSettingsBar />
             {isMyTurn && game.status === 'active' && !hasDrawnCard && (
               <button
@@ -439,8 +442,8 @@ export default function Game() {
         </div>
       </div>
 
-      {/* ─── Resume banner — visible when drawn card exists but modal is dismissed or sub-modal is active ─── */}
-      {hasDrawnCard && isActionPhase && (modal.type !== 'none' || drawnCardDismissed) && (
+      {/* ─── Resume banner — visible when drawn card exists AND (sub-modal open OR dismissed) ─── */}
+      {hasDrawnCard && isActionPhase && (drawnCardDismissed || modal.type !== 'none') && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -490,123 +493,115 @@ export default function Game() {
 
         {layout === 'table' ? (
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
-          <div className="relative w-full mb-4" style={{ minHeight: otherPlayers.length <= 3 ? '420px' : '480px' }}>
-            {/* Table surface — oval gradient */}
-            <div
-              className="absolute inset-4 rounded-[50%] pointer-events-none"
-              style={{
-                background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.35) 0%, rgba(15,76,46,0.15) 50%, transparent 80%)',
-                border: '2px solid rgba(15,76,46,0.2)',
-              }}
-            />
-
-            {/* Center: Draw + Discard piles */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 z-10">
-              <div className="text-center" ref={drawPileRef}>
-                <p className="text-[10px] text-slate-500 mb-1">Draw</p>
-                <CardView
-                  faceUp={false}
-                  size="md"
-                  onClick={canDraw ? handleDrawPile : undefined}
-                  disabled={!canDraw}
-                  highlight={canDraw}
-                  label={`${game.drawPileCount}`}
-                />
-              </div>
-              <div className="text-center" ref={discardPileRef}>
-                <p className="text-[10px] text-slate-500 mb-1">Discard</p>
-                {game.discardTop ? (
-                  <CardView
-                    card={game.discardTop}
-                    faceUp
-                    size="md"
-                    onClick={canDraw ? handleTakeDiscard : undefined}
-                    disabled={!canDraw}
-                    highlight={canDraw}
-                  />
-                ) : (
-                  <div className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
-                    <span className="text-slate-600 text-[10px]">Empty</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Other players arranged around the table */}
-            {otherPlayers.map((pid, idx) => {
-              // Calculate seat position around the top half of the table
-              // Distribute other players evenly across the top arc (from left to right)
-              const count = otherPlayers.length
-              // Spread across top arc: angles from ~160° (left) to ~20° (right), going clockwise
-              // 180° = left, 90° = top, 0° = right
-              const startAngle = Math.PI * 0.85 // ~153°
-              const endAngle = Math.PI * 0.15   // ~27°
-              const angle = count === 1
-                ? Math.PI / 2 // single opponent at top
-                : startAngle - (idx / (count - 1)) * (startAngle - endAngle)
-
-              // Ellipse radii (responsive)
-              const rx = 46 // % of container width
-              const ry = 42 // % of container height
-
-              const left = 50 + rx * Math.cos(angle)
-              const top = 50 - ry * Math.sin(angle)
-
-              return (
+          (() => {
+            const seatPositions = getSeatPositions(otherPlayers.length)
+            const tableH = otherPlayers.length <= 3 ? 480 : otherPlayers.length <= 5 ? 540 : 600
+            const panelW = otherPlayers.length <= 4 ? '200px' : '170px'
+            return (
+              <div className="relative w-full mb-4" style={{ minHeight: `${tableH}px` }}>
+                {/* Table surface — oval felt gradient */}
                 <div
-                  key={pid}
-                  ref={(el) => { otherPanelRefs.current[pid] = el }}
-                  className="absolute z-10"
+                  className="absolute rounded-[50%] pointer-events-none"
                   style={{
-                    left: `${left}%`,
-                    top: `${top}%`,
-                    transform: 'translate(-50%, -50%)',
-                    maxWidth: count <= 4 ? '200px' : '170px',
-                    width: count <= 4 ? '42%' : '32%',
+                    left: '8%', right: '8%', top: '8%', bottom: '12%',
+                    background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.40) 0%, rgba(15,76,46,0.20) 40%, rgba(15,76,46,0.06) 70%, transparent 100%)',
+                    border: '2.5px solid rgba(15,76,46,0.25)',
+                    boxShadow: 'inset 0 0 60px rgba(15,76,46,0.15)',
                   }}
+                />
+
+                {/* Center: Draw + Discard piles */}
+                <div className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
+                  <div className="text-center" ref={drawPileRef}>
+                    <p className="text-[10px] text-slate-500 mb-1">Draw</p>
+                    <CardView
+                      faceUp={false}
+                      size="md"
+                      onClick={canDraw ? handleDrawPile : undefined}
+                      disabled={!canDraw}
+                      highlight={canDraw}
+                      label={`${game.drawPileCount}`}
+                    />
+                  </div>
+                  <div className="text-center" ref={discardPileRef}>
+                    <p className="text-[10px] text-slate-500 mb-1">Discard</p>
+                    {game.discardTop ? (
+                      <CardView
+                        card={game.discardTop}
+                        faceUp
+                        size="md"
+                        onClick={canDraw ? handleTakeDiscard : undefined}
+                        disabled={!canDraw}
+                        highlight={canDraw}
+                      />
+                    ) : (
+                      <div className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
+                        <span className="text-slate-600 text-[10px]">Empty</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Other players arranged around the table */}
+                {otherPlayers.map((pid, idx) => {
+                  const pos = seatPositions[idx]
+                  return (
+                    <div
+                      key={pid}
+                      ref={(el) => { otherPanelRefs.current[pid] = el }}
+                      className="absolute z-10"
+                      style={{
+                        left: `${pos.left}%`,
+                        top: `${pos.top}%`,
+                        transform: 'translate(-50%, -50%)',
+                        maxWidth: panelW,
+                        width: '42%',
+                      }}
+                    >
+                      <PlayerPanel
+                        playerId={pid}
+                        displayName={players[pid]?.displayName ?? 'Unknown'}
+                        isCurrentTurn={game.currentTurnPlayerId === pid}
+                        isLocalPlayer={false}
+                        seatIndex={players[pid]?.seatIndex ?? 0}
+                        connected={players[pid]?.connected ?? false}
+                        locks={players[pid]?.locks ?? [false, false, false]}
+                        lockedBy={players[pid]?.lockedBy}
+                        actionHighlight={actionHighlights[pid] ?? null}
+                        chatBubble={chatBubbles[pid] ?? null}
+                        queueNumber={queueNumbers[pid] ?? null}
+                        slotOverlays={slotOverlays[pid] ?? null}
+                      />
+                    </div>
+                  )
+                })}
+
+                {/* Local player at bottom center */}
+                <div
+                  className="absolute left-1/2 z-10"
+                  ref={localPanelRef}
+                  style={{ bottom: '0', transform: 'translateX(-50%)', maxWidth: '320px', width: '80%' }}
                 >
                   <PlayerPanel
-                    playerId={pid}
-                    displayName={players[pid]?.displayName ?? 'Unknown'}
-                    isCurrentTurn={game.currentTurnPlayerId === pid}
-                    isLocalPlayer={false}
-                    seatIndex={players[pid]?.seatIndex ?? 0}
-                    connected={players[pid]?.connected ?? false}
-                    locks={players[pid]?.locks ?? [false, false, false]}
-                    lockedBy={players[pid]?.lockedBy}
-                    actionHighlight={actionHighlights[pid] ?? null}
-                    chatBubble={chatBubbles[pid] ?? null}
-                    queueNumber={queueNumbers[pid] ?? null}
-                    slotOverlays={slotOverlays[pid] ?? null}
+                    playerId={user.uid}
+                    displayName={players[user.uid]?.displayName ?? 'You'}
+                    isCurrentTurn={isMyTurn}
+                    isLocalPlayer
+                    privateState={privateState}
+                    seatIndex={players[user.uid]?.seatIndex ?? 0}
+                    connected
+                    locks={myLocks}
+                    lockedBy={myPlayer?.lockedBy}
+                    onSlotClick={isActionPhase ? handleSwap : undefined}
+                    slotClickable={isActionPhase && hasDrawnCard}
+                    actionHighlight={actionHighlights[user.uid] ?? null}
+                    queueNumber={queueNumbers[user.uid] ?? null}
+                    slotOverlays={slotOverlays[user.uid] ?? null}
                   />
                 </div>
-              )
-            })}
-
-            {/* Local player at bottom center */}
-            <div
-              className="absolute left-1/2 bottom-0 -translate-x-1/2 z-10"
-              ref={localPanelRef}
-              style={{ maxWidth: '320px', width: '80%' }}
-            >
-              <PlayerPanel
-                playerId={user.uid}
-                displayName={players[user.uid]?.displayName ?? 'You'}
-                isCurrentTurn={isMyTurn}
-                isLocalPlayer
-                privateState={privateState}
-                seatIndex={players[user.uid]?.seatIndex ?? 0}
-                connected
-                locks={myLocks}
-                lockedBy={myPlayer?.lockedBy}
-                onSlotClick={isActionPhase ? handleSwap : undefined}
-                slotClickable={isActionPhase && hasDrawnCard}
-                actionHighlight={actionHighlights[user.uid] ?? null}
-                queueNumber={queueNumbers[user.uid] ?? null}
-                slotOverlays={slotOverlays[user.uid] ?? null}
-              />
-            </div>
-          </div>
+              </div>
+            )
+          })()
         ) : (
           /* ─── CLASSIC LAYOUT ─── Original grid layout ─── */
           <>

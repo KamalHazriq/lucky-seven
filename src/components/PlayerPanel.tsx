@@ -206,7 +206,7 @@ export default function PlayerPanel({
               highlight={slotClickable && isLocalPlayer && !isLocked}
               disabled={slotClickable && isLocked}
               label={isLocalPlayer ? `#${i + 1}` : undefined}
-              ownerColor={color.tinted}
+              ownerColor={color.solid}
             />,
           )
         })}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useSyncExternalStore } from 'react'
 
 const STORAGE_KEY = 'lucky7_layout'
 export type LayoutMode = 'classic' | 'table'
@@ -9,17 +9,34 @@ function getStoredLayout(): LayoutMode {
   return 'classic'
 }
 
+/** Subscribe to viewport width changes for mobile detection */
+function subscribeViewport(cb: () => void) {
+  const mq = window.matchMedia('(min-width: 768px)')
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+
+function getIsDesktop(): boolean {
+  return window.matchMedia('(min-width: 768px)').matches
+}
+
 export function useLayout() {
-  const [layout, setLayoutState] = useState<LayoutMode>(getStoredLayout)
+  const [stored, setStoredState] = useState<LayoutMode>(getStoredLayout)
+  const isDesktop = useSyncExternalStore(subscribeViewport, getIsDesktop, () => true)
+
+  // Force classic on mobile regardless of stored preference
+  const layout: LayoutMode = isDesktop ? stored : 'classic'
+  const isMobile = !isDesktop
 
   const setLayout = useCallback((mode: LayoutMode) => {
     localStorage.setItem(STORAGE_KEY, mode)
-    setLayoutState(mode)
+    setStoredState(mode)
   }, [])
 
   const toggle = useCallback(() => {
-    setLayout(layout === 'classic' ? 'table' : 'classic')
-  }, [layout, setLayout])
+    if (!isDesktop) return // no-op on mobile
+    setLayout(stored === 'classic' ? 'table' : 'classic')
+  }, [stored, setLayout, isDesktop])
 
-  return { layout, setLayout, toggle }
+  return { layout, setLayout, toggle, isMobile }
 }

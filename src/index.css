@@ -85,7 +85,7 @@ body {
 }
 
 .card-shimmer {
-  --shimmer-color: rgba(255,255,255,0.08);
+  --shimmer-color: rgba(255,255,255,0.15);
   background: linear-gradient(90deg, transparent 30%, var(--shimmer-color) 50%, transparent 70%);
   background-size: 200% 100%;
   animation: shimmer 3s infinite;

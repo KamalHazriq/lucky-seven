@@ -4,6 +4,19 @@ import { motion } from 'framer-motion'
 import { cardDisplay, suitColor } from '../lib/deck'
 import type { Card } from '../lib/types'
 
+/** Convert hex/rgba color string to rgba with custom alpha */
+function hexToRgba(color: string, alpha: number): string {
+  const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+  if (rgbaMatch) {
+    return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha})`
+  }
+  const hex = color.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 interface FlyingCardProps {
   from: DOMRect
   to: DOMRect
@@ -17,6 +30,7 @@ interface FlyingCardProps {
 /**
  * Renders an animated card that flies from one position to another
  * along a curved arc path. Renders via portal into document.body.
+ * Default duration: 1.0s (smoother feel).
  */
 export default function FlyingCard({
   from,
@@ -25,7 +39,7 @@ export default function FlyingCard({
   card,
   ownerColor,
   onComplete,
-  duration = 0.5,
+  duration = 1.0,
 }: FlyingCardProps) {
   const width = 56  // sm card width
   const height = 80 // sm card height
@@ -73,10 +87,10 @@ export default function FlyingCard({
       animate={{
         left: keyframes.lefts,
         top: keyframes.tops,
-        scale: [1, 1.15, 1.25, 1.2, 1.1, 1.05, 1, 1, 1],
-        opacity: [1, 1, 1, 1, 1, 1, 1, 0.9, 0.8],
+        scale: [1, 1.08, 1.14, 1.12, 1.08, 1.04, 1, 1, 1],
+        opacity: [1, 1, 1, 1, 1, 1, 1, 0.95, 0.85],
       }}
-      transition={{ duration, ease: 'easeInOut' }}
+      transition={{ duration, ease: [0.22, 1, 0.36, 1] }}
       onAnimationComplete={onComplete}
       className="pointer-events-none"
       style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}
@@ -85,11 +99,13 @@ export default function FlyingCard({
         className={`w-full h-full rounded-xl shadow-xl flex items-center justify-center ${
           faceUp && card
             ? 'bg-white border border-slate-200'
-            : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2'
+            : `border-2 ${ownerColor ? '' : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-blue-700'}`
         }`}
         style={{
-          ...(!faceUp && ownerColor ? { borderColor: ownerColor } : {}),
-          ...(!faceUp && !ownerColor ? { borderColor: 'rgb(29,78,216)' } : {}),
+          ...(!faceUp && ownerColor ? {
+            borderColor: ownerColor,
+            background: `linear-gradient(135deg, ${hexToRgba(ownerColor, 0.7)} 0%, ${hexToRgba(ownerColor, 0.45)} 50%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
+          } : {}),
         }}
       >
         {faceUp && card ? (
@@ -102,11 +118,11 @@ export default function FlyingCard({
         ) : (
           <div
             className="w-6 h-6 rounded-full border-2 flex items-center justify-center"
-            style={{ borderColor: ownerColor ?? 'rgba(96,165,250,0.3)' }}
+            style={{ borderColor: ownerColor ? 'rgba(255,255,255,0.35)' : 'rgba(96,165,250,0.3)' }}
           >
             <span
               className="font-bold text-sm"
-              style={{ color: ownerColor ?? 'rgba(96,165,250,0.5)' }}
+              style={{ color: ownerColor ? 'rgba(255,255,255,0.6)' : 'rgba(96,165,250,0.5)' }}
             >
               7
             </span>
