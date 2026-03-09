@@ -39,7 +39,7 @@ export default function FlyingCard({
   card,
   ownerColor,
   onComplete,
-  duration = 1.0,
+  duration = 1.2,
 }: FlyingCardProps) {
   const width = 56  // sm card width
   const height = 80 // sm card height
@@ -99,12 +99,13 @@ export default function FlyingCard({
         className={`w-full h-full rounded-xl shadow-xl flex items-center justify-center ${
           faceUp && card
             ? 'bg-white border border-slate-200'
-            : `border-2 ${ownerColor ? '' : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-blue-700'}`
+            : ownerColor
+              ? 'border border-white/15'
+              : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2 border-blue-700'
         }`}
         style={{
           ...(!faceUp && ownerColor ? {
-            borderColor: ownerColor,
-            background: `linear-gradient(135deg, ${hexToRgba(ownerColor, 0.7)} 0%, ${hexToRgba(ownerColor, 0.45)} 50%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
+            background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.75)} 0%, ${hexToRgba(ownerColor, 0.5)} 40%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
           } : {}),
         }}
       >

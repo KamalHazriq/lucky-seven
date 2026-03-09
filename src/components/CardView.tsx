@@ -95,14 +95,15 @@ export default function CardView({
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
           ? 'bg-white border border-slate-200'
-          : `border-2 ${ownerColor ? '' : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-blue-700'}`
+          : ownerColor
+            ? 'border border-white/10 hover:border-white/30 transition-[border-color]'
+            : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2 border-blue-700'
         }
       `}
       style={{
         perspective: '600px',
         ...(!showFace && ownerColor ? {
-          borderColor: ownerColor,
-          background: `linear-gradient(135deg, ${hexToRgba(ownerColor, 0.7)} 0%, ${hexToRgba(ownerColor, 0.45)} 50%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
+          background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.75)} 0%, ${hexToRgba(ownerColor, 0.5)} 40%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
         } : {}),
       }}
     >

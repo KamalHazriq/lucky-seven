@@ -7,39 +7,37 @@ const BUBBLE_DURATION_MS = 4000
  * Derives per-player latest chat bubble from chat messages.
  * UI-only — auto-clears after 4 seconds. No Firestore writes.
  *
- * Only shows bubbles for messages that arrive AFTER the initial snapshot.
- * Bubbles appear for remote players only (not local user).
+ * Only shows bubbles for messages that arrive AFTER the component mounts
+ * (skips initial Firestore snapshot). Bubbles appear for remote players only.
  */
 export function useChatBubbles(
   messages: ChatMessage[],
   localUserId: string,
 ): Record<string, string | null> {
   const [bubbles, setBubbles] = useState<Record<string, string | null>>({})
-  const prevCountRef = useRef(0)
-  const initializedRef = useRef(false)
+  // -1 = awaiting first snapshot; any other value = count after snapshot
+  const prevCountRef = useRef(-1)
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   useEffect(() => {
-    // First time we receive messages, just record the count (initial snapshot)
-    if (!initializedRef.current) {
-      if (messages.length > 0) {
-        prevCountRef.current = messages.length
-        initializedRef.current = true
-      }
+    // First snapshot: just record the baseline count. Even if 0, mark as initialized.
+    if (prevCountRef.current === -1) {
+      prevCountRef.current = messages.length
       return
     }
 
-    // Only process truly new messages (after initial load)
+    // No new messages
     if (messages.length <= prevCountRef.current) {
       prevCountRef.current = messages.length
       return
     }
 
+    // Only process truly new messages
     const newMsgs = messages.slice(prevCountRef.current)
     prevCountRef.current = messages.length
 
     for (const msg of newMsgs) {
-      // Don't show bubbles for local user (they see their own in the chat panel)
+      // Don't show bubbles for local user
       if (msg.userId === localUserId) continue
 
       const uid = msg.userId

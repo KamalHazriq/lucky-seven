@@ -42,7 +42,9 @@ import { useChat } from '../hooks/useChat'
 import { useChatBubbles } from '../hooks/useChatBubbles'
 import { getSeatColor } from '../lib/playerColors'
 import { useLayout } from '../hooks/useLayout'
+import { useUiMode } from '../hooks/useUiMode'
 import { getSeatPositions } from '../lib/seatPositions'
+import ActionBar from '../components/ActionBar'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
@@ -70,11 +72,25 @@ export default function Game() {
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
-  const { flyingCard, triggerFly, clearFly } = useFlyingCard()
+  const { uiMode, toggleMode: toggleUiMode } = useUiMode()
+  const { flyingCard, triggerFly, queueFly, flushQueue, clearFly } = useFlyingCard()
   const drawPileRef = useRef<HTMLDivElement>(null)
   const discardPileRef = useRef<HTMLDivElement>(null)
   const localPanelRef = useRef<HTMLDivElement>(null)
   const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [headerH, setHeaderH] = useState(0)
+
+  // Measure sticky header height for table layout safe-area offset
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      setHeaderH(entry.contentRect.height + 8) // 8px extra spacing
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   // Chat (lazy subscribe — only on first open)
   const chat = useChat(
@@ -224,8 +240,9 @@ export default function Game() {
     withBusy(async () => {
       await drawFromPile(gameId!)
       playSfx('draw'); vibrate()
+      // Queue fly — modal opens immediately after draw, so defer animation
       if (!reduced && fromEl && toEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
+        queueFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
       }
     })
   }
@@ -237,8 +254,9 @@ export default function Game() {
     withBusy(async () => {
       await takeFromDiscard(gameId!)
       playSfx('draw'); vibrate()
+      // Queue fly — modal opens immediately after draw, so defer animation
       if (!reduced && fromEl && toEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, discardCard)
+        queueFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, discardCard)
       }
     })
   }
@@ -250,7 +268,12 @@ export default function Game() {
 
   const handleSwap = (slotIndex: number) => {
     setModal({ type: 'none' })
-    withBusy(async () => { await swapWithSlot(gameId!, slotIndex); playSfx('swap'); vibrate() })
+    withBusy(async () => {
+      await swapWithSlot(gameId!, slotIndex)
+      playSfx('swap'); vibrate()
+      // Flush any queued local fly animations now that the action is resolved
+      flushQueue()
+    })
   }
 
   const handleDiscard = () => {
@@ -263,6 +286,8 @@ export default function Game() {
       if (!reduced && fromEl && toEl) {
         triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
       }
+      // Flush any queued local fly animations
+      flushQueue()
     })
   }
 
@@ -374,6 +399,7 @@ export default function Game() {
     <div className="min-h-dvh flex flex-col max-w-5xl mx-auto">
       {/* ─── Sticky Top Bar ───────────────────────────────────── */}
       <div
+        ref={headerRef}
         className="sticky top-0 z-50 w-full backdrop-blur-md border-b"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -428,6 +454,20 @@ export default function Game() {
                 {layout === 'classic' ? '\u{1FA91}' : '\u{1F4CB}'}
               </button>
             )}
+            {!isMobile && (
+              <button
+                onClick={toggleUiMode}
+                className={`min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  uiMode === 'actionbar'
+                    ? 'bg-teal-900/40 border border-teal-600/40 text-teal-400'
+                    : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
+                }`}
+                aria-label={`UI mode: ${uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}`}
+                title={`UI: ${uiMode === 'actionbar' ? 'Action Bar (inline)' : 'Modal (popup)'}`}
+              >
+                {uiMode === 'actionbar' ? '\u{2261}' : '\u{25A1}'}
+              </button>
+            )}
             <GameSettingsBar />
             {isMyTurn && game.status === 'active' && !hasDrawnCard && (
               <button
@@ -443,7 +483,7 @@ export default function Game() {
       </div>
 
       {/* ─── Resume banner — visible when drawn card exists AND (sub-modal open OR dismissed) ─── */}
-      {hasDrawnCard && isActionPhase && (drawnCardDismissed || modal.type !== 'none') && (
+      {hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -495,23 +535,32 @@ export default function Game() {
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            const tableH = otherPlayers.length <= 3 ? 480 : otherPlayers.length <= 5 ? 540 : 600
-            const panelW = otherPlayers.length <= 4 ? '200px' : '170px'
+            // Compute available height: viewport minus header, turn bars, and padding
+            const baseH = otherPlayers.length <= 3 ? 520 : otherPlayers.length <= 5 ? 580 : 640
+            const panelW = otherPlayers.length <= 4 ? '210px' : '180px'
             return (
-              <div className="relative w-full mb-4" style={{ minHeight: `${tableH}px` }}>
+              <>
+              <div
+                className="relative w-full mb-4"
+                style={{
+                  minHeight: `${baseH}px`,
+                  // Ensure top seats don't overlap the sticky header area
+                  paddingTop: '16px',
+                }}
+              >
                 {/* Table surface — oval felt gradient */}
                 <div
                   className="absolute rounded-[50%] pointer-events-none"
                   style={{
-                    left: '8%', right: '8%', top: '8%', bottom: '12%',
-                    background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.40) 0%, rgba(15,76,46,0.20) 40%, rgba(15,76,46,0.06) 70%, transparent 100%)',
-                    border: '2.5px solid rgba(15,76,46,0.25)',
-                    boxShadow: 'inset 0 0 60px rgba(15,76,46,0.15)',
+                    left: '6%', right: '6%', top: '4%', bottom: '8%',
+                    background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.35) 0%, rgba(15,76,46,0.18) 40%, rgba(15,76,46,0.05) 70%, transparent 100%)',
+                    border: '2px solid rgba(15,76,46,0.22)',
+                    boxShadow: 'inset 0 0 80px rgba(15,76,46,0.12), inset 0 0 20px rgba(15,76,46,0.08)',
                   }}
                 />
 
                 {/* Center: Draw + Discard piles */}
-                <div className="absolute left-1/2 top-[45%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
+                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
                   <div className="text-center" ref={drawPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Draw</p>
                     <CardView
@@ -552,10 +601,10 @@ export default function Game() {
                       className="absolute z-10"
                       style={{
                         left: `${pos.left}%`,
-                        top: `${pos.top}%`,
+                        top: `${Math.max(pos.top, 5)}%`,
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
-                        width: '42%',
+                        width: '44%',
                       }}
                     >
                       <PlayerPanel
@@ -580,7 +629,7 @@ export default function Game() {
                 <div
                   className="absolute left-1/2 z-10"
                   ref={localPanelRef}
-                  style={{ bottom: '0', transform: 'translateX(-50%)', maxWidth: '320px', width: '80%' }}
+                  style={{ bottom: '4px', transform: 'translateX(-50%)', maxWidth: '340px', width: '85%' }}
                 >
                   <PlayerPanel
                     playerId={user.uid}
@@ -600,6 +649,24 @@ export default function Game() {
                   />
                 </div>
               </div>
+              {/* Action Bar for table layout — below table container */}
+              {uiMode === 'actionbar' && (
+                <div className="mx-auto" style={{ maxWidth: '380px', width: '90%' }}>
+                  <ActionBar
+                    card={isMyTurn && hasDrawnCard ? drawnCard : null}
+                    visible={modal.type === 'none' && !drawnCardDismissed}
+                    locks={myLocks}
+                    powerAssignments={powerAssignments}
+                    spentPowerCardIds={spentPowerCardIds}
+                    drawnCardSource={privateState?.drawnCardSource ?? null}
+                    onSwap={handleSwap}
+                    onDiscard={handleDiscard}
+                    onUsePower={handleUsePower}
+                    onClose={handleCancelDraw}
+                  />
+                </div>
+              )}
+              </>
             )
           })()
         ) : (
@@ -685,6 +752,21 @@ export default function Game() {
                 queueNumber={queueNumbers[user.uid] ?? null}
                 slotOverlays={slotOverlays[user.uid] ?? null}
               />
+              {/* Action Bar — inline alternative to drawn card modal */}
+              {uiMode === 'actionbar' && (
+                <ActionBar
+                  card={isMyTurn && hasDrawnCard ? drawnCard : null}
+                  visible={modal.type === 'none' && !drawnCardDismissed}
+                  locks={myLocks}
+                  powerAssignments={powerAssignments}
+                  spentPowerCardIds={spentPowerCardIds}
+                  drawnCardSource={privateState?.drawnCardSource ?? null}
+                  onSwap={handleSwap}
+                  onDiscard={handleDiscard}
+                  onUsePower={handleUsePower}
+                  onClose={handleCancelDraw}
+                />
+              )}
             </div>
           </>
         )}
@@ -695,9 +777,9 @@ export default function Game() {
 
       {/* ─── Modals ─────────────────────────────────────────── */}
 
-      {/* Drawn Card Modal (main action chooser) — open whenever drawnCard exists */}
+      {/* Drawn Card Modal (main action chooser) — only in modal UI mode */}
       <DrawnCardModal
-        card={isActionPhase ? drawnCard : null}
+        card={uiMode === 'modal' && isMyTurn && hasDrawnCard ? drawnCard : null}
         open={modal.type === 'none' && !drawnCardDismissed}
         locks={myLocks}
         powerAssignments={powerAssignments}
