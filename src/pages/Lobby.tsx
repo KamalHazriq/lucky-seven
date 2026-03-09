@@ -7,6 +7,8 @@ import { useGame } from '../hooks/useGame'
 import { startGame } from '../lib/gameService'
 import VersionLabel from '../components/VersionLabel'
 import FeedbackModal from '../components/FeedbackModal'
+import ChatPanel from '../components/ChatPanel'
+import { useChat } from '../hooks/useChat'
 
 export default function Lobby() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -14,6 +16,12 @@ export default function Lobby() {
   const { game, players, loading } = useGame(gameId, user?.uid)
   const navigate = useNavigate()
   const [showFeedback, setShowFeedback] = useState(false)
+  const myPlayer = user ? players[user.uid] : null
+  const chat = useChat(
+    gameId,
+    myPlayer?.displayName ?? 'Player',
+    myPlayer?.seatIndex ?? 0,
+  )
 
   // Redirect to game when it starts
   useEffect(() => {
@@ -180,6 +188,18 @@ export default function Lobby() {
           </button>
           <span className="text-slate-700">|</span>
           <button
+            onClick={chat.toggleChat}
+            className="relative text-sm text-indigo-400 hover:text-indigo-300 cursor-pointer"
+          >
+            {'\u{1F4AC}'} Chat
+            {chat.unreadCount > 0 && (
+              <span className="absolute -top-2 -right-3 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+              </span>
+            )}
+          </button>
+          <span className="text-slate-700">|</span>
+          <button
             onClick={() => setShowFeedback(true)}
             className="text-sm text-amber-600 hover:text-amber-400 cursor-pointer"
           >
@@ -189,6 +209,13 @@ export default function Lobby() {
       </motion.div>
 
       <FeedbackModal open={showFeedback} onClose={() => setShowFeedback(false)} />
+      <ChatPanel
+        open={chat.isOpen}
+        messages={chat.messages}
+        localUserId={user?.uid ?? ''}
+        onSend={chat.send}
+        onClose={chat.closeChat}
+      />
       <VersionLabel />
 
       {/* Watermark */}

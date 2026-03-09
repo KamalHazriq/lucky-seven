@@ -11,6 +11,8 @@ import {
   increment,
   query,
   where,
+  orderBy,
+  limit as firestoreLimit,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db, ensureAuth } from './firebase'
@@ -26,6 +28,7 @@ import type {
   LockInfo,
   PowerEffectType,
   PowerRankKey,
+  ChatMessage,
 } from './types'
 import { DEFAULT_GAME_SETTINGS, EMPTY_LOCK_INFO, getCardRankKey } from './types'
 import { nanoid } from 'nanoid'
@@ -929,4 +932,49 @@ export async function findGameByCode(joinCode: string): Promise<string | null> {
 export async function updatePresence(gameId: string, connected: boolean): Promise<void> {
   const user = await ensureAuth()
   await updateDoc(playerRef(gameId, user.uid), { connected })
+}
+
+// ─── Chat ──────────────────────────────────────────────────────
+const CHAT_MAX = 50 // max messages kept in view
+const CHAT_THROTTLE_MS = 1500 // min interval between sends per user
+let lastChatSend = 0
+
+export async function sendChatMessage(
+  gameId: string,
+  text: string,
+  displayName: string,
+  seatIndex: number,
+): Promise<void> {
+  const now = Date.now()
+  if (now - lastChatSend < CHAT_THROTTLE_MS) return // silently skip spam
+  lastChatSend = now
+
+  const user = await ensureAuth()
+  const msgId = nanoid(10)
+  await setDoc(doc(db, 'games', gameId, 'chat', msgId), {
+    id: msgId,
+    userId: user.uid,
+    displayName,
+    seatIndex,
+    text: text.slice(0, 200), // hard cap at 200 chars
+    ts: now,
+  })
+}
+
+export function subscribeChat(
+  gameId: string,
+  cb: (messages: ChatMessage[]) => void,
+): Unsubscribe {
+  const chatQuery = query(
+    collection(db, 'games', gameId, 'chat'),
+    orderBy('ts', 'desc'),
+    firestoreLimit(CHAT_MAX),
+  )
+  return onSnapshot(chatQuery, (snap) => {
+    const msgs: ChatMessage[] = []
+    snap.forEach((d) => msgs.push(d.data() as ChatMessage))
+    // Reverse so oldest first (display order)
+    msgs.reverse()
+    cb(msgs)
+  })
 }

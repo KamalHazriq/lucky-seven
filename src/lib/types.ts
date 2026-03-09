@@ -131,6 +131,16 @@ export interface PlayerScore {
   sevens: number
 }
 
+// ─── Chat ────────────────────────────────────────────────────
+export interface ChatMessage {
+  id: string
+  userId: string
+  displayName: string
+  seatIndex: number
+  text: string
+  ts: number
+}
+
 /** Returns the PowerRankKey for a card, or null if it has no power */
 export function getCardRankKey(card: Card): PowerRankKey | null {
   if (card.isJoker) return 'JOKER'

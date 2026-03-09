@@ -36,7 +36,9 @@ import TurnQueue from '../components/TurnQueue'
 import { useActionHighlight } from '../hooks/useActionHighlight'
 import { useFlyingCard } from '../hooks/useFlyingCard'
 import FlyingCard from '../components/FlyingCard'
+import ChatPanel from '../components/ChatPanel'
 import { useReducedMotion } from '../hooks/useReducedMotion'
+import { useChat } from '../hooks/useChat'
 import { getSeatColor } from '../lib/playerColors'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
@@ -68,6 +70,13 @@ export default function Game() {
   const discardPileRef = useRef<HTMLDivElement>(null)
   const localPanelRef = useRef<HTMLDivElement>(null)
   const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  // Chat (lazy subscribe — only on first open)
+  const chat = useChat(
+    gameId,
+    players[user?.uid ?? '']?.displayName ?? 'Player',
+    players[user?.uid ?? '']?.seatIndex ?? 0,
+  )
 
   // Derived state
   const drawnCard = privateState?.drawnCard ?? null
@@ -361,6 +370,19 @@ export default function Game() {
           {/* Right section — toggles + end game */}
           <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <button
+              onClick={chat.toggleChat}
+              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-indigo-900/30 border border-indigo-600/40 text-indigo-400 hover:bg-indigo-900/50 transition-colors cursor-pointer"
+              aria-label="Chat"
+              title="Chat"
+            >
+              {'\u{1F4AC}'}
+              {chat.unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setShowPowerGuide(true)}
               className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-amber-900/30 border border-amber-600/40 text-amber-400 hover:bg-amber-900/50 transition-colors cursor-pointer"
               aria-label="Power guide"
@@ -603,6 +625,15 @@ export default function Game() {
           onComplete={clearFly}
         />
       )}
+
+      {/* Chat panel */}
+      <ChatPanel
+        open={chat.isOpen}
+        messages={chat.messages}
+        localUserId={user.uid}
+        onSend={chat.send}
+        onClose={chat.closeChat}
+      />
 
       <VersionLabel />
 
