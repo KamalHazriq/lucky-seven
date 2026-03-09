@@ -4,6 +4,17 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { createGame, joinGame, findGameByCode } from '../lib/gameService'
 import { useAuth } from '../hooks/useAuth'
+import HowToPlay from '../components/HowToPlay'
+import type { PowerAssignments, PowerEffectType, PowerRankKey } from '../lib/types'
+import { DEFAULT_GAME_SETTINGS, ALL_EFFECT_TYPES, DEFAULT_POWER_ASSIGNMENTS } from '../lib/types'
+
+const RANK_ROWS: { key: PowerRankKey; label: string; color: string }[] = [
+  { key: '10', label: '10', color: 'text-cyan-300' },
+  { key: 'J', label: 'Jack', color: 'text-amber-300' },
+  { key: 'Q', label: 'Queen', color: 'text-purple-300' },
+  { key: 'K', label: 'King', color: 'text-red-300' },
+  { key: 'JOKER', label: 'Joker', color: 'text-fuchsia-300' },
+]
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth()
@@ -14,13 +25,25 @@ export default function Home() {
   const [joinCode, setJoinCode] = useState('')
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu')
   const [busy, setBusy] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+
+  // Power settings state
+  const [assignments, setAssignments] = useState<PowerAssignments>({ ...DEFAULT_POWER_ASSIGNMENTS })
+  const [jokerCount, setJokerCount] = useState(DEFAULT_GAME_SETTINGS.jokerCount)
+
+  const updateAssignment = (key: PowerRankKey, value: PowerEffectType) => {
+    setAssignments((prev) => ({ ...prev, [key]: value }))
+  }
 
   const handleCreate = async () => {
     if (!name.trim()) return toast.error('Enter your name')
     if (!user) return toast.error('Authenticating...')
     setBusy(true)
     try {
-      const gameId = await createGame(name.trim(), maxPlayers)
+      const gameId = await createGame(name.trim(), maxPlayers, {
+        powerAssignments: assignments,
+        jokerCount,
+      })
       navigate(`/lobby/${gameId}`)
     } catch (e) {
       toast.error((e as Error).message)
@@ -148,6 +171,71 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Power Settings accordion */}
+              <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-900/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-medium text-slate-300">Power Settings</span>
+                  <span className={`text-slate-500 transition-transform ${showSettings ? 'rotate-180' : ''}`}>
+                    &#9662;
+                  </span>
+                </button>
+
+                {showSettings && (
+                  <div className="p-4 space-y-3 border-t border-slate-700/50">
+                    {/* Per-rank power assignments */}
+                    {RANK_ROWS.map((row) => (
+                      <div key={row.key}>
+                        <label className={`block text-xs font-medium ${row.color} mb-1`}>
+                          {row.label} Power
+                        </label>
+                        <select
+                          value={assignments[row.key]}
+                          onChange={(e) => updateAssignment(row.key, e.target.value as PowerEffectType)}
+                          className="w-full px-3 py-1.5 bg-slate-900/80 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 cursor-pointer"
+                        >
+                          {ALL_EFFECT_TYPES.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+
+                    {/* Joker count */}
+                    <div>
+                      <label className="block text-xs font-medium text-fuchsia-300 mb-1">
+                        Jokers in Deck
+                      </label>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4].map((n) => (
+                          <button
+                            key={n}
+                            onClick={() => setJokerCount(n)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                              jokerCount === n
+                                ? 'bg-fuchsia-600 text-white'
+                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">Default: 2 (standard deck)</p>
+                    </div>
+
+                    {/* Power usage note */}
+                    <div className="bg-slate-900/40 rounded-lg p-2">
+                      <p className="text-[10px] text-amber-400/80 font-medium">
+                        Powers can be used every time you draw that card type. Any rank can be assigned any effect!
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={handleCreate}
                 disabled={busy}
@@ -206,9 +294,12 @@ export default function Home() {
           )}
         </div>
 
-        <p className="text-center text-xs text-slate-500 mt-6">
-          2-6 players &middot; Lowest score wins &middot; Sevens are worth zero!
-        </p>
+        <div className="text-center mt-6 space-y-1">
+          <p className="text-xs text-slate-500">
+            2-6 players &middot; Lowest score wins &middot; Sevens are worth zero!
+          </p>
+          <HowToPlay />
+        </div>
       </motion.div>
     </div>
   )

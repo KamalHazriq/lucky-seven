@@ -14,7 +14,7 @@ export default function Lobby() {
 
   // Redirect to game when it starts
   useEffect(() => {
-    if (game?.status === 'active' || game?.status === 'finishing') {
+    if (game?.status === 'active' || game?.status === 'ending') {
       navigate(`/game/${gameId}`, { replace: true })
     }
     if (game?.status === 'finished') {

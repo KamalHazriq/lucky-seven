@@ -8,15 +8,37 @@ A real-time multiplayer card game for 2-6 players, hosted on GitHub Pages with F
 - **Deal**: 3 cards face-down per player. You cannot look at your own cards (unless you peek)
 - **On your turn**:
   1. **Draw** from the draw pile (only you see it) OR take the top discard card (visible to all)
-  2. **Swap** the drawn card with one of your 3 face-down cards, OR **discard** it
-- **Jack Power**: If you draw a Jack, you can use its peek ability to secretly look at one of your cards, then discard the Jack
-- **Game ends** when the draw pile is empty or a player presses "End Game"
+  2. **Swap** the drawn card with one of your 3 face-down cards, **discard** it, or **use its power**
 - **Scoring**: Ace=1, 2-6=face value, **7=0**, 8-10=face value, J/Q/K/Joker=10
 - **Winner**: Lowest score wins. Tiebreaker: most 7s.
 
+### Power Cards
+
+| Card | Power | Effect |
+|------|-------|--------|
+| **Jack** | Peek | Secretly look at one of your own face-down cards |
+| **Queen** | Swap | Swap any two unlocked cards between any players |
+| **King** | Lock | Lock any unlocked card — it cannot be swapped |
+| **10** | Key | Unlock a locked card |
+| **Joker** | Chaos | Randomly shuffle another player's unlocked cards |
+
+When you use a power card, it gets discarded after the effect resolves. You can always choose to swap or discard a power card instead of using its ability.
+
+### Ending the Game
+
+Any player can call **"End Game"** on their turn. When called, every other player gets **one final turn** to finish the round, then all cards are revealed and scored.
+
+The game also ends immediately if the draw pile runs out.
+
+### Lock Mechanics
+
+- Locked cards show a red lock icon and **cannot** be swapped (by you, Queen, or Joker).
+- A Joker's Chaos only shuffles the target player's **unlocked** cards.
+- Use a 10 (Key) to unlock any locked card.
+
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Vite + Tailwind CSS v4
+- **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS v4
 - **Backend**: Firebase (Firestore real-time database + Anonymous Auth)
 - **Animations**: Framer Motion
 - **Hosting**: GitHub Pages (static)
@@ -115,28 +137,32 @@ This builds the app and publishes to the `gh-pages` branch. Make sure GitHub Pag
 ```
 src/
 ├── lib/
-│   ├── firebase.ts      # Firebase init + anonymous auth
-│   ├── types.ts          # TypeScript interfaces
-│   ├── deck.ts           # Card deck, shuffle, scoring logic
-│   └── gameService.ts    # All Firestore operations (transactions)
+│   ├── firebase.ts          # Firebase init + anonymous auth
+│   ├── types.ts             # TypeScript interfaces + power types
+│   ├── deck.ts              # Card deck, shuffle, scoring logic
+│   └── gameService.ts       # All Firestore operations (transactions)
 ├── hooks/
-│   ├── useAuth.ts        # Firebase auth hook
-│   └── useGame.ts        # Real-time game state subscriptions
+│   ├── useAuth.ts           # Firebase auth hook
+│   └── useGame.ts           # Real-time game state subscriptions
 ├── components/
-│   ├── CardView.tsx       # Card component (face-up/face-down)
-│   ├── PlayerPanel.tsx    # Player's card area
-│   ├── GameLog.tsx        # Action log feed
-│   ├── DrawnCardModal.tsx # Modal when you draw a card
-│   ├── PeekModal.tsx      # Modal to select which card to peek
-│   └── PeekResultModal.tsx # Shows peeked card result
+│   ├── CardView.tsx          # Card component (face-up/face-down, lock indicator)
+│   ├── PlayerPanel.tsx       # Player's card area with lock state
+│   ├── GameLog.tsx           # Action log feed
+│   ├── DrawnCardModal.tsx    # Modal when you draw a card (swap/discard/power)
+│   ├── PeekModal.tsx         # Jack: select which card to peek
+│   ├── PeekResultModal.tsx   # Jack: shows peeked card result
+│   ├── QueenSwapModal.tsx    # Queen: select two cards to swap
+│   ├── SlotPickerModal.tsx   # King/10: select a card slot to lock/unlock
+│   ├── JokerChaosModal.tsx   # Joker: select target player for chaos
+│   └── HowToPlay.tsx        # Rules reference modal
 ├── pages/
-│   ├── Home.tsx           # Create or join game
-│   ├── Lobby.tsx          # Waiting room with join code
-│   ├── Game.tsx           # Main game board
-│   └── Results.tsx        # Final scores and winner
-├── App.tsx                # Router
-├── main.tsx               # Entry point
-└── index.css              # Tailwind + custom styles
+│   ├── Home.tsx              # Create or join game
+│   ├── Lobby.tsx             # Waiting room with join code
+│   ├── Game.tsx              # Main game board with power flows
+│   └── Results.tsx           # Final scores and winner
+├── App.tsx                   # Router
+├── main.tsx                  # Entry point
+└── index.css                 # Tailwind + custom styles
 ```
 
 ## Firestore Data Model
@@ -148,17 +174,21 @@ games/{gameId}
   ├── currentTurnPlayerId, turnPhase: "draw" | "action"
   ├── drawPileCount, discardTop (Card)
   ├── playerOrder: string[], log: LogEntry[]
+  ├── endCalledBy, endRoundStartSeatIndex
+  ├── actionVersion, lastActionAt
   │
-  ├── players/{playerId}     (public: name, seat, connected)
+  ├── players/{playerId}     (public: name, seat, connected, locks)
   ├── private/{playerId}     (secret: hand[], drawnCard, known{})
+  ├── reveals/{playerId}     (end-game: each player reveals their hand)
   └── internal/
-      ├── drawPile           (cards array, server-side only)
-      └── results            (final scores after game ends)
+      └── drawPile           (cards array)
 ```
 
 ## Security Model
 
 - **Anonymous Auth**: Players sign in automatically, no account needed
-- **Private data isolation**: Each player can only read their own `private/{playerId}` doc
-- **Turn validation**: Game actions use Firestore transactions to enforce turn order
-- **No card leaking**: Card identities are stored in private docs; only counts and discard top are public
+- **Turn validation**: Game actions use Firestore transactions to enforce turn order and rules
+- **Action versioning**: Every action increments `actionVersion` to prevent double-applies
+- **Private data**: Hand contents stored in `private/{playerId}` docs. Client-side only subscribes to own private doc. Cross-player reads happen within server-side Firestore transactions (for Queen swap and Joker chaos powers).
+- **No card leaking in UI**: Only draw pile count and discard top are shown publicly. Other players' cards are face-down.
+- **Reveal pattern**: At game end, each player writes their own hand to `reveals/{playerId}` so results can be displayed without cross-player private reads.

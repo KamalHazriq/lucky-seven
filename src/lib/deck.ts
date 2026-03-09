@@ -4,7 +4,11 @@ import type { Card, Suit, Rank } from './types'
 const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades']
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 
-export function buildDeck(): Card[] {
+/**
+ * Build a deck with 52 standard cards + `jokerCount` jokers (1-4).
+ * Default is 2 jokers to match the original deck.
+ */
+export function buildDeck(jokerCount: number = 2): Card[] {
   const cards: Card[] = []
 
   for (const suit of SUITS) {
@@ -13,9 +17,11 @@ export function buildDeck(): Card[] {
     }
   }
 
-  // Add 2 Jokers
-  cards.push({ id: 'Joker_1', suit: 'hearts', rank: 'A', isJoker: true })
-  cards.push({ id: 'Joker_2', suit: 'spades', rank: 'A', isJoker: true })
+  // Add jokers with unique IDs
+  const clampedCount = Math.max(1, Math.min(4, jokerCount))
+  for (let i = 1; i <= clampedCount; i++) {
+    cards.push({ id: `Joker_${i}`, suit: 'hearts', rank: 'A', isJoker: true })
+  }
 
   return cards
 }

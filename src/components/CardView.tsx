@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import type { Card } from '../lib/types'
+import type { Card, LockInfo } from '../lib/types'
 import { cardDisplay, suitColor } from '../lib/deck'
 
 interface CardViewProps {
   card?: Card | null
   faceUp?: boolean
   known?: boolean
+  locked?: boolean
+  lockInfo?: LockInfo | null
   onClick?: () => void
   disabled?: boolean
   highlight?: boolean
@@ -23,6 +26,8 @@ export default function CardView({
   card,
   faceUp = false,
   known = false,
+  locked = false,
+  lockInfo,
   onClick,
   disabled = false,
   highlight = false,
@@ -30,6 +35,8 @@ export default function CardView({
   label,
 }: CardViewProps) {
   const showFace = faceUp && card
+  const [showTooltip, setShowTooltip] = useState(false)
+  const lockerName = lockInfo?.lockerName
 
   return (
     <motion.div
@@ -74,8 +81,40 @@ export default function CardView({
         </div>
       )}
 
+      {/* King lock overlay — visible on locked cards */}
+      {locked && (
+        <div className="absolute inset-0 rounded-xl bg-red-900/20 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none">
+          <div className="flex flex-col items-center">
+            <span className="text-2xl drop-shadow-lg">K</span>
+            <span
+              className="text-red-400 text-lg drop-shadow-lg"
+              style={{ lineHeight: 1 }}
+            >
+              🔒
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Lock tooltip trigger */}
+      {locked && lockerName && (
+        <div
+          className="absolute inset-0 z-20 cursor-help"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          onTouchStart={() => setShowTooltip(true)}
+          onTouchEnd={() => setShowTooltip(false)}
+        >
+          {showTooltip && (
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 border border-red-500/50 text-red-300 text-[10px] font-medium px-2 py-1 rounded-lg shadow-lg whitespace-nowrap z-30 pointer-events-none">
+              Locked by {lockerName}
+            </div>
+          )}
+        </div>
+      )}
+
       {known && !faceUp && (
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full z-10">
           Known
         </span>
       )}

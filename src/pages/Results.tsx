@@ -42,7 +42,24 @@ export default function Results() {
 
   const totalPlayers = game.playerOrder.length
   const allRevealed = scores.length >= totalPlayers
-  const winnerScore = scores.length > 0 ? scores[0].total : null
+
+  // Multi-winner tie handling:
+  // 1. Find minimum score
+  // 2. If tied on score, use most sevens as tiebreaker
+  // 3. If still tied, all are winners (shared win)
+  const winnerIds = new Set<string>()
+  if (allRevealed && scores.length > 0) {
+    const minScore = scores[0].total
+    const tiedPlayers = scores.filter((s) => s.total === minScore)
+    if (tiedPlayers.length === 1) {
+      winnerIds.add(tiedPlayers[0].playerId)
+    } else {
+      const maxSevens = Math.max(...tiedPlayers.map((s) => s.sevens))
+      const sevensWinners = tiedPlayers.filter((s) => s.sevens === maxSevens)
+      for (const w of sevensWinners) winnerIds.add(w.playerId)
+    }
+  }
+  const isSharedWin = winnerIds.size > 1
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -68,6 +85,14 @@ export default function Results() {
               Waiting for all players to reveal... ({scores.length}/{totalPlayers})
             </motion.p>
           )}
+          {allRevealed && isSharedWin && (
+            <p className="text-amber-400 text-sm font-medium">
+              Shared win! {Array.from(winnerIds).map((id) => {
+                const s = scores.find((sc) => sc.playerId === id)
+                return s?.displayName ?? 'Unknown'
+              }).join(' & ')} tied!
+            </p>
+          )}
           {allRevealed && game.endCalledBy && (
             <p className="text-slate-400 text-sm">
               Game ended by {players[game.endCalledBy]?.displayName ?? 'a player'}
@@ -77,7 +102,7 @@ export default function Results() {
 
         <div className="space-y-4">
           {scores.map((score, rank) => {
-            const isWinner = allRevealed && (rank === 0 || score.total === winnerScore)
+            const isWinner = allRevealed && winnerIds.has(score.playerId)
             const isYou = score.playerId === user?.uid
 
             return (
@@ -90,7 +115,9 @@ export default function Results() {
                   rounded-2xl p-4 border
                   ${isWinner
                     ? 'bg-amber-900/30 border-amber-500/50 shadow-lg shadow-amber-500/10'
-                    : 'bg-slate-800/40 border-slate-700/50'
+                    : isYou
+                      ? 'bg-amber-900/15 border-amber-500/30'
+                      : 'bg-slate-800/40 border-slate-700/50'
                   }
                 `}
               >
@@ -107,10 +134,16 @@ export default function Results() {
                   <div>
                     <span className={`font-semibold ${isYou ? 'text-amber-300' : 'text-slate-200'}`}>
                       {score.displayName}
-                      {isYou && <span className="text-xs text-amber-500/70 ml-1">(You)</span>}
+                      {isYou && (
+                        <span className="ml-1.5 inline-block px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold rounded-md align-middle">
+                          YOU
+                        </span>
+                      )}
                     </span>
                     {isWinner && (
-                      <span className="block text-xs text-amber-400 font-medium">Winner!</span>
+                      <span className="block text-xs text-amber-400 font-medium">
+                        {isSharedWin ? 'Shared Win!' : 'Winner!'}
+                      </span>
                     )}
                   </div>
                   <div className="ml-auto text-right">

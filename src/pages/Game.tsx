@@ -9,7 +9,12 @@ import {
   takeFromDiscard,
   swapWithSlot,
   discardDrawn,
-  useJackPeek,
+  usePeekOne,
+  usePeekAll,
+  useSwap,
+  useLock,
+  useUnlock,
+  useRearrange,
   callEnd,
   revealHand,
 } from '../lib/gameService'
@@ -19,7 +24,22 @@ import GameLog from '../components/GameLog'
 import DrawnCardModal from '../components/DrawnCardModal'
 import PeekModal from '../components/PeekModal'
 import PeekResultModal from '../components/PeekResultModal'
-import type { Card } from '../lib/types'
+import PeekAllModal from '../components/PeekAllModal'
+import QueenSwapModal from '../components/QueenSwapModal'
+import SlotPickerModal from '../components/SlotPickerModal'
+import JokerChaosModal from '../components/JokerChaosModal'
+import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
+import { DEFAULT_GAME_SETTINGS } from '../lib/types'
+
+type ModalState =
+  | { type: 'none' }
+  | { type: 'peekOne' }
+  | { type: 'peekResult'; card: Card; slot: number }
+  | { type: 'peekAll'; cards: Record<number, Card> }
+  | { type: 'swap' }
+  | { type: 'lock' }
+  | { type: 'unlock' }
+  | { type: 'rearrange' }
 
 export default function Game() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -28,8 +48,7 @@ export default function Game() {
   const navigate = useNavigate()
 
   const [busy, setBusy] = useState(false)
-  const [showPeekSelect, setShowPeekSelect] = useState(false)
-  const [peekResult, setPeekResult] = useState<{ card: Card; slot: number } | null>(null)
+  const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const revealedRef = useRef(false)
 
   // When game becomes finished, reveal own hand then redirect
@@ -38,7 +57,6 @@ export default function Game() {
       revealedRef.current = true
       revealHand(gameId)
         .then(() => {
-          // Small delay to let other players also reveal
           setTimeout(() => {
             navigate(`/results/${gameId}`, { replace: true })
           }, 1500)
@@ -55,6 +73,17 @@ export default function Game() {
   const drawnCard = privateState?.drawnCard ?? null
   const isDrawPhase = isMyTurn && turnPhase === 'draw'
   const isActionPhase = isMyTurn && turnPhase === 'action'
+  const myPlayer = user ? players[user.uid] : null
+  const myLocks = (myPlayer?.locks ?? [false, false, false]) as [boolean, boolean, boolean]
+  const powerAssignments = game?.settings?.powerAssignments ?? DEFAULT_GAME_SETTINGS.powerAssignments
+  const spentPowerCardIds = game?.spentPowerCardIds ?? {}
+  const myKnown = privateState?.known ?? {}
+
+  // Player order with local player first (for modals)
+  const modalPlayerOrder = game ? [
+    ...(user ? [user.uid] : []),
+    ...game.playerOrder.filter((pid) => pid !== user?.uid),
+  ] : []
 
   const withBusy = useCallback(async (fn: () => Promise<void>) => {
     if (busy) return
@@ -71,23 +100,84 @@ export default function Game() {
   const handleDrawPile = () => withBusy(() => drawFromPile(gameId!))
   const handleTakeDiscard = () => withBusy(() => takeFromDiscard(gameId!))
 
-  const handleSwap = (slotIndex: number) => withBusy(() => swapWithSlot(gameId!, slotIndex))
-  const handleDiscard = () => withBusy(() => discardDrawn(gameId!))
+  const handleSwap = (slotIndex: number) => {
+    setModal({ type: 'none' })
+    withBusy(() => swapWithSlot(gameId!, slotIndex))
+  }
 
-  const handleUsePower = () => {
-    setShowPeekSelect(true)
+  const handleDiscard = () => {
+    setModal({ type: 'none' })
+    withBusy(() => discardDrawn(gameId!))
+  }
+
+  // ─── Power handlers (route by effectType, not rank) ────
+  const handleUsePower = (_rankKey: PowerRankKey, effectType: PowerEffectType) => {
+    switch (effectType) {
+      case 'peek_all_three_of_your_cards':
+        setModal({ type: 'none' })
+        withBusy(async () => {
+          const cards = await usePeekAll(gameId!)
+          setModal({ type: 'peekAll', cards })
+        })
+        break
+      case 'peek_one_of_your_cards':
+        setModal({ type: 'peekOne' })
+        break
+      case 'swap_one_to_one':
+        setModal({ type: 'swap' })
+        break
+      case 'lock_one_card':
+        setModal({ type: 'lock' })
+        break
+      case 'unlock_one_locked_card':
+        setModal({ type: 'unlock' })
+        break
+      case 'rearrange_cards':
+        setModal({ type: 'rearrange' })
+        break
+    }
   }
 
   const handlePeekSelect = (slotIndex: number) => {
-    setShowPeekSelect(false)
+    setModal({ type: 'none' })
     withBusy(async () => {
-      const card = await useJackPeek(gameId!, slotIndex)
-      setPeekResult({ card, slot: slotIndex })
+      const card = await usePeekOne(gameId!, slotIndex)
+      setModal({ type: 'peekResult', card, slot: slotIndex })
     })
   }
 
+  const handleSwapConfirm = (
+    targetA: { playerId: string; slotIndex: number },
+    targetB: { playerId: string; slotIndex: number },
+  ) => {
+    setModal({ type: 'none' })
+    withBusy(() => useSwap(gameId!, targetA, targetB))
+  }
+
+  const handleLockSelect = (targetPlayerId: string, slotIndex: number) => {
+    setModal({ type: 'none' })
+    withBusy(() => useLock(gameId!, targetPlayerId, slotIndex))
+  }
+
+  const handleUnlockSelect = (targetPlayerId: string, slotIndex: number) => {
+    setModal({ type: 'none' })
+    withBusy(() => useUnlock(gameId!, targetPlayerId, slotIndex))
+  }
+
+  const handleRearrangeSelect = (targetPlayerId: string) => {
+    setModal({ type: 'none' })
+    withBusy(() => useRearrange(gameId!, targetPlayerId))
+  }
+
+  const handleCancelPower = () => {
+    setModal({ type: 'none' })
+    handleDiscard()
+  }
+
   const handleCallEnd = () => {
-    if (!confirm('Are you sure you want to end the game? All cards will be revealed.')) return
+    if (!confirm(
+      'Are you sure? Every other player gets one more turn, then all cards are revealed.'
+    )) return
     withBusy(() => callEnd(gameId!))
   }
 
@@ -123,7 +213,6 @@ export default function Game() {
   const currentTurnName = game.currentTurnPlayerId
     ? players[game.currentTurnPlayerId]?.displayName ?? 'Unknown'
     : null
-  const isJack = drawnCard?.rank === 'J' && !drawnCard.isJoker
 
   return (
     <div className="min-h-screen flex flex-col p-3 md:p-4 max-w-5xl mx-auto">
@@ -134,10 +223,17 @@ export default function Game() {
           <span className="text-xs text-slate-500">
             Draw pile: <span className="text-slate-300 font-medium">{game.drawPileCount}</span>
           </span>
-          {game.status === 'active' && (
+          {game.status === 'ending' && (
+            <span className="px-2 py-1 bg-amber-900/40 border border-amber-600/50 text-amber-300 rounded-lg text-xs font-medium animate-pulse">
+              Ending Round...
+            </span>
+          )}
+          {/* End button: only visible to the current turn player when game is active */}
+          {isMyTurn && game.status === 'active' && (
             <button
               onClick={handleCallEnd}
-              className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 border border-red-700/50 text-red-300 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+              disabled={busy}
+              className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 border border-red-700/50 text-red-300 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
             >
               End Game
             </button>
@@ -159,7 +255,7 @@ export default function Game() {
         {isMyTurn ? (
           isDrawPhase
             ? 'Your turn! Choose where to draw from.'
-            : 'Choose: swap with a card or discard.'
+            : 'Choose: swap with a card, discard, or use a power.'
         ) : (
           `Waiting for ${currentTurnName} to play...`
         )}
@@ -171,11 +267,14 @@ export default function Game() {
           {otherPlayers.map((pid) => (
             <PlayerPanel
               key={pid}
+              playerId={pid}
               displayName={players[pid]?.displayName ?? 'Unknown'}
               isCurrentTurn={game.currentTurnPlayerId === pid}
               isLocalPlayer={false}
               seatIndex={players[pid]?.seatIndex ?? 0}
               connected={players[pid]?.connected ?? false}
+              locks={players[pid]?.locks ?? [false, false, false]}
+              lockedBy={players[pid]?.lockedBy}
             />
           ))}
         </div>
@@ -219,12 +318,15 @@ export default function Game() {
       {/* Local player */}
       <div className="mb-4">
         <PlayerPanel
+          playerId={user.uid}
           displayName={players[user.uid]?.displayName ?? 'You'}
           isCurrentTurn={isMyTurn}
           isLocalPlayer
           privateState={privateState}
           seatIndex={players[user.uid]?.seatIndex ?? 0}
           connected
+          locks={myLocks}
+          lockedBy={myPlayer?.lockedBy}
           onSlotClick={isActionPhase ? handleSwap : undefined}
           slotClickable={isActionPhase && !!drawnCard}
         />
@@ -233,32 +335,93 @@ export default function Game() {
       {/* Game Log */}
       <GameLog log={game.log} />
 
-      {/* Drawn Card Modal */}
-      {isActionPhase && drawnCard && (
+      {/* ─── Modals ─────────────────────────────────────────── */}
+
+      {/* Drawn Card Modal (main action chooser) */}
+      {isActionPhase && drawnCard && modal.type === 'none' && (
         <DrawnCardModal
           card={drawnCard}
+          locks={myLocks}
+          powerAssignments={powerAssignments}
+          spentPowerCardIds={spentPowerCardIds}
           onSwap={handleSwap}
           onDiscard={handleDiscard}
           onUsePower={handleUsePower}
-          isJack={isJack}
         />
       )}
 
-      {/* Peek selection modal */}
+      {/* Effect: peek_one — slot picker */}
       <PeekModal
-        open={showPeekSelect}
+        open={modal.type === 'peekOne'}
         onSelect={handlePeekSelect}
-        onCancel={() => {
-          setShowPeekSelect(false)
-          handleDiscard()
-        }}
+        onCancel={handleCancelPower}
       />
 
-      {/* Peek result modal */}
+      {/* Effect: peek result display */}
       <PeekResultModal
-        card={peekResult?.card ?? null}
-        slotIndex={peekResult?.slot ?? null}
-        onClose={() => setPeekResult(null)}
+        card={modal.type === 'peekResult' ? modal.card : null}
+        slotIndex={modal.type === 'peekResult' ? modal.slot : null}
+        onClose={() => setModal({ type: 'none' })}
+      />
+
+      {/* Effect: peek_all result display */}
+      <PeekAllModal
+        open={modal.type === 'peekAll'}
+        revealedCards={modal.type === 'peekAll' ? modal.cards : {}}
+        locks={myLocks}
+        onClose={() => setModal({ type: 'none' })}
+      />
+
+      {/* Effect: swap_one_to_one */}
+      <QueenSwapModal
+        open={modal.type === 'swap'}
+        players={players}
+        playerOrder={modalPlayerOrder}
+        localPlayerId={user.uid}
+        knownCards={myKnown}
+        onConfirm={handleSwapConfirm}
+        onCancel={handleCancelPower}
+      />
+
+      {/* Effect: lock_one_card */}
+      <SlotPickerModal
+        open={modal.type === 'lock'}
+        title="Power: Lock"
+        subtitle="Choose an unlocked card to lock. Locked cards cannot be swapped."
+        accentColor="red"
+        players={players}
+        playerOrder={modalPlayerOrder}
+        localPlayerId={user.uid}
+        knownCards={myKnown}
+        slotFilter={(_pid: string, slotIndex: number, pd: PlayerDoc) => !pd.locks[slotIndex]}
+        onSelect={handleLockSelect}
+        onCancel={handleCancelPower}
+      />
+
+      {/* Effect: unlock_one_locked_card */}
+      <SlotPickerModal
+        open={modal.type === 'unlock'}
+        title="Power: Unlock"
+        subtitle="Choose a locked card to unlock."
+        accentColor="cyan"
+        players={players}
+        playerOrder={modalPlayerOrder}
+        localPlayerId={user.uid}
+        knownCards={myKnown}
+        slotFilter={(_pid: string, slotIndex: number, pd: PlayerDoc) => pd.locks[slotIndex]}
+        onSelect={handleUnlockSelect}
+        onCancel={handleCancelPower}
+        noTargetsMessage="No cards are locked."
+      />
+
+      {/* Effect: rearrange_cards */}
+      <JokerChaosModal
+        open={modal.type === 'rearrange'}
+        players={players}
+        playerOrder={modalPlayerOrder}
+        localPlayerId={user.uid}
+        onSelect={handleRearrangeSelect}
+        onCancel={handleCancelPower}
       />
     </div>
   )

@@ -1,0 +1,76 @@
+import { motion, AnimatePresence } from 'framer-motion'
+import type { PlayerDoc } from '../lib/types'
+
+interface JokerChaosModalProps {
+  open: boolean
+  players: Record<string, PlayerDoc>
+  playerOrder: string[]
+  localPlayerId: string
+  onSelect: (targetPlayerId: string) => void
+  onCancel: () => void
+}
+
+export default function JokerChaosModal({
+  open,
+  players,
+  playerOrder,
+  localPlayerId,
+  onSelect,
+  onCancel,
+}: JokerChaosModalProps) {
+  const others = playerOrder.filter((pid) => pid !== localPlayerId)
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.8, y: 40 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.8, y: 40 }}
+            className="bg-slate-800 border border-fuchsia-500/50 rounded-2xl p-5 max-w-sm w-full shadow-2xl"
+          >
+            <h3 className="text-center text-lg font-semibold text-fuchsia-300 mb-1">
+              Joker Power: Chaos!
+            </h3>
+            <p className="text-xs text-slate-400 text-center mb-4">
+              Choose a player whose unlocked cards will be randomly shuffled.
+            </p>
+
+            <div className="space-y-2 mb-4">
+              {others.map((pid) => {
+                const pd = players[pid]
+                if (!pd) return null
+                const unlockedCount = pd.locks.filter((l) => !l).length
+                return (
+                  <button
+                    key={pid}
+                    onClick={() => onSelect(pid)}
+                    className="w-full py-3 px-4 bg-slate-900/60 hover:bg-fuchsia-900/30 border border-slate-600 hover:border-fuchsia-400 rounded-xl text-left transition-all cursor-pointer flex items-center justify-between"
+                  >
+                    <span className="text-slate-200 font-medium">{pd.displayName}</span>
+                    <span className="text-xs text-slate-500">
+                      {unlockedCount} unlocked card{unlockedCount !== 1 ? 's' : ''}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              onClick={onCancel}
+              className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm transition-colors cursor-pointer"
+            >
+              Cancel (Discard instead)
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}

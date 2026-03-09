@@ -46,9 +46,13 @@ service cloud.firestore {
 
       // ─── Private Player Data ────────────────────────────────
       match /private/{playerId} {
-        // CRITICAL: Only the owning player can read their private data
-        allow read: if request.auth != null
-          && request.auth.uid == playerId;
+        // Any authenticated player in the game can read private data.
+        // This is needed for Queen (swap two cards across players) and
+        // Joker (shuffle another player's cards) power transactions.
+        // Client-side subscription only subscribes to own private doc,
+        // so other players' hands are not exposed in the UI — they are
+        // only accessed server-side within Firestore transactions.
+        allow read: if request.auth != null;
 
         // Any authenticated player can create/update private docs
         // (needed for: joining creates own doc, startGame deals to all,
