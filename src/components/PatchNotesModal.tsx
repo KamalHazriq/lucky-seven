@@ -1,14 +1,59 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { RELEASES, CURRENT_VERSION } from '../constants/releases'
+import type { ReleaseNote } from '../constants/releases'
 
 interface PatchNotesModalProps {
   open: boolean
   onClose: () => void
 }
 
+/**
+ * Group releases by major.minor version.
+ * e.g. v1.4, v1.4.1, v1.4.2 all belong to group "v1.4"
+ */
+function getVersionGroup(version: string): string {
+  // "v1.4.2" → "v1.4", "v1.4" → "v1.4", "v1.3" → "v1.3"
+  const match = version.match(/^(v\d+\.\d+)/)
+  return match ? match[1] : version
+}
+
+interface VersionGroup {
+  key: string        // e.g. "v1.4"
+  primary: ReleaseNote  // The base version (v1.4)
+  subs: ReleaseNote[]   // Sub-versions (v1.4.1, v1.4.2) — newest first
+}
+
 export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps) {
-  const [selectedIdx, setSelectedIdx] = useState(0)
+  const [selectedGroupIdx, setSelectedGroupIdx] = useState(0)
+  const [expandedSubs, setExpandedSubs] = useState<Record<string, boolean>>({})
+
+  // Group releases by major.minor
+  const groups = useMemo<VersionGroup[]>(() => {
+    const groupMap = new Map<string, ReleaseNote[]>()
+    for (const r of RELEASES) {
+      const key = getVersionGroup(r.version)
+      if (!groupMap.has(key)) groupMap.set(key, [])
+      groupMap.get(key)!.push(r)
+    }
+
+    const result: VersionGroup[] = []
+    for (const [key, releases] of groupMap) {
+      // Primary = the base version (shortest version string, e.g. "v1.4")
+      const primary = releases.find((r) => r.version === key) ?? releases[releases.length - 1]
+      // Subs = anything that's not the primary, ordered newest first
+      const subs = releases.filter((r) => r.version !== key)
+      result.push({ key, primary, subs })
+    }
+
+    return result
+  }, [])
+
+  const toggleSub = (version: string) => {
+    setExpandedSubs((prev) => ({ ...prev, [version]: !prev[version] }))
+  }
+
+  const currentGroup = groups[selectedGroupIdx]
 
   return (
     <AnimatePresence>
@@ -42,50 +87,85 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
               </button>
             </div>
 
-            {/* Version tabs */}
-            <div className="flex gap-1.5 mb-3 shrink-0">
-              {RELEASES.map((r, i) => (
+            {/* Version group tabs */}
+            <div className="flex gap-1.5 mb-3 shrink-0 flex-wrap">
+              {groups.map((g, i) => (
                 <button
-                  key={r.version}
-                  onClick={() => setSelectedIdx(i)}
+                  key={g.key}
+                  onClick={() => setSelectedGroupIdx(i)}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                    selectedIdx === i
+                    selectedGroupIdx === i
                       ? 'bg-amber-600 text-white'
                       : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                   }`}
                 >
-                  {r.version}
+                  {g.key}
+                  {g.subs.length > 0 && (
+                    <span className="ml-1 text-[9px] opacity-60">+{g.subs.length}</span>
+                  )}
                 </button>
               ))}
             </div>
 
             {/* Content */}
             <div className="overflow-y-auto flex-1 min-h-0">
-              {RELEASES[selectedIdx] && (
+              {currentGroup && (
                 <div>
+                  {/* Sub-version accordions — shown ABOVE the primary */}
+                  {currentGroup.subs.length > 0 && (
+                    <div className="mb-4 flex flex-col gap-1.5">
+                      {currentGroup.subs.map((sub) => {
+                        const isExpanded = !!expandedSubs[sub.version]
+                        return (
+                          <div key={sub.version} className="rounded-lg border border-slate-700/50 overflow-hidden">
+                            <button
+                              onClick={() => toggleSub(sub.version)}
+                              className="w-full flex items-center justify-between px-3 py-2 bg-slate-700/30 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-amber-300">{sub.version}</span>
+                                <span className="text-[10px] text-slate-400">{sub.title}</span>
+                              </div>
+                              <motion.span
+                                animate={{ rotate: isExpanded ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="text-slate-500 text-xs"
+                              >
+                                {'\u25BC'}
+                              </motion.span>
+                            </button>
+                            <AnimatePresence initial={false}>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-3 py-2 border-t border-slate-700/30">
+                                    <p className="text-[10px] text-slate-500 mb-2">{sub.date}</p>
+                                    {renderSections(sub.sections)}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Primary version content — always visible */}
                   <div className="mb-3">
                     <h4 className="text-sm font-bold text-slate-200">
-                      {RELEASES[selectedIdx].title}
+                      {currentGroup.primary.version} — {currentGroup.primary.title}
                     </h4>
                     <p className="text-[10px] text-slate-500">
-                      {RELEASES[selectedIdx].date}
+                      {currentGroup.primary.date}
                     </p>
                   </div>
-                  {RELEASES[selectedIdx].sections.map((section, si) => (
-                    <div key={si} className="mb-3">
-                      <h5 className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider mb-1.5">
-                        {section.heading}
-                      </h5>
-                      <ul className="space-y-1.5 mb-2">
-                        {section.items.map((item, i) => (
-                          <li key={i} className="flex gap-2 text-xs text-slate-300">
-                            <span className="text-amber-400 shrink-0">•</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                  {renderSections(currentGroup.primary.sections)}
                 </div>
               )}
             </div>
@@ -104,4 +184,23 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
       )}
     </AnimatePresence>
   )
+}
+
+/** Render release sections (shared between primary and sub-versions) */
+function renderSections(sections: { heading: string; items: string[] }[]) {
+  return sections.map((section, si) => (
+    <div key={si} className="mb-3">
+      <h5 className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider mb-1.5">
+        {section.heading}
+      </h5>
+      <ul className="space-y-1.5 mb-2">
+        {section.items.map((item, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-300">
+            <span className="text-amber-400 shrink-0">•</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))
 }

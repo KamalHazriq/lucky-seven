@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.4.2'
+export const CURRENT_VERSION = 'v1.4.3'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,56 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.4.3',
+    title: 'UI Stabilization',
+    date: '10 March 2026',
+    sections: [
+      {
+        heading: 'Toolbar & Controls',
+        items: [
+          'All toolbar buttons now show descriptive tooltips on hover',
+          'Active state styling for Layout, UI Mode, and Log Position toggles',
+          'Proper aria-labels on all toggle buttons for accessibility',
+        ],
+      },
+      {
+        heading: 'Table Layout',
+        items: [
+          'Wider seat spacing for 5-7 player games — no more card overlap',
+          'Better two-row seat strategy: sides + top arc',
+          'Taller table container with proportional heights per player count',
+          'Reduced panel widths for 6+ players to prevent collision',
+        ],
+      },
+      {
+        heading: 'Card Styling',
+        items: [
+          'Premium card backs: full owner-color gradient fill, no heavy outline',
+          'Subtle neutral border (border-white/6%) replaces thick colored ring',
+          'White border highlight only appears on hover (desktop)',
+          'Softer shimmer animation (8% opacity, 4s cycle)',
+        ],
+      },
+      {
+        heading: 'Game Log',
+        items: [
+          'Cleaner log layout with consistent row structure and vertical spacing',
+          'Older entries fade out (opacity dimming) for visual hierarchy',
+          'Compact uniform chip sizing for names, powers, and card references',
+          'Left sidebar log with tighter padding and proper sticky positioning',
+        ],
+      },
+      {
+        heading: 'Patch Notes',
+        items: [
+          'Sub-versions (v1.4.1, v1.4.2, v1.4.3) grouped under v1.4 tab',
+          'Expandable accordion for sub-version details',
+          'Cleaner version navigation with +N badge for sub-version count',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.4.2',
     title: 'Premium Choreography',

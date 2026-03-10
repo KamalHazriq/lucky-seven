@@ -1,8 +1,8 @@
 /**
  * getSeatPositions — returns { left, top } (%) for each seat around a poker-table ellipse.
  *
- * v1.4.1: Improved geometry — hand-tuned positions for 1–7 opponents,
- * min distance guarantees, clamping to avoid header/pile/local-player overlap.
+ * v1.4.3: Wider spacing for 5+ players, collision protection,
+ * better two-row strategy for 6-7 opponents.
  *
  * Local player is always fixed at bottom-center (not returned here).
  *
@@ -15,13 +15,13 @@ export interface SeatPosition {
 }
 
 // Safe bounds — reserve header, sides, and local player zone
-const MIN_TOP = 8
-const MAX_TOP = 78
-const MIN_LEFT = 8
-const MAX_LEFT = 92
+const MIN_TOP = 6
+const MAX_TOP = 74
+const MIN_LEFT = 5
+const MAX_LEFT = 95
 
 const CX = 50
-const CY = 46
+const CY = 42
 
 /** Clamp a seat position to safe bounds */
 function clamp(pos: SeatPosition): SeatPosition {
@@ -37,71 +37,78 @@ export function getSeatPositions(otherCount: number): SeatPosition[] {
   // ─── Hand-tuned layouts for common player counts ───
 
   if (otherCount === 1) {
-    return [clamp({ left: CX, top: 10 })]
+    return [clamp({ left: CX, top: 8 })]
   }
 
   if (otherCount === 2) {
     return [
-      clamp({ left: 22, top: 22 }),
-      clamp({ left: 78, top: 22 }),
+      clamp({ left: 20, top: 18 }),
+      clamp({ left: 80, top: 18 }),
     ]
   }
 
   if (otherCount === 3) {
     return [
-      clamp({ left: 15, top: 28 }),
-      clamp({ left: CX, top: 10 }),
-      clamp({ left: 85, top: 28 }),
+      clamp({ left: 12, top: 26 }),
+      clamp({ left: CX, top: 8 }),
+      clamp({ left: 88, top: 26 }),
     ]
   }
 
   if (otherCount === 4) {
     return [
-      clamp({ left: 10, top: 38 }),
-      clamp({ left: 28, top: 14 }),
-      clamp({ left: 72, top: 14 }),
-      clamp({ left: 90, top: 38 }),
+      clamp({ left: 8, top: 36 }),
+      clamp({ left: 26, top: 10 }),
+      clamp({ left: 74, top: 10 }),
+      clamp({ left: 92, top: 36 }),
     ]
   }
 
+  // 5+ players: use two-row strategy for best spacing
   if (otherCount === 5) {
+    // Row 1 (top): 3 players evenly spaced
+    // Row 2 (sides): 2 players flanking
     return [
-      clamp({ left: 8, top: 42 }),
-      clamp({ left: 22, top: 14 }),
-      clamp({ left: CX, top: 9 }),
-      clamp({ left: 78, top: 14 }),
-      clamp({ left: 92, top: 42 }),
+      clamp({ left: 5, top: 40 }),
+      clamp({ left: 20, top: 10 }),
+      clamp({ left: CX, top: 7 }),
+      clamp({ left: 80, top: 10 }),
+      clamp({ left: 95, top: 40 }),
     ]
   }
 
   if (otherCount === 6) {
+    // Row 1 (top): 4 players
+    // Row 2 (sides): 2 players
     return [
-      clamp({ left: 8, top: 46 }),
-      clamp({ left: 14, top: 22 }),
-      clamp({ left: 38, top: 9 }),
-      clamp({ left: 62, top: 9 }),
-      clamp({ left: 86, top: 22 }),
-      clamp({ left: 92, top: 46 }),
+      clamp({ left: 5, top: 42 }),
+      clamp({ left: 12, top: 18 }),
+      clamp({ left: 36, top: 7 }),
+      clamp({ left: 64, top: 7 }),
+      clamp({ left: 88, top: 18 }),
+      clamp({ left: 95, top: 42 }),
     ]
   }
 
   if (otherCount === 7) {
+    // Row 1 (top): 5 players
+    // Row 2 (sides): 2 players
     return [
-      clamp({ left: 8, top: 50 }),
-      clamp({ left: 10, top: 26 }),
-      clamp({ left: 30, top: 9 }),
-      clamp({ left: CX, top: 8 }),
-      clamp({ left: 70, top: 9 }),
-      clamp({ left: 90, top: 26 }),
-      clamp({ left: 92, top: 50 }),
+      clamp({ left: 5, top: 46 }),
+      clamp({ left: 8, top: 22 }),
+      clamp({ left: 28, top: 7 }),
+      clamp({ left: CX, top: 6 }),
+      clamp({ left: 72, top: 7 }),
+      clamp({ left: 92, top: 22 }),
+      clamp({ left: 95, top: 46 }),
     ]
   }
 
   // ─── Fallback: parametric elliptical distribution ───
   const positions: SeatPosition[] = []
-  const rx = 42
-  const ry = 36
-  const padAngle = Math.max(0.06, 0.15 - otherCount * 0.01)
+  const rx = 44
+  const ry = 34
+  const padAngle = Math.max(0.04, 0.12 - otherCount * 0.008)
   const startAngle = Math.PI - padAngle
   const endAngle = padAngle
 

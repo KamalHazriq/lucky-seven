@@ -782,17 +782,22 @@ export default function Game() {
             {!isMobile && (
               <button
                 onClick={toggleLayout}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60 transition-colors cursor-pointer"
+                className={`group relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  layout === 'table'
+                    ? 'bg-emerald-900/40 border border-emerald-600/40 text-emerald-400'
+                    : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
+                }`}
                 aria-label={`Switch to ${layout === 'classic' ? 'table' : 'classic'} layout`}
                 title={`Layout: ${layout === 'classic' ? 'Classic' : 'Table'}`}
               >
                 {layout === 'classic' ? '\u{1FA91}' : '\u{1F4CB}'}
+                <span className="toolbar-tooltip">{layout === 'classic' ? 'Table' : 'Classic'}</span>
               </button>
             )}
             {!isMobile && (
               <button
                 onClick={toggleUiMode}
-                className={`min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`group relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                   uiMode === 'actionbar'
                     ? 'bg-teal-900/40 border border-teal-600/40 text-teal-400'
                     : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
@@ -801,20 +806,22 @@ export default function Game() {
                 title={`UI: ${uiMode === 'actionbar' ? 'Action Bar (inline)' : 'Modal (popup)'}`}
               >
                 {uiMode === 'actionbar' ? '\u{2261}' : '\u{25A1}'}
+                <span className="toolbar-tooltip">{uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}</span>
               </button>
             )}
             {canLogSidebar && (
               <button
                 onClick={toggleLogPosition}
-                className={`min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`group relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                   logPosition === 'left'
                     ? 'bg-orange-900/40 border border-orange-600/40 text-orange-400'
                     : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
                 }`}
-                aria-label={`Log position: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
+                aria-label={`Toggle log position: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
                 title={`Log: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
               >
                 {logPosition === 'left' ? '\u{2190}' : '\u{2193}'}
+                <span className="toolbar-tooltip">{logPosition === 'left' ? 'Log: Side' : 'Log: Bottom'}</span>
               </button>
             )}
             <GameSettingsBar />
@@ -866,11 +873,11 @@ export default function Game() {
       )}
 
       {/* ─── Main Content ─────────────────────────────────────── */}
-      <div className={`flex-1 p-3 md:p-4 ${logPosition === 'left' ? 'flex gap-4' : 'flex flex-col'}`}>
+      <div className={`flex-1 p-3 md:p-5 ${logPosition === 'left' ? 'flex gap-5' : 'flex flex-col'}`}>
 
         {/* Left sidebar log */}
         {logPosition === 'left' && (
-          <div className="shrink-0 w-64 min-h-0 sticky top-16 self-start max-h-[calc(100dvh-5rem)]">
+          <div className="shrink-0 w-60 min-h-0 sticky top-16 self-start max-h-[calc(100dvh-5rem)] pt-1">
             <GameLog log={game.log} players={players} position="left" />
           </div>
         )}
@@ -890,7 +897,7 @@ export default function Game() {
           key={game.currentTurnPlayerId}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`text-center py-2 px-4 rounded-xl mb-4 text-sm font-medium ${
+          className={`text-center py-2 px-4 rounded-xl mb-5 text-sm font-medium ${
             isMyTurn
               ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
               : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
@@ -909,15 +916,15 @@ export default function Game() {
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            const baseH = otherPlayers.length <= 2 ? 480 : otherPlayers.length <= 4 ? 540 : otherPlayers.length <= 6 ? 600 : 660
-            const panelW = otherPlayers.length <= 4 ? '210px' : '180px'
+            const baseH = otherPlayers.length <= 2 ? 500 : otherPlayers.length <= 4 ? 560 : otherPlayers.length <= 6 ? 640 : 700
+            const panelW = otherPlayers.length <= 3 ? '210px' : otherPlayers.length <= 5 ? '180px' : '160px'
             return (
               <>
               <div
-                className="relative w-full mb-4"
+                className="relative w-full mb-6"
                 style={{
                   minHeight: `${baseH}px`,
-                  paddingTop: '16px',
+                  paddingTop: '20px',
                 }}
               >
                 {/* Table surface — oval felt gradient */}
@@ -987,7 +994,7 @@ export default function Game() {
                         top: `${pos.top}%`,
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
-                        width: '44%',
+                        width: otherPlayers.length <= 4 ? '44%' : '38%',
                       }}
                     >
                       <PlayerPanel

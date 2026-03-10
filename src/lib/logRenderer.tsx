@@ -53,10 +53,10 @@ const sourcePattern = new RegExp(
   'gi',
 )
 
-/** Power label chip component */
+/** Power label chip — small rounded pill, consistent color */
 function PowerChip({ label }: { label: string }) {
   return (
-    <span className="inline-block px-1.5 py-0 rounded text-[10px] font-extrabold uppercase tracking-wide leading-relaxed bg-violet-900/40 text-violet-300 border border-violet-700/40">
+    <span className="inline-flex items-center px-1.5 py-px rounded-md text-[9px] font-bold uppercase tracking-wider bg-violet-900/50 text-violet-300 border border-violet-700/30 leading-none align-middle">
       {label}
     </span>
   )
@@ -64,12 +64,12 @@ function PowerChip({ label }: { label: string }) {
 
 /** Card display chip — shows card with suit color */
 function CardChip({ text }: { text: string }) {
-  const isRed = text.includes('\u2665') || text.includes('\u2666') // ♥ or ♦
+  const isRed = text.includes('\u2665') || text.includes('\u2666') // hearts or diamonds
   const isJoker = text.toLowerCase().includes('joker')
   const colorClass = isJoker ? 'text-purple-400' : isRed ? 'text-red-400' : 'text-slate-300'
 
   return (
-    <span className={`inline-block px-1 py-0 rounded text-[10px] font-bold leading-relaxed bg-slate-800/60 border border-slate-600/40 ${colorClass}`}>
+    <span className={`inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-slate-800/50 border border-slate-600/30 leading-none align-middle ${colorClass}`}>
       {text}
     </span>
   )
@@ -78,7 +78,7 @@ function CardChip({ text }: { text: string }) {
 /** Source label chip — DISCARD or PILE */
 function SourceChip({ label, color }: { label: string; color: string }) {
   return (
-    <span className={`inline-block px-1 py-0 rounded text-[10px] font-bold uppercase tracking-wide leading-relaxed ${color}`}>
+    <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider leading-none align-middle ${color}`}>
       {label}
     </span>
   )
@@ -230,7 +230,7 @@ export function renderLogMessage(
       result.push(
         <span
           key={`name-${i}`}
-          className="inline-block px-1.5 py-0 rounded text-[10px] font-bold leading-relaxed"
+          className="inline-flex items-center px-1.5 py-px rounded-md text-[9px] font-bold leading-none align-middle"
           style={{
             backgroundColor: color.bg,
             color: color.text,

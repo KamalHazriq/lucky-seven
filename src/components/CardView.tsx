@@ -89,21 +89,21 @@ export default function CardView({
         ${sizes[size]}
         relative rounded-xl select-none
         flex flex-col items-center justify-center
-        shadow-lg transition-shadow duration-200
+        transition-shadow duration-200
         ${onClick && !disabled ? 'cursor-pointer' : ''}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
-          ? 'bg-white border border-slate-200'
+          ? 'bg-white border border-slate-200 shadow-lg'
           : ownerColor
-            ? 'border border-white/10 hover:border-white/30 transition-[border-color]'
-            : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2 border-blue-700'
+            ? 'border border-white/[0.06] hover:border-white/25 transition-[border-color] shadow-md'
+            : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700/50 shadow-md'
         }
       `}
       style={{
         perspective: '600px',
         ...(!showFace && ownerColor ? {
-          background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.75)} 0%, ${hexToRgba(ownerColor, 0.5)} 40%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
+          background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.8)} 0%, ${hexToRgba(ownerColor, 0.55)} 40%, ${hexToRgba(ownerColor, 0.65)} 100%)`,
         } : {}),
       }}
     >

@@ -85,10 +85,10 @@ body {
 }
 
 .card-shimmer {
-  --shimmer-color: rgba(255,255,255,0.15);
+  --shimmer-color: rgba(255,255,255,0.08);
   background: linear-gradient(90deg, transparent 30%, var(--shimmer-color) 50%, transparent 70%);
   background-size: 200% 100%;
-  animation: shimmer 3s infinite;
+  animation: shimmer 4s infinite;
 }
 
 /* Theme select dropdown options — ensure readability */
@@ -151,6 +151,30 @@ select option {
 
 .stamp-slam {
   animation: stamp-slam 0.4s ease-out forwards;
+}
+
+/* Toolbar tooltip — appears below button on hover */
+.toolbar-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.group:hover .toolbar-tooltip {
+  opacity: 1;
 }
 
 /* Respect prefers-reduced-motion at CSS level */
