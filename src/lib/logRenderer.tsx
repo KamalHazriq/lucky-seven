@@ -6,7 +6,7 @@ interface PlayerInfo {
   seatIndex: number
 }
 
-// ─── Power label map (Section 4) ────────────────────────────
+// ─── Power label map ────────────────────────────────────────
 const POWER_KEYWORDS: Record<string, string> = {
   'peek all': 'PEEK ALL',
   'peek_all_three_of_your_cards': 'PEEK ALL',
@@ -33,6 +33,26 @@ const powerPattern = new RegExp(
   'gi',
 )
 
+// ─── Card display pattern — matches suit symbols in parentheses ────
+// Matches patterns like (10♠), (K♥), (A♦), (Joker), (7♣)
+const CARD_PATTERN = /(\([^)]*[♠♥♦♣][^)]*\)|\(Joker\))/g
+
+// ─── Source keywords — DISCARD, PILE ────────────────────────
+const SOURCE_KEYWORDS: Record<string, { label: string; color: string }> = {
+  'discard': { label: 'DISCARD', color: 'text-orange-400' },
+  'the discard': { label: 'DISCARD', color: 'text-orange-400' },
+  'from discard': { label: 'DISCARD', color: 'text-orange-400' },
+  'the pile': { label: 'PILE', color: 'text-blue-400' },
+  'from the pile': { label: 'PILE', color: 'text-blue-400' },
+  'drew from pile': { label: 'PILE', color: 'text-blue-400' },
+}
+
+const sourceKeywordsSorted = Object.keys(SOURCE_KEYWORDS).sort((a, b) => b.length - a.length)
+const sourcePattern = new RegExp(
+  `(${sourceKeywordsSorted.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`,
+  'gi',
+)
+
 /** Power label chip component */
 function PowerChip({ label }: { label: string }) {
   return (
@@ -42,18 +62,129 @@ function PowerChip({ label }: { label: string }) {
   )
 }
 
+/** Card display chip — shows card with suit color */
+function CardChip({ text }: { text: string }) {
+  const isRed = text.includes('\u2665') || text.includes('\u2666') // ♥ or ♦
+  const isJoker = text.toLowerCase().includes('joker')
+  const colorClass = isJoker ? 'text-purple-400' : isRed ? 'text-red-400' : 'text-slate-300'
+
+  return (
+    <span className={`inline-block px-1 py-0 rounded text-[10px] font-bold leading-relaxed bg-slate-800/60 border border-slate-600/40 ${colorClass}`}>
+      {text}
+    </span>
+  )
+}
+
+/** Source label chip — DISCARD or PILE */
+function SourceChip({ label, color }: { label: string; color: string }) {
+  return (
+    <span className={`inline-block px-1 py-0 rounded text-[10px] font-bold uppercase tracking-wide leading-relaxed ${color}`}>
+      {label}
+    </span>
+  )
+}
+
+/**
+ * Process a text fragment for card patterns, source keywords, and power keywords.
+ * Returns an array of ReactNode fragments.
+ */
+function processTextFragment(text: string, keyPrefix: string): ReactNode[] {
+  const result: ReactNode[] = []
+
+  // First split on card patterns
+  CARD_PATTERN.lastIndex = 0
+  const cardParts = text.split(CARD_PATTERN)
+
+  for (let c = 0; c < cardParts.length; c++) {
+    const cardPart = cardParts[c]
+    if (!cardPart) continue
+
+    // Check if this is a card reference
+    CARD_PATTERN.lastIndex = 0
+    if (CARD_PATTERN.test(cardPart)) {
+      CARD_PATTERN.lastIndex = 0
+      result.push(<CardChip key={`${keyPrefix}-card-${c}`} text={cardPart} />)
+      continue
+    }
+
+    // Check for source keywords
+    sourcePattern.lastIndex = 0
+    const sourceParts = cardPart.split(sourcePattern)
+
+    if (sourceParts.length === 1) {
+      // No source keywords — check for power keywords
+      powerPattern.lastIndex = 0
+      const powerParts = cardPart.split(powerPattern)
+
+      if (powerParts.length === 1) {
+        result.push(<span key={`${keyPrefix}-text-${c}`}>{cardPart}</span>)
+      } else {
+        for (let p = 0; p < powerParts.length; p++) {
+          const pp = powerParts[p]
+          if (!pp) continue
+          const normalized = pp.toLowerCase()
+          const powerLabel = POWER_KEYWORDS[normalized]
+          if (powerLabel) {
+            result.push(<PowerChip key={`${keyPrefix}-power-${c}-${p}`} label={powerLabel} />)
+          } else {
+            result.push(<span key={`${keyPrefix}-frag-${c}-${p}`}>{pp}</span>)
+          }
+        }
+      }
+    } else {
+      for (let s = 0; s < sourceParts.length; s++) {
+        const sp = sourceParts[s]
+        if (!sp) continue
+        const normalized = sp.toLowerCase()
+        const sourceInfo = SOURCE_KEYWORDS[normalized]
+        if (sourceInfo) {
+          result.push(<SourceChip key={`${keyPrefix}-src-${c}-${s}`} label={sourceInfo.label} color={sourceInfo.color} />)
+        } else {
+          // Recurse for power keywords in remaining text
+          powerPattern.lastIndex = 0
+          const powerParts = sp.split(powerPattern)
+          if (powerParts.length === 1) {
+            result.push(<span key={`${keyPrefix}-stxt-${c}-${s}`}>{sp}</span>)
+          } else {
+            for (let p = 0; p < powerParts.length; p++) {
+              const pp = powerParts[p]
+              if (!pp) continue
+              const normalizedP = pp.toLowerCase()
+              const powerLabel = POWER_KEYWORDS[normalizedP]
+              if (powerLabel) {
+                result.push(<PowerChip key={`${keyPrefix}-spow-${c}-${s}-${p}`} label={powerLabel} />)
+              } else {
+                result.push(<span key={`${keyPrefix}-sfrag-${c}-${s}-${p}`}>{pp}</span>)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return result
+}
+
 /**
  * Renders a log message with:
  * 1. Player names highlighted as colored chips (word-boundary safe)
  * 2. Power keywords rendered as bold uppercase badges
+ * 3. Card references (10♠) highlighted with suit colors
+ * 4. Source keywords (DISCARD, PILE) highlighted
  *
- * v1.4.1: Uses word boundaries for short name safety, power keyword formatting.
+ * v1.4.2: Card display chips, source labels, enhanced readability.
  */
 export function renderLogMessage(
   msg: string,
   playerMap: PlayerInfo[],
 ): ReactNode {
-  if (playerMap.length === 0 && !powerPattern.test(msg)) return msg
+  if (playerMap.length === 0 && !powerPattern.test(msg)) {
+    // Still check for card/source patterns even without players
+    powerPattern.lastIndex = 0
+    const fragments = processTextFragment(msg, 'np')
+    return fragments.length > 0 ? fragments : msg
+  }
   // Reset regex lastIndex since we use 'g' flag
   powerPattern.lastIndex = 0
 
@@ -69,13 +200,10 @@ export function renderLogMessage(
   }
 
   // ─── Step 1: Split on player names using word boundaries ───
-  // Use word boundaries (\b) to prevent matching "a" inside "swapped"
   const escaped = sorted.map((p) =>
     p.displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
   )
 
-  // For short names (≤2 chars), require word boundary on both sides
-  // For longer names, the existing approach is fine but we add boundaries for safety
   const namePatternStr = escaped
     .map((name) => `\\b${name}\\b`)
     .join('|')
@@ -88,7 +216,7 @@ export function renderLogMessage(
     parts = [msg]
   }
 
-  // ─── Step 2: For each part, check if it's a name or contains power keywords ───
+  // ─── Step 2: For each part, check if it's a name or process for keywords ───
   const result: ReactNode[] = []
 
   for (let i = 0; i < parts.length; i++) {
@@ -116,27 +244,9 @@ export function renderLogMessage(
       continue
     }
 
-    // Not a name — check for power keywords within this text segment
-    powerPattern.lastIndex = 0
-    const powerParts = part.split(powerPattern)
-
-    if (powerParts.length === 1) {
-      // No power keywords found
-      result.push(<span key={`text-${i}`}>{part}</span>)
-    } else {
-      // Has power keywords — render them as chips
-      for (let j = 0; j < powerParts.length; j++) {
-        const pp = powerParts[j]
-        if (!pp) continue
-        const normalized = pp.toLowerCase()
-        const powerLabel = POWER_KEYWORDS[normalized]
-        if (powerLabel) {
-          result.push(<PowerChip key={`power-${i}-${j}`} label={powerLabel} />)
-        } else {
-          result.push(<span key={`text-${i}-${j}`}>{pp}</span>)
-        }
-      }
-    }
+    // Not a name — process for card, source, and power keywords
+    const fragments = processTextFragment(part, `frag-${i}`)
+    result.push(...fragments)
   }
 
   return result.length > 0 ? result : msg

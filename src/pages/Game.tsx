@@ -36,6 +36,8 @@ import TurnQueue from '../components/TurnQueue'
 import { useActionHighlight } from '../hooks/useActionHighlight'
 import { useFlyingCard } from '../hooks/useFlyingCard'
 import FlyingCard from '../components/FlyingCard'
+import StagingSlot from '../components/StagingSlot'
+import DiscardFlip from '../components/DiscardFlip'
 import ChatPanel from '../components/ChatPanel'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useChat } from '../hooks/useChat'
@@ -48,6 +50,7 @@ import { getSeatPositions } from '../lib/seatPositions'
 import ActionBar from '../components/ActionBar'
 import { useSelectionMode } from '../hooks/useSelectionMode'
 import type { SelectionConstraint, SelectedTarget } from '../hooks/useSelectionMode'
+import { useChoreography } from '../hooks/useChoreography'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
@@ -101,9 +104,23 @@ export default function Game() {
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
   const { uiMode, toggleMode: toggleUiMode, isDesktop } = useUiMode()
   const { position: logPosition, toggle: toggleLogPosition, canSidebar: canLogSidebar } = useLogPosition()
-  const { flyingCard, triggerFly, queueFly, flushQueue, clearFly } = useFlyingCard()
+  const { flyingCard, triggerFly, flushQueue, clearFly } = useFlyingCard()
+  const {
+    choreo,
+    startDiscardTake,
+    onStagingArrival,
+    startSwapFromStaging,
+    onSlotArrival,
+    onDiscardArrival,
+    startDiscardAction,
+    startPileDraw,
+    onPlayerArrival,
+    reconstructStaging,
+    reset: resetChoreo,
+  } = useChoreography()
   const drawPileRef = useRef<HTMLDivElement>(null)
   const discardPileRef = useRef<HTMLDivElement>(null)
+  const stagingRef = useRef<HTMLDivElement>(null)
   const localPanelRef = useRef<HTMLDivElement>(null)
   const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const headerRef = useRef<HTMLDivElement>(null)
@@ -287,50 +304,146 @@ export default function Game() {
       await drawFromPile(gameId!)
       playSfx('draw'); vibrate()
       if (!reduced && fromEl && toEl) {
-        queueFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
+        // Section 3: face-down fly from pile to local panel (no staging for pile draws)
+        startPileDraw(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect())
       }
     })
   }
+
   const handleTakeDiscard = () => {
     if (!canDraw) return
     const fromEl = discardPileRef.current
-    const toEl = localPanelRef.current
+    const stagingEl = stagingRef.current
     const discardCard = game?.discardTop ?? null
     withBusy(async () => {
       await takeFromDiscard(gameId!)
       playSfx('draw'); vibrate()
-      if (!reduced && fromEl && toEl) {
-        queueFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, discardCard)
+      if (!reduced && fromEl && stagingEl && discardCard) {
+        // Section 2: fly discard card to staging area
+        startDiscardTake(discardCard, fromEl.getBoundingClientRect(), stagingEl.getBoundingClientRect())
       }
     })
   }
 
   const handleCancelDraw = () => {
-    withBusy(async () => { await cancelDraw(gameId!) })
+    const source = privateState?.drawnCardSource
+    withBusy(async () => {
+      await cancelDraw(gameId!)
+      // Clear staging on cancel
+      if (source === 'discard') {
+        const stagingEl = stagingRef.current
+        const discardEl = discardPileRef.current
+        if (!reduced && stagingEl && discardEl) {
+          startDiscardAction(
+            stagingEl.getBoundingClientRect(),
+            discardEl.getBoundingClientRect(),
+            choreo.staging.card,
+            choreo.staging.faceUp,
+          )
+        } else {
+          resetChoreo()
+        }
+      } else {
+        resetChoreo()
+      }
+    })
   }
 
   const handleSwap = (slotIndex: number) => {
     setModal({ type: 'none' })
+    const stagingEl = stagingRef.current
+    const localEl = localPanelRef.current
+    const discardEl = discardPileRef.current
+
     withBusy(async () => {
       await swapWithSlot(gameId!, slotIndex)
       playSfx('swap'); vibrate()
-      flushQueue()
+
+      if (!reduced && choreo.phase === 'staging' && stagingEl && localEl && discardEl) {
+        // Section 2: staging → slot, then swapped card → discard (face-down, identity hidden)
+        // The DiscardFlip component will reveal the card when discardTop updates
+        startSwapFromStaging(
+          stagingEl.getBoundingClientRect(),
+          localEl.getBoundingClientRect(),
+          discardEl.getBoundingClientRect(),
+          null, // Don't show card face — it's private until it lands on discard
+        )
+      } else {
+        resetChoreo()
+        flushQueue()
+      }
     })
   }
 
   const handleDiscard = () => {
     setModal({ type: 'none' })
-    const fromEl = localPanelRef.current
-    const toEl = discardPileRef.current
+    const stagingEl = stagingRef.current
+    const localEl = localPanelRef.current
+    const discardEl = discardPileRef.current
     withBusy(async () => {
       await discardDrawn(gameId!)
       playSfx('discard')
-      if (!reduced && fromEl && toEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
+
+      if (!reduced && choreo.phase === 'staging' && stagingEl && discardEl) {
+        // Section 2: staging card → discard pile
+        startDiscardAction(
+          stagingEl.getBoundingClientRect(),
+          discardEl.getBoundingClientRect(),
+          choreo.staging.card,
+          choreo.staging.faceUp,
+        )
+      } else if (!reduced && localEl && discardEl) {
+        // Pile draw path: fly from player to discard
+        triggerFly(localEl.getBoundingClientRect(), discardEl.getBoundingClientRect(), false)
+        flushQueue()
+      } else {
+        resetChoreo()
+        flushQueue()
       }
-      flushQueue()
     })
   }
+
+  // ─── Choreography flight completion handler ─────────────────
+  const handleChoreoComplete = useCallback(() => {
+    switch (choreo.phase) {
+      case 'flyToStaging':
+        onStagingArrival()
+        break
+      case 'flyToSlot':
+        onSlotArrival()
+        break
+      case 'flySwapToDiscard':
+        onDiscardArrival()
+        break
+      case 'flyToPlayer':
+        onPlayerArrival()
+        break
+      case 'flyToDiscard':
+        resetChoreo()
+        break
+    }
+  }, [choreo.phase, onStagingArrival, onSlotArrival, onDiscardArrival, onPlayerArrival, resetChoreo])
+
+  // ─── Section 6: Reconstruct staging on resume/refresh ──────
+  const hasReconstructedRef = useRef(false)
+  useEffect(() => {
+    if (hasReconstructedRef.current) return
+    if (!isMyTurn || !hasDrawnCard || !privateState) return
+    // Only reconstruct if choreography is idle (page just loaded)
+    if (choreo.phase !== 'idle') return
+
+    hasReconstructedRef.current = true
+    reconstructStaging(drawnCard, privateState.drawnCardSource)
+  }, [isMyTurn, hasDrawnCard, privateState, choreo.phase, drawnCard, reconstructStaging])
+
+  // Reset reconstruction flag when drawn card is consumed
+  useEffect(() => {
+    if (!hasDrawnCard) {
+      hasReconstructedRef.current = false
+      // Also reset choreography when turn completes
+      if (choreo.phase === 'staging') resetChoreo()
+    }
+  }, [hasDrawnCard, choreo.phase, resetChoreo])
 
   // ─── Power handlers ────────────────────────────────────────
   // In actionbar mode, powers use selection mode instead of modals
@@ -818,8 +931,8 @@ export default function Game() {
                   }}
                 />
 
-                {/* Center: Draw + Discard piles */}
-                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
+                {/* Center: Draw + Staging + Discard piles */}
+                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 z-10">
                   <div className="text-center" ref={drawPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Draw</p>
                     <CardView
@@ -831,17 +944,28 @@ export default function Game() {
                       label={`${game.drawPileCount}`}
                     />
                   </div>
-                  <div className="text-center" ref={discardPileRef}>
+                  {/* Staging slot — Section 2 */}
+                  <StagingSlot
+                    ref={stagingRef}
+                    card={choreo.staging.card}
+                    faceUp={choreo.staging.faceUp}
+                    active={choreo.phase === 'staging'}
+                  />
+                  <div className="text-center relative" ref={discardPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Discard</p>
                     {game.discardTop ? (
-                      <CardView
-                        card={game.discardTop}
-                        faceUp
-                        size="md"
-                        onClick={canDraw ? handleTakeDiscard : undefined}
-                        disabled={!canDraw}
-                        highlight={canDraw}
-                      />
+                      <div className="relative">
+                        <CardView
+                          card={game.discardTop}
+                          faceUp
+                          size="md"
+                          onClick={canDraw ? handleTakeDiscard : undefined}
+                          disabled={!canDraw}
+                          highlight={canDraw}
+                        />
+                        {/* Section 5: Discard flip overlay */}
+                        <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
+                      </div>
                     ) : (
                       <div className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
                         <span className="text-slate-600 text-[10px]">Empty</span>
@@ -973,8 +1097,8 @@ export default function Game() {
               </div>
             )}
 
-            {/* Table area: Draw + Discard */}
-            <div className="flex items-center justify-center gap-8 mb-6 py-4">
+            {/* Table area: Draw + Staging + Discard */}
+            <div className="flex items-center justify-center gap-6 mb-6 py-4">
               <div className="text-center" ref={drawPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
                 <CardView
@@ -987,17 +1111,29 @@ export default function Game() {
                 />
               </div>
 
-              <div className="text-center" ref={discardPileRef}>
+              {/* Staging slot — Section 2 */}
+              <StagingSlot
+                ref={stagingRef}
+                card={choreo.staging.card}
+                faceUp={choreo.staging.faceUp}
+                active={choreo.phase === 'staging'}
+              />
+
+              <div className="text-center relative" ref={discardPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Discard</p>
                 {game.discardTop ? (
-                  <CardView
-                    card={game.discardTop}
-                    faceUp
-                    size="lg"
-                    onClick={canDraw ? handleTakeDiscard : undefined}
-                    disabled={!canDraw}
-                    highlight={canDraw}
-                  />
+                  <div className="relative">
+                    <CardView
+                      card={game.discardTop}
+                      faceUp
+                      size="lg"
+                      onClick={canDraw ? handleTakeDiscard : undefined}
+                      disabled={!canDraw}
+                      highlight={canDraw}
+                    />
+                    {/* Section 5: Discard flip overlay */}
+                    <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
+                  </div>
                 ) : (
                   <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
                     <span className="text-slate-600 text-xs">Empty</span>
@@ -1153,6 +1289,7 @@ export default function Game() {
         powerAssignments={powerAssignments}
       />
 
+      {/* Legacy flying card (remote player animations) */}
       {flyingCard.active && flyingCard.from && flyingCard.to && (
         <FlyingCard
           from={flyingCard.from}
@@ -1162,6 +1299,20 @@ export default function Game() {
           ownerColor={flyingCard.ownerColor}
           onComplete={clearFly}
           reduced={reduced}
+        />
+      )}
+
+      {/* Choreography flying card (local player multi-step animations) */}
+      {choreo.phase !== 'idle' && choreo.phase !== 'staging' && choreo.flyFrom && choreo.flyTo && (
+        <FlyingCard
+          from={choreo.flyFrom}
+          to={choreo.flyTo}
+          faceUp={choreo.flyFaceUp}
+          card={choreo.flyCard}
+          ownerColor={choreo.flyOwnerColor}
+          onComplete={handleChoreoComplete}
+          reduced={reduced}
+          duration={choreo.phase === 'flyToStaging' ? 1.0 : choreo.phase === 'flySwapToDiscard' ? 1.2 : 1.6}
         />
       )}
 

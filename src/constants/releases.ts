@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.4.1'
+export const CURRENT_VERSION = 'v1.4.2'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,49 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.4.2',
+    title: 'Premium Choreography',
+    date: '10 March 2026',
+    sections: [
+      {
+        heading: 'Animation Engine',
+        items: [
+          'Floaty, premium flying card motion — 1.4–1.8s gentle arcs with subtle rotation',
+          'Gentle cubic-bezier easing (0.22, 1, 0.36, 1) for a slow, poker-table feel',
+          '20-step bezier curves with scale lift and organic tilt during flight',
+          'Enhanced drop shadows for depth during flight',
+        ],
+      },
+      {
+        heading: 'Staging Area',
+        items: [
+          'New "In play" staging slot between Draw and Discard piles',
+          'Discard takes fly to staging area first, then to your hand on swap',
+          'Staged card floats gently with a subtle hover animation',
+          'Staging is purely visual — no Firestore writes, reconstructs on refresh',
+        ],
+      },
+      {
+        heading: 'Card Choreography',
+        items: [
+          'Multi-step animation sequences: discard → staging → slot → discard',
+          'Draw pile draws fly face-down to your panel (no identity leaks)',
+          'Swapped-out cards fly to discard pile with flip reveal',
+          '3D discard flip animation when a new card becomes the discard top',
+        ],
+      },
+      {
+        heading: 'Visual Clarity',
+        items: [
+          'Selected slots now show player name + slot number label ("Kamal #2")',
+          'Card references in log messages highlighted with suit colors',
+          'Source keywords (DISCARD, PILE) displayed as colored labels in logs',
+          'Enhanced selection mode with clearer targeting indicators',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.4.1',
     title: 'Premium Polish',

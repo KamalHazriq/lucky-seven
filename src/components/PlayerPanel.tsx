@@ -271,15 +271,26 @@ export default function PlayerPanel({
                 />
               )}
 
-              {/* Selection mode: selected badge */}
+              {/* Selection mode: selected badge + label (Section 4 clarity) */}
               {isSelected && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center z-20 shadow-lg"
-                >
-                  <span className="text-[10px] text-white font-bold">✓</span>
-                </motion.div>
+                <>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center z-20 shadow-lg"
+                  >
+                    <span className="text-[10px] text-white font-bold">✓</span>
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap"
+                  >
+                    <span className="px-1.5 py-0.5 bg-amber-500/90 text-white text-[8px] font-bold rounded-md shadow-sm">
+                      {displayName} #{i + 1}
+                    </span>
+                  </motion.div>
+                </>
               )}
 
               {/* Selection mode: dim non-selectable slots */}
