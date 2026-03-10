@@ -12,6 +12,7 @@ import ChatPanel from '../components/ChatPanel'
 import { useChat } from '../hooks/useChat'
 import { getJoinLink, getInviteMessage, copyToClipboard } from '../lib/share'
 import { LOBBY_COLORS } from '../lib/playerColors'
+import type { PlayerDoc } from '../lib/types'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
 const springBounce = { type: 'spring' as const, stiffness: 400, damping: 20 }
@@ -102,10 +103,10 @@ export default function Lobby() {
     try {
       await updatePlayerProfile(gameId, { displayName: nameInput.trim() })
       toast.success('Name updated!')
+      setEditingName(false)
     } catch (e) {
       toast.error((e as Error).message)
     }
-    setEditingName(false)
   }
 
   const handlePickColor = async (colorIdx: number) => {
@@ -298,22 +299,32 @@ export default function Lobby() {
                 </AnimatePresence>
               </div>
               <div className="grid grid-cols-8 gap-1.5">
-                {LOBBY_COLORS.map((color, idx) => (
-                  <motion.button
-                    key={idx}
-                    whileHover={{ scale: 1.2 }}
-                    whileTap={{ scale: 0.85 }}
-                    transition={springBounce}
-                    onClick={() => handlePickColor(idx)}
-                    className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer ${
-                      myPlayer.colorKey === idx
-                        ? 'border-white scale-110 ring-2 ring-white/30'
-                        : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    title={`Pick color ${idx + 1}`}
-                  />
-                ))}
+                {LOBBY_COLORS.map((lc, idx) => {
+                  const isMine = myPlayer.colorKey === idx
+                  const takenBy = !isMine
+                    ? Object.values(players).find((p: PlayerDoc) => p.colorKey === idx)
+                    : null
+                  const isTaken = !!takenBy
+                  return (
+                    <motion.button
+                      key={idx}
+                      whileHover={!isTaken ? { scale: 1.2 } : undefined}
+                      whileTap={!isTaken ? { scale: 0.85 } : undefined}
+                      transition={springBounce}
+                      onClick={() => !isTaken && handlePickColor(idx)}
+                      disabled={isTaken}
+                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                        isMine
+                          ? 'border-white scale-110 ring-2 ring-white/30 cursor-pointer'
+                          : isTaken
+                            ? 'border-transparent opacity-30 cursor-not-allowed'
+                            : 'border-transparent cursor-pointer'
+                      }`}
+                      style={{ backgroundColor: lc.hex }}
+                      title={isTaken ? `Taken by ${takenBy.displayName}` : lc.name}
+                    />
+                  )
+                })}
               </div>
             </motion.div>
           )}
@@ -343,7 +354,7 @@ export default function Lobby() {
                     className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md"
                     style={{
                       backgroundColor: p.colorKey != null && p.colorKey >= 0 && p.colorKey < LOBBY_COLORS.length
-                        ? LOBBY_COLORS[p.colorKey]
+                        ? LOBBY_COLORS[p.colorKey].hex
                         : '#6366f1',
                     }}
                   >

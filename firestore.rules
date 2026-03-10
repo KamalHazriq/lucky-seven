@@ -38,15 +38,18 @@ service cloud.firestore {
           && request.auth.uid == playerId;
 
         // Update rules:
-        // 1) Own player doc: can update any field (profile, connected, etc.)
+        // 1) Own player doc: profile fields OR game state fields
         // 2) Other player docs: only locks/lockedBy (game powers in transactions)
         //    Requires the updater to be a participant in the game
         allow update: if request.auth != null
           && (
-            request.auth.uid == playerId
+            (
+              request.auth.uid == playerId
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'colorKey', 'connected', 'locks', 'lockedBy'])
+            )
             || (
               request.auth.uid in get(/databases/$(database)/documents/games/$(gameId)).data.playerOrder
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locks', 'lockedBy'])
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locks', 'lockedBy', 'connected'])
             )
           );
 

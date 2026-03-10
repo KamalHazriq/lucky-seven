@@ -25,7 +25,7 @@ export function getSeatColor(seatIndex: number): SeatColor {
 }
 
 /** Convert a hex color to a full SeatColor palette entry */
-function hexToSeatColor(hex: string): SeatColor {
+function hexToSeatColor(hex: string, name: string): SeatColor {
   // Parse hex to RGB
   const clean = hex.replace('#', '')
   const r = parseInt(clean.substring(0, 2), 16)
@@ -36,7 +36,7 @@ function hexToSeatColor(hex: string): SeatColor {
   const lg = Math.round(g + (255 - g) * 0.55)
   const lb = Math.round(b + (255 - b) * 0.55)
   return {
-    name: 'custom',
+    name,
     solid: hex,
     tinted: `rgba(${r}, ${g}, ${b}, 0.25)`,
     text: `rgb(${lr}, ${lg}, ${lb})`,
@@ -50,27 +50,33 @@ function hexToSeatColor(hex: string): SeatColor {
  */
 export function getPlayerColor(seatIndex: number, colorKey?: number | null): SeatColor {
   if (colorKey != null && colorKey >= 0 && colorKey < LOBBY_COLORS.length) {
-    return hexToSeatColor(LOBBY_COLORS[colorKey])
+    const entry = LOBBY_COLORS[colorKey]
+    return hexToSeatColor(entry.hex, entry.name)
   }
   return getSeatColor(seatIndex)
 }
 
-// ─── Lobby color picker palette (16 colors) ────────────────────
-export const LOBBY_COLORS: string[] = [
-  '#3b82f6', // blue
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#f43f5e', // rose
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#f97316', // orange
-  '#84cc16', // lime
-  '#ec4899', // pink
-  '#14b8a6', // teal
-  '#a855f7', // purple
-  '#ef4444', // red
-  '#eab308', // yellow
-  '#6366f1', // indigo
-  '#78716c', // stone
-  '#e2e8f0', // slate-light
+// ─── Lobby color picker palette (16 high-contrast colors for dark felt UI) ──
+export interface LobbyColor {
+  name: string
+  hex: string
+}
+
+export const LOBBY_COLORS: LobbyColor[] = [
+  { name: 'Blue',       hex: '#3b82f6' },
+  { name: 'Emerald',    hex: '#10b981' },
+  { name: 'Amber',      hex: '#f59e0b' },
+  { name: 'Rose',       hex: '#f43f5e' },
+  { name: 'Violet',     hex: '#8b5cf6' },
+  { name: 'Cyan',       hex: '#06b6d4' },
+  { name: 'Orange',     hex: '#f97316' },
+  { name: 'Lime',       hex: '#84cc16' },
+  { name: 'Pink',       hex: '#ec4899' },
+  { name: 'Teal',       hex: '#14b8a6' },
+  { name: 'Purple',     hex: '#a855f7' },
+  { name: 'Red',        hex: '#ef4444' },
+  { name: 'Yellow',     hex: '#eab308' },
+  { name: 'Indigo',     hex: '#6366f1' },
+  { name: 'Sky',        hex: '#0ea5e9' },
+  { name: 'White',      hex: '#e2e8f0' },
 ]

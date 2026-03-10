@@ -181,7 +181,11 @@ export async function createGame(
 }
 
 // ─── Join Game ──────────────────────────────────────────────────
-export async function joinGame(gameId: string, displayName: string): Promise<void> {
+export async function joinGame(
+  gameId: string,
+  displayName: string,
+  colorKey?: number,
+): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
@@ -192,6 +196,27 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
     if (game.status !== 'lobby') throw new Error('Game already started')
     if (game.playerOrder.includes(user.uid)) return
     if (game.playerOrder.length >= game.maxPlayers) throw new Error('Game is full')
+
+    // Read existing players to validate uniqueness
+    const playerSnaps = await Promise.all(
+      game.playerOrder.map((pid) => tx.get(playerRef(gameId, pid))),
+    )
+    const existingPlayers = playerSnaps
+      .filter((s) => s.exists())
+      .map((s) => s.data() as PlayerDoc)
+
+    // Check name uniqueness (case-insensitive)
+    const nameLower = displayName.toLowerCase()
+    const nameConflict = existingPlayers.find(
+      (p) => p.displayName.toLowerCase() === nameLower,
+    )
+    if (nameConflict) throw new Error('Name already taken in this lobby')
+
+    // Check color uniqueness
+    if (colorKey != null) {
+      const colorConflict = existingPlayers.find((p) => p.colorKey === colorKey)
+      if (colorConflict) throw new Error(`Color already taken by ${colorConflict.displayName}`)
+    }
 
     tx.update(gameRef(gameId), {
       playerOrder: [...game.playerOrder, user.uid],
@@ -204,6 +229,7 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
       connected: true,
       locks: [false, false, false],
       lockedBy: [...EMPTY_LOCKED_BY],
+      ...(colorKey != null ? { colorKey } : {}),
     } satisfies PlayerDoc)
 
     tx.set(privateRef(gameId, user.uid), {
@@ -1031,24 +1057,51 @@ export async function updatePresence(gameId: string, connected: boolean): Promis
   await updateDoc(playerRef(gameId, user.uid), { connected })
 }
 
-// ─── Update Player Profile (Lobby) ─────────────────────────────
+// ─── Update Player Profile (Lobby) — transaction-safe unique name + color ──
 export async function updatePlayerProfile(
   gameId: string,
   updates: { displayName?: string; colorKey?: number },
 ): Promise<void> {
   const user = await ensureAuth()
-  const clean: Record<string, unknown> = {}
-  if (updates.displayName != null) {
-    const name = updates.displayName.trim().slice(0, 12)
-    if (name.length === 0) throw new Error('Name cannot be empty')
-    clean.displayName = name
-  }
-  if (updates.colorKey != null) {
-    clean.colorKey = updates.colorKey
-  }
-  if (Object.keys(clean).length > 0) {
-    await updateDoc(playerRef(gameId, user.uid), clean)
-  }
+
+  await runTransaction(db, async (tx) => {
+    // Read all player docs to check for conflicts
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) throw new Error('Game not found')
+    const game = gameSnap.data() as GameDoc
+
+    const playerSnaps = await Promise.all(
+      game.playerOrder.map((pid) => tx.get(playerRef(gameId, pid))),
+    )
+    const otherPlayers = playerSnaps
+      .filter((s) => s.exists() && s.id !== user.uid)
+      .map((s) => s.data() as PlayerDoc)
+
+    const clean: Record<string, unknown> = {}
+
+    // Validate display name uniqueness (case-insensitive)
+    if (updates.displayName != null) {
+      const name = updates.displayName.trim().slice(0, 12)
+      if (name.length === 0) throw new Error('Name cannot be empty')
+      const nameLower = name.toLowerCase()
+      const conflict = otherPlayers.find(
+        (p) => p.displayName.toLowerCase() === nameLower,
+      )
+      if (conflict) throw new Error('Name already taken in this lobby')
+      clean.displayName = name
+    }
+
+    // Validate color uniqueness
+    if (updates.colorKey != null) {
+      const takenBy = otherPlayers.find((p) => p.colorKey === updates.colorKey)
+      if (takenBy) throw new Error(`Color already taken by ${takenBy.displayName}`)
+      clean.colorKey = updates.colorKey
+    }
+
+    if (Object.keys(clean).length > 0) {
+      tx.update(playerRef(gameId, user.uid), clean)
+    }
+  })
 }
 
 // ─── Chat ──────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.6.0'
+export const CURRENT_VERSION = 'v1.7.0'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,48 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.7.0',
+    title: 'Identity & Lobby',
+    date: '11 March 2026',
+    sections: [
+      {
+        heading: 'Unique Player Colors',
+        items: [
+          '16 high-contrast colors in the lobby picker — readable on dark felt UI',
+          'Colors are "booked" — no two players can pick the same color',
+          'Taken colors appear dimmed with tooltip showing who took them',
+          'Color selection uses Firestore transactions to prevent race conditions',
+        ],
+      },
+      {
+        heading: 'Unique Player Names',
+        items: [
+          'No duplicate names allowed in a lobby (case-insensitive)',
+          '"Azam" and "azam" are treated as the same name',
+          'Validated at join time and when editing name in the lobby',
+          'Clear error toast: "Name already taken in this lobby"',
+        ],
+      },
+      {
+        heading: 'Invite Link Flow',
+        items: [
+          'Invite links now show a name + color picker modal before joining',
+          'See lobby player count, taken colors, and name conflicts in real-time',
+          'Full/started lobbies show a clear message instead of auto-joining',
+          'Cancel button returns to the Home page',
+        ],
+      },
+      {
+        heading: 'Security',
+        items: [
+          'Firestore rules restrict player doc updates to safe fields only',
+          'Players can only modify: displayName, colorKey, connected, locks, lockedBy',
+          'Prevents overwriting other players\' data through direct Firestore calls',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.6.0',
     title: 'Premium Polish',
