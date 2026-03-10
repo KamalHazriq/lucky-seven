@@ -3,7 +3,6 @@ import { motion, type Transition } from 'framer-motion'
 
 /** Shared spring configs for premium buttery-smooth motion */
 const SPRING_HOVER: Transition = { type: 'spring', stiffness: 350, damping: 22, mass: 0.6 }
-const SPRING_TAP: Transition   = { type: 'spring', stiffness: 450, damping: 28, mass: 0.5 }
 const SPRING_FLIP: Transition  = { type: 'spring', stiffness: 160, damping: 20, mass: 0.9 }
 import type { Card, LockInfo } from '../lib/types'
 import { cardDisplay, suitColor } from '../lib/deck'
