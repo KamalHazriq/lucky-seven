@@ -10,19 +10,26 @@ export interface ActionHighlightInfo {
 /** Per-slot overlay: playerId → slotIndex → color */
 export type SlotOverlayMap = Record<string, Record<number, string>>
 
+/** Per-slot swap label: playerId → slotIndex → label string (e.g. "Kamal #2") */
+export type SwapLabelMap = Record<string, Record<number, string>>
+
 type HighlightMap = Record<string, ActionHighlightInfo | null>
 
 /**
  * Watches actionVersion changes and parses the latest log entry
- * to produce temporary per-player highlights + per-slot overlays that auto-clear.
+ * to produce temporary per-player highlights, per-slot overlays,
+ * and swap labels that auto-clear.
+ *
+ * v1.5: Added swapLabels for clear swap visibility (Part 2C).
  */
 export function useActionHighlight(
   actionVersion: number,
   log: LogEntry[],
   players: Record<string, PlayerDoc>,
-): { highlights: HighlightMap; slotOverlays: SlotOverlayMap } {
+): { highlights: HighlightMap; slotOverlays: SlotOverlayMap; swapLabels: SwapLabelMap } {
   const [highlights, setHighlights] = useState<HighlightMap>({})
   const [slotOverlays, setSlotOverlays] = useState<SlotOverlayMap>({})
+  const [swapLabels, setSwapLabels] = useState<SwapLabelMap>({})
   const prevVersion = useRef(actionVersion)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -68,6 +75,7 @@ export function useActionHighlight(
 
     // Parse slot-level overlays from log message
     const newSlotOverlays: SlotOverlayMap = {}
+    const newSwapLabels: SwapLabelMap = {}
 
     // "swapped their card #N" → actor's own slot N-1
     const selfSwapMatch = msg.match(/swapped their card #(\d)/)
@@ -83,13 +91,28 @@ export function useActionHighlight(
       const slotA = parseInt(queenSwapMatch[2], 10) - 1
       const nameB = queenSwapMatch[3]
       const slotB = parseInt(queenSwapMatch[4], 10) - 1
+
+      // Find player IDs for both sides
+      let pidA: string | null = null
+      let pidB: string | null = null
       for (const [pid, pd] of Object.entries(players)) {
         if (pd.displayName === nameA) {
+          pidA = pid
           newSlotOverlays[pid] = { ...newSlotOverlays[pid], [slotA]: color.solid }
         }
         if (pd.displayName === nameB) {
+          pidB = pid
           newSlotOverlays[pid] = { ...newSlotOverlays[pid], [slotB]: color.solid }
         }
+      }
+
+      // Add swap labels: each slot gets a label pointing to its swap partner
+      // "Name #N" label shows WHERE the card came FROM (the other side)
+      if (pidA) {
+        newSwapLabels[pidA] = { [slotA]: `↔ ${nameB} #${slotB + 1}` }
+      }
+      if (pidB) {
+        newSwapLabels[pidB] = { [slotB]: `↔ ${nameA} #${slotA + 1}` }
       }
     }
 
@@ -138,18 +161,20 @@ export function useActionHighlight(
     }
 
     setSlotOverlays(newSlotOverlays)
+    setSwapLabels(newSwapLabels)
 
     // Clear previous timer
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       setHighlights({})
       setSlotOverlays({})
-    }, 1800)
+      setSwapLabels({})
+    }, 2000)
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [actionVersion, log, players])
 
-  return { highlights, slotOverlays }
+  return { highlights, slotOverlays, swapLabels }
 }

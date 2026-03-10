@@ -52,6 +52,7 @@ import { useSelectionMode } from '../hooks/useSelectionMode'
 import type { SelectionConstraint, SelectedTarget } from '../hooks/useSelectionMode'
 import { useChoreography } from '../hooks/useChoreography'
 import { playSfx, vibrate } from '../lib/sfx'
+import { copyToClipboard } from '../lib/share'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
 
@@ -216,8 +217,8 @@ export default function Game() {
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
 
-  // Action highlights (temporary colored ring on actor's panel + per-slot overlays)
-  const { highlights: actionHighlights, slotOverlays } = useActionHighlight(
+  // Action highlights (temporary colored ring on actor's panel + per-slot overlays + swap labels)
+  const { highlights: actionHighlights, slotOverlays, swapLabels } = useActionHighlight(
     game?.actionVersion ?? 0,
     game?.log ?? [],
     players,
@@ -732,7 +733,7 @@ export default function Game() {
 
   return (
     <div className="min-h-dvh flex flex-col max-w-5xl mx-auto">
-      {/* ─── Sticky Top Bar ───────────────────────────────────── */}
+      {/* ─── Sticky Top Bar (v1.5 — 3-zone layout) ──────────── */}
       <div
         ref={headerRef}
         className="sticky top-0 z-50 w-full backdrop-blur-md border-b"
@@ -742,162 +743,203 @@ export default function Game() {
           borderColor: 'var(--border-solid)',
         }}
       >
-        <div className="flex items-center justify-between px-3 md:px-6 py-2 min-h-[48px] max-w-5xl mx-auto gap-2">
-          {/* Left section — game info */}
-          <div className="flex items-center gap-3 shrink-0">
-            <h1 className="text-lg font-bold text-amber-300 leading-none">Lucky Seven</h1>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Pile: <span className="font-semibold" style={{ color: 'var(--text)' }}>{game.drawPileCount}</span>
+        <div className="flex items-center px-3 md:px-5 py-1.5 min-h-[48px] max-w-5xl mx-auto gap-2">
+          {/* ── LEFT: Title + Room Code + Pile ── */}
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <h1 className="text-base font-bold text-amber-300 leading-none whitespace-nowrap hidden sm:block">Lucky Seven™</h1>
+            <h1 className="text-base font-bold text-amber-300 leading-none whitespace-nowrap sm:hidden">L7</h1>
+            <button
+              onClick={() => { copyToClipboard(game.joinCode); toast.success('Room code copied!') }}
+              className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-800/60 border border-slate-700/40 hover:bg-slate-700/60 transition-colors cursor-pointer"
+              aria-label={`Copy room code ${game.joinCode}`}
+              title="Click to copy room code"
+            >
+              <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-400">{game.joinCode}</span>
+              <svg className="w-3 h-3 text-slate-500 group-hover:text-slate-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span className="toolbar-tooltip">Copy Code</span>
+            </button>
+            <span className="text-[10px] font-medium whitespace-nowrap" style={{ color: 'var(--text-dim)' }}>
+              {game.drawPileCount} left
             </span>
             {game.status === 'ending' && (
-              <span className="px-2 py-0.5 bg-amber-900/40 border border-amber-600/50 text-amber-300 rounded-lg text-[10px] font-medium animate-pulse">
-                Ending...
+              <span className="px-1.5 py-0.5 bg-amber-900/40 border border-amber-600/50 text-amber-300 rounded-md text-[9px] font-bold animate-pulse whitespace-nowrap">
+                ENDING
               </span>
             )}
           </div>
 
-          {/* Right section — toggles + end game */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            <button
-              onClick={chat.toggleChat}
-              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-indigo-900/30 border border-indigo-600/40 text-indigo-400 hover:bg-indigo-900/50 transition-colors cursor-pointer"
-              aria-label="Chat"
-              title="Chat"
-            >
-              {'\u{1F4AC}'}
-              {chat.unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setShowPowerGuide(true)}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold bg-amber-900/30 border border-amber-600/40 text-amber-400 hover:bg-amber-900/50 transition-colors cursor-pointer"
-              aria-label="Power guide"
-              title="Power Guide"
-            >
-              ?
-            </button>
+          {/* ── CENTER: Turn strip (hidden on very small screens) ── */}
+          <div className="flex-1 min-w-0 hidden md:flex justify-center">
+            <TurnQueue
+              playerOrder={game.playerOrder}
+              players={players}
+              currentTurnPlayerId={game.currentTurnPlayerId}
+              localPlayerId={user.uid}
+              compact
+            />
+          </div>
+
+          {/* ── RIGHT: Compact icon cluster ── */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Theme dropdown */}
+            <GameSettingsBar />
+
+            {/* Layout toggle — desktop only */}
             {!isMobile && (
               <button
                 onClick={toggleLayout}
-                className={`group relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`topbar-btn group relative ${
                   layout === 'table'
-                    ? 'bg-emerald-900/40 border border-emerald-600/40 text-emerald-400'
-                    : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
+                    ? 'bg-emerald-900/40 border-emerald-600/40 text-emerald-400'
+                    : ''
                 }`}
                 aria-label={`Switch to ${layout === 'classic' ? 'table' : 'classic'} layout`}
-                title={`Layout: ${layout === 'classic' ? 'Classic' : 'Table'}`}
               >
                 {layout === 'classic' ? '\u{1FA91}' : '\u{1F4CB}'}
                 <span className="toolbar-tooltip">{layout === 'classic' ? 'Table' : 'Classic'}</span>
               </button>
             )}
+
+            {/* UI Mode toggle — desktop only */}
             {!isMobile && (
               <button
                 onClick={toggleUiMode}
-                className={`group relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`topbar-btn group relative ${
                   uiMode === 'actionbar'
-                    ? 'bg-teal-900/40 border border-teal-600/40 text-teal-400'
-                    : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
+                    ? 'bg-teal-900/40 border-teal-600/40 text-teal-400'
+                    : ''
                 }`}
                 aria-label={`UI mode: ${uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}`}
-                title={`UI: ${uiMode === 'actionbar' ? 'Action Bar (inline)' : 'Modal (popup)'}`}
               >
                 {uiMode === 'actionbar' ? '\u{2261}' : '\u{25A1}'}
                 <span className="toolbar-tooltip">{uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}</span>
               </button>
             )}
+
+            {/* Log position toggle — wide screens only */}
             {canLogSidebar && (
               <button
                 onClick={toggleLogPosition}
-                className={`group relative min-w-[44px] min-h-[44px] flex items-center justify-center px-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`topbar-btn group relative ${
                   logPosition === 'left'
-                    ? 'bg-orange-900/40 border border-orange-600/40 text-orange-400'
-                    : 'bg-slate-800/60 border border-slate-700/40 text-slate-400 hover:bg-slate-700/60'
+                    ? 'bg-orange-900/40 border-orange-600/40 text-orange-400'
+                    : ''
                 }`}
-                aria-label={`Toggle log position: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
-                title={`Log: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
+                aria-label={`Log position: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
               >
                 {logPosition === 'left' ? '\u{2190}' : '\u{2193}'}
                 <span className="toolbar-tooltip">{logPosition === 'left' ? 'Log: Side' : 'Log: Bottom'}</span>
               </button>
             )}
-            <GameSettingsBar />
+
+            {/* Help / Power Guide */}
+            <button
+              onClick={() => setShowPowerGuide(true)}
+              className="topbar-btn group relative bg-amber-900/30 border-amber-600/40 text-amber-400 hover:bg-amber-900/50"
+              aria-label="Power guide — view card power instructions"
+            >
+              ?
+              <span className="toolbar-tooltip">Powers</span>
+            </button>
+
+            {/* Chat */}
+            <button
+              onClick={chat.toggleChat}
+              className="topbar-btn group relative bg-indigo-900/30 border-indigo-600/40 text-indigo-400 hover:bg-indigo-900/50"
+              aria-label="Open chat"
+            >
+              {'\u{1F4AC}'}
+              {chat.unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+                </span>
+              )}
+              <span className="toolbar-tooltip">Chat</span>
+            </button>
+
+            {/* End Game — only shown when applicable */}
             {isMyTurn && game.status === 'active' && !hasDrawnCard && (
               <button
                 onClick={handleCallEnd}
                 disabled={busy}
-                className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 border border-red-700/50 text-red-300 rounded-lg text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 min-h-[44px]"
+                className="topbar-btn bg-red-900/40 hover:bg-red-900/60 border-red-700/50 text-red-300 text-[10px] font-bold disabled:opacity-50 px-2"
+                aria-label="Call end game"
               >
-                End Game
+                End
+                <span className="toolbar-tooltip">End Game</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ─── Resume banner — visible when drawn card exists AND (sub-modal open OR dismissed) ─── */}
-      {hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="mx-3 md:mx-4 mt-2"
-        >
-          <button
-            onClick={() => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }}
-            className="w-full py-2 px-4 bg-amber-900/40 border border-amber-600/50 rounded-xl text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 hover:bg-amber-900/60 transition-colors cursor-pointer"
+      {/* ─── Safe Layout Stack: banners push content down ────── */}
+      <div className="safe-layout-stack flex flex-col">
+        {/* Resume banner */}
+        {hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 md:px-5 pt-2"
           >
-            <span className="text-sm">{'\u{1F0A0}'}</span>
-            You have a drawn card — tap to resume
-          </button>
-        </motion.div>
-      )}
+            <button
+              onClick={() => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }}
+              className="w-full py-2 px-4 bg-amber-900/40 border border-amber-600/50 rounded-xl text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 hover:bg-amber-900/60 transition-colors cursor-pointer"
+            >
+              <span className="text-sm">{'\u{1F0A0}'}</span>
+              You have a drawn card — tap to resume
+            </button>
+          </motion.div>
+        )}
 
-      {/* ─── Selection mode prompt banner ─── */}
-      {isSelecting && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="mx-3 md:mx-4 mt-2"
-        >
-          <div className="py-2 px-4 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-xs font-semibold text-center">
-            {selection.phase === 'choosingTarget' && selection.constraint?.prompt}
-            {selection.phase === 'choosingSecondTarget' && selection.constraint?.secondPrompt}
-            {selection.phase === 'confirming' && 'Ready to confirm — check the Action Bar below'}
-          </div>
-        </motion.div>
-      )}
+        {/* Selection mode prompt banner */}
+        {isSelecting && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 md:px-5 pt-2"
+          >
+            <div className="py-2 px-4 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-xs font-semibold text-center">
+              {selection.phase === 'choosingTarget' && selection.constraint?.prompt}
+              {selection.phase === 'choosingSecondTarget' && selection.constraint?.secondPrompt}
+              {selection.phase === 'confirming' && 'Ready to confirm — check the Action Bar below'}
+            </div>
+          </motion.div>
+        )}
+      </div>
 
       {/* ─── Main Content ─────────────────────────────────────── */}
-      <div className={`flex-1 p-3 md:p-5 ${logPosition === 'left' ? 'flex gap-5' : 'flex flex-col'}`}>
+      <div className={`flex-1 p-3 md:p-4 ${logPosition === 'left' ? 'flex gap-4' : 'flex flex-col'}`}>
 
         {/* Left sidebar log */}
         {logPosition === 'left' && (
-          <div className="shrink-0 w-60 min-h-0 sticky top-16 self-start max-h-[calc(100dvh-5rem)] pt-1">
+          <div className="shrink-0 w-56 min-h-0 sticky top-14 self-start max-h-[calc(100dvh-4.5rem)] pt-1">
             <GameLog log={game.log} players={players} position="left" />
           </div>
         )}
 
         <div className={`${logPosition === 'left' ? 'flex-1 min-w-0 flex flex-col' : 'contents'}`}>
 
-        {/* Turn queue */}
-        <TurnQueue
-          playerOrder={game.playerOrder}
-          players={players}
-          currentTurnPlayerId={game.currentTurnPlayerId}
-          localPlayerId={user.uid}
-        />
+        {/* Turn queue — mobile only (desktop shows in top bar) */}
+        <div className="md:hidden">
+          <TurnQueue
+            playerOrder={game.playerOrder}
+            players={players}
+            currentTurnPlayerId={game.currentTurnPlayerId}
+            localPlayerId={user.uid}
+          />
+        </div>
 
         {/* Turn indicator */}
         <motion.div
           key={game.currentTurnPlayerId}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`text-center py-2 px-4 rounded-xl mb-5 text-sm font-medium ${
+          className={`text-center py-1.5 px-4 rounded-xl mb-3 text-xs font-medium ${
             isMyTurn
               ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
               : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
@@ -905,10 +947,10 @@ export default function Game() {
         >
           {isMyTurn ? (
             isDrawPhase
-              ? 'Your turn! Choose where to draw from.'
-              : 'Choose: swap with a card, discard, or use a power.'
+              ? 'Your turn — draw from the pile or discard'
+              : 'Swap, discard, or use a power'
           ) : (
-            `Waiting for ${currentTurnName} to play...`
+            `Waiting for ${currentTurnName}...`
           )}
         </motion.div>
 
@@ -916,22 +958,22 @@ export default function Game() {
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            const baseH = otherPlayers.length <= 2 ? 500 : otherPlayers.length <= 4 ? 560 : otherPlayers.length <= 6 ? 640 : 700
-            const panelW = otherPlayers.length <= 3 ? '210px' : otherPlayers.length <= 5 ? '180px' : '160px'
+            const panelW = otherPlayers.length <= 3 ? '200px' : otherPlayers.length <= 5 ? '175px' : '155px'
             return (
               <>
               <div
-                className="relative w-full mb-6"
+                className="table-zone relative w-full mb-4"
                 style={{
-                  minHeight: `${baseH}px`,
-                  paddingTop: '20px',
+                  /* Use 70-80% viewport height, clamped for very small/large screens */
+                  minHeight: 'max(420px, 70vh)',
+                  maxHeight: 'min(800px, 80vh)',
                 }}
               >
                 {/* Table surface — oval felt gradient */}
                 <div
                   className="absolute rounded-[50%] pointer-events-none"
                   style={{
-                    left: '6%', right: '6%', top: '4%', bottom: '8%',
+                    left: '5%', right: '5%', top: '3%', bottom: '6%',
                     background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.35) 0%, rgba(15,76,46,0.18) 40%, rgba(15,76,46,0.05) 70%, transparent 100%)',
                     border: '2px solid rgba(15,76,46,0.22)',
                     boxShadow: 'inset 0 0 80px rgba(15,76,46,0.12), inset 0 0 20px rgba(15,76,46,0.08)',
@@ -994,7 +1036,7 @@ export default function Game() {
                         top: `${pos.top}%`,
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
-                        width: otherPlayers.length <= 4 ? '44%' : '38%',
+                        width: otherPlayers.length <= 4 ? '42%' : '36%',
                       }}
                     >
                       <PlayerPanel
@@ -1010,6 +1052,7 @@ export default function Game() {
                         chatBubble={chatBubbles[pid] ?? null}
                         queueNumber={queueNumbers[pid] ?? null}
                         slotOverlays={slotOverlays[pid] ?? null}
+                        swapLabels={swapLabels[pid] ?? null}
                         stampOverlay={stampOverlays[pid] ?? null}
                         {...selectionProps}
                       />
@@ -1041,14 +1084,15 @@ export default function Game() {
                     actionHighlight={actionHighlights[user.uid] ?? null}
                     queueNumber={queueNumbers[user.uid] ?? null}
                     slotOverlays={slotOverlays[user.uid] ?? null}
+                    swapLabels={swapLabels[user.uid] ?? null}
                     stampOverlay={stampOverlays[user.uid] ?? null}
                     {...selectionProps}
                   />
                 </div>
               </div>
-              {/* Action Bar for table layout — below table container */}
+              {/* Action Bar for table layout — below table zone */}
               {uiMode === 'actionbar' && (
-                <div className="mx-auto" style={{ maxWidth: '380px', width: '90%' }}>
+                <div className="mx-auto mb-4" style={{ maxWidth: '380px', width: '90%' }}>
                   <ActionBar
                     card={isMyTurn && hasDrawnCard ? drawnCard : null}
                     visible={modal.type === 'none' && !drawnCardDismissed}
@@ -1096,6 +1140,7 @@ export default function Game() {
                       chatBubble={chatBubbles[pid] ?? null}
                       queueNumber={queueNumbers[pid] ?? null}
                       slotOverlays={slotOverlays[pid] ?? null}
+                      swapLabels={swapLabels[pid] ?? null}
                       stampOverlay={stampOverlays[pid] ?? null}
                       {...selectionProps}
                     />
@@ -1105,7 +1150,7 @@ export default function Game() {
             )}
 
             {/* Table area: Draw + Staging + Discard */}
-            <div className="flex items-center justify-center gap-6 mb-6 py-4">
+            <div className="flex items-center justify-center gap-6 mb-4 py-3">
               <div className="text-center" ref={drawPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
                 <CardView
@@ -1169,6 +1214,7 @@ export default function Game() {
                 actionHighlight={actionHighlights[user.uid] ?? null}
                 queueNumber={queueNumbers[user.uid] ?? null}
                 slotOverlays={slotOverlays[user.uid] ?? null}
+                swapLabels={swapLabels[user.uid] ?? null}
                 stampOverlay={stampOverlays[user.uid] ?? null}
                 {...selectionProps}
               />
@@ -1319,7 +1365,7 @@ export default function Game() {
           ownerColor={choreo.flyOwnerColor}
           onComplete={handleChoreoComplete}
           reduced={reduced}
-          duration={choreo.phase === 'flyToStaging' ? 1.0 : choreo.phase === 'flySwapToDiscard' ? 1.2 : 1.6}
+          duration={choreo.phase === 'flyToStaging' ? 1.1 : choreo.phase === 'flySwapToDiscard' ? 1.3 : 1.55}
         />
       )}
 
@@ -1334,7 +1380,7 @@ export default function Game() {
       <VersionLabel />
 
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
-        Kamal Hazriq 2026
+        Built by Kamal Hazriq
       </div>
     </div>
   )

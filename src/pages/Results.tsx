@@ -192,7 +192,7 @@ export default function Results() {
 
       {/* Watermark */}
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
-        Kamal Hazriq 2026
+        Built by Kamal Hazriq
       </div>
     </div>
   )

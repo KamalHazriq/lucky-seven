@@ -7,15 +7,18 @@ interface PlayerInfo {
 }
 
 // ─── Power label map ────────────────────────────────────────
+// Maps any variation of power text → display label (BOLD + CAPS)
 const POWER_KEYWORDS: Record<string, string> = {
   'peek all': 'PEEK ALL',
   'peek_all_three_of_your_cards': 'PEEK ALL',
   'peek_all': 'PEEK ALL',
   'as peek all': 'PEEK ALL',
+  'as peek_all': 'PEEK ALL',
   'peek 1': 'PEEK',
   'peek_one_of_your_cards': 'PEEK',
   'peek_one': 'PEEK',
   'as peek': 'PEEK',
+  'as peek_one': 'PEEK',
   'as swap': 'SWAP',
   'swap_one_to_one': 'SWAP',
   'as lock': 'LOCK',
@@ -230,11 +233,11 @@ export function renderLogMessage(
       result.push(
         <span
           key={`name-${i}`}
-          className="inline-flex items-center px-1.5 py-px rounded-md text-[9px] font-bold leading-none align-middle"
+          className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold leading-none align-middle whitespace-nowrap"
           style={{
             backgroundColor: color.bg,
             color: color.text,
-            minWidth: '1.2em',
+            minWidth: '2em',
             textAlign: 'center',
           }}
         >

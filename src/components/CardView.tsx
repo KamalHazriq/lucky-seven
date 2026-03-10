@@ -96,14 +96,15 @@ export default function CardView({
         ${showFace
           ? 'bg-white border border-slate-200 shadow-lg'
           : ownerColor
-            ? 'border border-white/[0.06] hover:border-white/25 transition-[border-color] shadow-md'
+            ? 'border border-white/[0.08] hover:border-white/30 transition-[border-color] duration-200 shadow-md hover:shadow-lg'
             : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700/50 shadow-md'
         }
       `}
       style={{
         perspective: '600px',
         ...(!showFace && ownerColor ? {
-          background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.8)} 0%, ${hexToRgba(ownerColor, 0.55)} 40%, ${hexToRgba(ownerColor, 0.65)} 100%)`,
+          background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.85)} 0%, ${hexToRgba(ownerColor, 0.5)} 35%, ${hexToRgba(ownerColor, 0.6)} 70%, ${hexToRgba(ownerColor, 0.75)} 100%)`,
+          boxShadow: `inset 0 1px 0 ${hexToRgba('#ffffff', 0.06)}, 0 4px 12px ${hexToRgba(ownerColor, 0.25)}`,
         } : {}),
       }}
     >
@@ -136,14 +137,15 @@ export default function CardView({
         >
           <div className="flex items-center justify-center h-full">
             <div
-              className="w-8 h-8 rounded-full border-2 flex items-center justify-center"
+              className="w-8 h-8 rounded-full border flex items-center justify-center"
               style={{
-                borderColor: ownerColor ? 'rgba(255,255,255,0.35)' : 'rgba(96,165,250,0.3)',
+                borderColor: ownerColor ? 'rgba(255,255,255,0.2)' : 'rgba(96,165,250,0.25)',
+                background: ownerColor ? 'rgba(255,255,255,0.06)' : 'rgba(96,165,250,0.08)',
               }}
             >
               <span
                 className="font-bold text-lg"
-                style={{ color: ownerColor ? 'rgba(255,255,255,0.6)' : 'rgba(96,165,250,0.5)' }}
+                style={{ color: ownerColor ? 'rgba(255,255,255,0.5)' : 'rgba(96,165,250,0.45)' }}
               >
                 7
               </span>

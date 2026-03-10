@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.4.3'
+export const CURRENT_VERSION = 'v1.5.0'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,101 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.5.0',
+    title: 'Production Readiness',
+    date: '10 March 2026',
+    sections: [
+      {
+        heading: 'Top Bar Redesign',
+        items: [
+          'Professional 3-zone layout: game info (left), turn strip (center), controls (right)',
+          'Copyable room code in the top bar — click to copy instantly',
+          'Compact turn queue in the top bar on desktop, full version below on mobile',
+          'Consistent icon button sizing with the new topbar-btn class',
+          'No wrap, no overlap, no layout shift — fixed height header',
+        ],
+      },
+      {
+        heading: 'Table Layout Engine',
+        items: [
+          'Rewritten getSeatPositions with pile-zone avoidance and spacing validation',
+          'Table zone uses 70-80% viewport height (no more fixed pixel heights)',
+          'Safe layout stack: banners/announcements push content down instead of overlapping',
+          'Table layout disabled on mobile (<768px) — forced to classic',
+          'Validated seat spacing: dev warnings if seats are too close',
+        ],
+      },
+      {
+        heading: 'Premium Card Motion',
+        items: [
+          'Slow, floaty flying cards — 1.4-1.7s arcs with gentle easing and 1.03x scale peak',
+          'GPU-optimized transforms (translate x/y offsets, willChange: transform)',
+          'Subtle rotation tilt during flight for organic feel',
+          'Enhanced staging slot: gentler float (2.8s cycle), drop shadow, smoother entry',
+          'Discard flip: longer 600ms reveal with scale overshoot (1.06x)',
+          'Reduced motion fallback: clean 250ms fade + slide',
+        ],
+      },
+      {
+        heading: 'Swap Visibility',
+        items: [
+          'Queen swap highlights both involved slots with actor-color pulse rings',
+          'Swap labels show swap partner near each slot (e.g. "↔ Kamal #2")',
+          'Labels and highlights auto-clear after 2 seconds',
+          'No card identity leaks — labels show position only, not card values',
+        ],
+      },
+      {
+        heading: 'Card-Back Polish',
+        items: [
+          'Richer 4-stop owner-color gradient for more depth and dimension',
+          'Subtle inner highlight border for glass-like premium feel',
+          'Refined center emblem with softer translucent background',
+          'Gentler shimmer sweep (5s diagonal cycle, 6% opacity)',
+          'Colored outer glow shadow matching owner seat color',
+        ],
+      },
+      {
+        heading: 'Shareability',
+        items: [
+          'Copy Link button in the lobby — share a direct room URL',
+          'Invite Friends button — copies a formatted message with code + link',
+          'Room code is still copyable by clicking in both lobby and game',
+          'Clipboard utility with fallback for older browsers',
+        ],
+      },
+      {
+        heading: 'Game Log',
+        items: [
+          'Cleaner log layout with consistent row height and tighter spacing',
+          'Latest entry highlighted with subtle background',
+          'Older entries fade progressively for visual hierarchy',
+          'Name chips with consistent min-width for short names',
+          'Additional power keyword mappings for edge cases',
+        ],
+      },
+      {
+        heading: 'Quota Protection',
+        items: [
+          'Game log bounded at 50 entries — older entries auto-pruned',
+          'Chat queries limited to last 50 messages',
+          'Presence writes throttled to once per 60 seconds',
+          'Lazy chat subscription (mobile: on open, desktop: after first render)',
+          'Game finish summary analytics (one write per game)',
+          'README now includes Quota Notes with scaling estimates',
+        ],
+      },
+      {
+        heading: 'Branding',
+        items: [
+          'Consistent Lucky Seven\u2122 title across all screens',
+          'Updated watermark: Built by Kamal Hazriq',
+          'Patch notes accessible from Home, Lobby, and in-game',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.4.3',
     title: 'UI Stabilization',

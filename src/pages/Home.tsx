@@ -106,7 +106,7 @@ export default function Home() {
             animate={{ scale: 1 }}
             className="text-5xl font-bold bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent mb-2"
           >
-            Lucky Seven
+            Lucky Seven™
           </motion.h1>
           <p className="text-slate-400 text-sm">The card game where 7 means zero</p>
         </div>
@@ -361,7 +361,7 @@ export default function Home() {
 
       {/* Watermark */}
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
-        Kamal Hazriq 2026
+        Built by Kamal Hazriq
       </div>
     </div>
   )

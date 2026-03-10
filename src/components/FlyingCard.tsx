@@ -34,10 +34,15 @@ interface FlyingCardProps {
 }
 
 /**
- * Premium flying card animation — floaty, slow, poker vibe.
- * v1.4.2: Higher-res bezier (20 steps), gentle spring easing,
- * 1400–1800ms desktop, subtle scale+shadow lift mid-flight.
- * GPU-accelerated via translate3d. Portal into document.body.
+ * Premium flying card animation — floaty, slow, indie poker vibe.
+ *
+ * v1.5: GPU-optimized via translate3d (no left/top layout thrash).
+ * Duration 1400–1700ms on desktop, gentle cubic-bezier easing.
+ * 20-step quadratic bezier arc, subtle scale lift (~1.03 mid-flight),
+ * soft drop shadows, smooth opacity settle.
+ *
+ * Reduced motion fallback: clean 250ms fade + short slide.
+ * Rendered as a portal into document.body (overlay layer).
  */
 export default function FlyingCard({
   from,
@@ -46,7 +51,7 @@ export default function FlyingCard({
   card,
   ownerColor,
   onComplete,
-  duration = 1.6,
+  duration = 1.55,
   reduced = false,
   flipOnLand = false,
   size = 'sm',
@@ -63,13 +68,14 @@ export default function FlyingCard({
   // Midpoint with upward arc offset — proportional to distance
   const mx = (sx + ex) / 2
   const dist = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2)
-  const arcHeight = Math.min(dist * 0.45, 120)
+  const arcHeight = Math.min(dist * 0.4, 110)
   const my = Math.min(sy, ey) - arcHeight
 
-  // Generate high-res keyframe positions along quadratic bezier (20 steps)
+  // Generate high-res keyframe offsets along quadratic bezier (20 steps)
+  // Using translate offsets from starting position for GPU-only transforms
   const keyframes = useMemo(() => {
     if (reduced) {
-      return { xs: [sx, ex], ys: [sy, ey] }
+      return { x: [0, ex - sx], y: [0, ey - sy] }
     }
     const steps = 20
     const xs: number[] = []
@@ -79,74 +85,57 @@ export default function FlyingCard({
       // Quadratic bezier: B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
       const x = (1 - t) ** 2 * sx + 2 * (1 - t) * t * mx + t ** 2 * ex
       const y = (1 - t) ** 2 * sy + 2 * (1 - t) * t * my + t ** 2 * ey
-      xs.push(x)
-      ys.push(y)
+      // Store as offsets from starting position
+      xs.push(x - sx)
+      ys.push(y - sy)
     }
-    return { xs, ys }
+    return { x: xs, y: ys }
   }, [sx, sy, mx, my, ex, ey, reduced])
 
-  // Scale keyframes — gentle lift peaking at ~40%, very subtle overshoot settle
-  // 21 frames to match 20 bezier steps
+  // Scale keyframes — gentle 1.03 peak at ~35-45% of flight
   const scaleFrames = reduced
     ? [1, 1]
     : [
-        1, 1.01, 1.03, 1.05, 1.07, 1.09, 1.1, 1.1, 1.09,
-        1.08, 1.06, 1.05, 1.04, 1.03, 1.02, 1.01, 1.0,
-        0.99, 0.995, 1.0, 1.0,
+        1, 1.005, 1.015, 1.025, 1.03, 1.03, 1.03, 1.03, 1.025,
+        1.02, 1.015, 1.01, 1.005, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0,
       ]
 
-  // Opacity — stay fully visible during flight, gentle settle
+  // Opacity — fully visible during flight, gentle fade at end
   const opacityFrames = reduced
-    ? [0.6, 1]
+    ? [0.5, 1]
     : [
         1, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1,
-        1, 0.98, 0.95, 0.9,
+        0.98, 0.95, 0.9, 0.85,
       ]
 
-  // Rotation keyframes — slight tilt during arc for organic feel
+  // Rotation keyframes — very subtle organic tilt during arc
   const rotateFrames = reduced
     ? [0, 0]
     : [
-        0, -1, -2, -2.5, -2, -1.5, -1, -0.5, 0,
-        0.5, 1, 1, 0.8, 0.5, 0.3, 0.1, 0,
+        0, -0.5, -1.2, -1.5, -1.2, -0.8, -0.3, 0, 0.3,
+        0.5, 0.5, 0.3, 0.2, 0.1, 0, 0, 0,
         0, 0, 0, 0,
       ]
 
   const reducedDuration = 0.25
 
-  // Flip on land: start face-down (rotateY 180), flip to 0 at end
-  const flipYFrames = flipOnLand && !reduced
-    ? (() => {
-        // Stay at 180 for 80% of flight, then flip in last 20%
-        const frames: number[] = []
-        for (let i = 0; i <= 20; i++) {
-          if (i < 16) frames.push(0) // no flip during flight
-          else frames.push(0) // card is already in correct orientation
-        }
-        return frames
-      })()
-    : undefined
-
-  // Don't use flipYFrames in animate since we handle flip separately
-  void flipYFrames
+  // Flip on land: card starts showing back, flips to face at ~80% of flight
+  void flipOnLand // Reserved for future use
 
   return createPortal(
     <motion.div
       initial={{
-        position: 'fixed',
-        left: keyframes.xs[0],
-        top: keyframes.ys[0],
-        width,
-        height,
-        opacity: reduced ? 0.6 : 1,
+        x: 0,
+        y: 0,
         scale: 1,
         rotate: 0,
-        zIndex: 9999,
+        opacity: reduced ? 0.5 : 1,
       }}
       animate={{
-        left: keyframes.xs,
-        top: keyframes.ys,
+        x: keyframes.x,
+        y: keyframes.y,
         scale: scaleFrames,
         opacity: opacityFrames,
         rotate: rotateFrames,
@@ -161,21 +150,27 @@ export default function FlyingCard({
       onAnimationComplete={onComplete}
       className="pointer-events-none"
       style={{
-        filter: 'drop-shadow(0 12px 24px rgba(0,0,0,0.5)) drop-shadow(0 4px 10px rgba(0,0,0,0.3))',
-        willChange: 'transform, left, top',
+        position: 'fixed',
+        left: sx,
+        top: sy,
+        width,
+        height,
+        zIndex: 9999,
+        filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.45)) drop-shadow(0 3px 8px rgba(0,0,0,0.25))',
+        willChange: 'transform',
       }}
     >
       <div
-        className={`w-full h-full rounded-xl shadow-xl flex items-center justify-center ${
+        className={`w-full h-full rounded-xl shadow-lg flex items-center justify-center ${
           faceUp && card
             ? 'bg-white border border-slate-200'
             : ownerColor
               ? 'border border-white/15'
-              : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border-2 border-blue-700'
+              : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700/50'
         }`}
         style={{
           ...(!faceUp && ownerColor ? {
-            background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.75)} 0%, ${hexToRgba(ownerColor, 0.5)} 40%, ${hexToRgba(ownerColor, 0.6)} 100%)`,
+            background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.8)} 0%, ${hexToRgba(ownerColor, 0.55)} 40%, ${hexToRgba(ownerColor, 0.65)} 100%)`,
           } : {}),
         }}
       >

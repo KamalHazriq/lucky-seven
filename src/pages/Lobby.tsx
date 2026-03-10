@@ -10,6 +10,7 @@ import FeedbackModal from '../components/FeedbackModal'
 import PatchNotesModal from '../components/PatchNotesModal'
 import ChatPanel from '../components/ChatPanel'
 import { useChat } from '../hooks/useChat'
+import { getRoomLink, getInviteMessage, copyToClipboard } from '../lib/share'
 
 export default function Lobby() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -52,8 +53,22 @@ export default function Lobby() {
 
   const handleCopyCode = () => {
     if (game?.joinCode) {
-      navigator.clipboard.writeText(game.joinCode)
+      copyToClipboard(game.joinCode)
       toast.success('Code copied!')
+    }
+  }
+
+  const handleCopyLink = () => {
+    if (gameId) {
+      copyToClipboard(getRoomLink(gameId))
+      toast.success('Room link copied!')
+    }
+  }
+
+  const handleCopyInvite = () => {
+    if (game?.joinCode && gameId) {
+      copyToClipboard(getInviteMessage(game.joinCode, gameId))
+      toast.success('Invite message copied!')
     }
   }
 
@@ -98,16 +113,39 @@ export default function Lobby() {
         </div>
 
         <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-xl">
-          {/* Join Code */}
+          {/* Join Code + Share */}
           <div className="text-center mb-6">
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Join Code</p>
             <button
               onClick={handleCopyCode}
               className="text-3xl font-mono font-bold text-emerald-400 tracking-[0.3em] hover:text-emerald-300 transition-colors cursor-pointer"
+              title="Click to copy code"
             >
               {game.joinCode}
             </button>
-            <p className="text-xs text-slate-500 mt-1">Click to copy</p>
+            <p className="text-xs text-slate-500 mt-1">Click to copy code</p>
+
+            {/* Share buttons */}
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-900/30 border border-indigo-600/40 text-indigo-400 rounded-lg text-xs font-medium hover:bg-indigo-900/50 transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Copy Link
+              </button>
+              <button
+                onClick={handleCopyInvite}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/30 border border-emerald-600/40 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-900/50 transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Invite Friends
+              </button>
+            </div>
           </div>
 
           <div className="border-t border-slate-700/50 pt-4 mb-4">
@@ -230,7 +268,7 @@ export default function Lobby() {
 
       {/* Watermark */}
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
-        Kamal Hazriq 2026
+        Built by Kamal Hazriq
       </div>
     </div>
   )

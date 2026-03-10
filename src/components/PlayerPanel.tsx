@@ -30,6 +30,8 @@ interface PlayerPanelProps {
   queueNumber?: number | null
   /** Per-slot effect overlays: slotIndex → color (actor's color) */
   slotOverlays?: Record<number, string> | null
+  /** Per-slot swap labels: slotIndex → label string (e.g. "↔ Kamal #2") */
+  swapLabels?: Record<number, string> | null
 
   // ─── Selection mode props ──────────────────────────
   /** When non-null, we're in selection mode. Provides the current target type. */
@@ -70,6 +72,7 @@ export default function PlayerPanel({
   chatBubble,
   queueNumber,
   slotOverlays,
+  swapLabels,
   selectionTargetType,
   localPlayerId,
   players,
@@ -224,6 +227,7 @@ export default function PlayerPanel({
           const isLocked = locks[i]
           const lockInfo = lockInfos[i]
           const slotColor = slotOverlays?.[i]
+          const swapLabel = swapLabels?.[i]
 
           // Selection mode: is this slot selectable?
           const slotSelectable = inSelectionMode && selectionTargetType !== 'anyPlayer'
@@ -257,6 +261,26 @@ export default function PlayerPanel({
                     boxShadow: `inset 0 0 0 2px ${slotColor}, 0 0 12px ${slotColor}80, 0 0 24px ${slotColor}30`,
                   }}
                 />
+              )}
+
+              {/* Swap label — shows swap partner (e.g. "↔ Kamal #2") */}
+              {swapLabel && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.85 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap"
+                >
+                  <span
+                    className="px-1.5 py-0.5 rounded-md text-[8px] font-bold shadow-lg"
+                    style={{
+                      backgroundColor: slotColor ? slotColor : color.solid,
+                      color: '#fff',
+                    }}
+                  >
+                    {swapLabel}
+                  </span>
+                </motion.div>
               )}
 
               {/* Selection mode: selectable pulse ring */}

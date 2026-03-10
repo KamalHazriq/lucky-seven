@@ -1,6 +1,6 @@
-# Lucky Seven - Online Multiplayer Card Game
+# Lucky Seven™ — Online Multiplayer Card Game
 
-A real-time multiplayer card game for 2-6 players, hosted on GitHub Pages with Firebase as the backend. Lowest score wins — and Sevens are worth zero!
+A real-time multiplayer card game for 2-8 players, built by Kamal Hazriq. Hosted on GitHub Pages with Firebase as the backend. Lowest score wins — and Sevens are worth zero!
 
 ## Game Rules
 
@@ -220,3 +220,36 @@ Multiple games can run simultaneously without interference:
 - **Private data**: Hand contents stored in `private/{playerId}` docs. Client-side only subscribes to own private doc. Cross-player reads happen within server-side Firestore transactions (for Queen swap and Joker chaos powers).
 - **No card leaking in UI**: Only draw pile count and discard top are shown publicly. Other players' cards are face-down.
 - **Reveal pattern**: At game end, each player writes their own hand to `reveals/{playerId}` so results can be displayed without cross-player private reads.
+
+## Quota Notes (Firebase Free Tier)
+
+Lucky Seven is designed to run comfortably within Firebase's free Spark plan.
+
+### Write Budget per Game
+
+| Action | Writes | Notes |
+|--------|--------|-------|
+| Turn action (draw/swap/discard/power) | 2-4 | Game doc + private doc(s) |
+| Chat message | 1 | Single doc in `chat` subcollection |
+| Presence update | 1 | Throttled to 1 write per 60 seconds |
+| Game summary (on finish) | 2 | Summary doc + global stats counter |
+
+**Typical 4-player game (~40 turns):** ~120-160 writes total.
+
+### Safeguards
+
+- **Bounded logs**: Game log capped at 50 entries; older entries pruned on each write.
+- **Chat limit**: Query limited to last 50 messages (`orderBy ts desc, limit 50`).
+- **Presence throttle**: Connection writes throttled to once per 60s. Disconnects always write immediately.
+- **Lazy chat subscription**: Mobile users don't subscribe to chat until they open the panel. Desktop subscribes after first render (not on component mount).
+- **Single discard top**: Only the current discard card is stored (no discard history array).
+- **One summary per game**: Analytics written once by host when all players reveal.
+- **No polling**: All real-time updates use Firestore `onSnapshot` listeners (server push), not client polling.
+
+### Scaling Estimates (Spark Plan: 50K reads / 20K writes per day)
+
+| Scale | Games/Day | Est. Writes/Day | Status |
+|-------|-----------|-----------------|--------|
+| ~50 games | 50 | ~8K | Comfortable on free tier |
+| ~200 games | 200 | ~32K | Approaching limit, consider Blaze |
+| ~500+ games | 500+ | ~80K+ | Requires Blaze (pay-as-you-go) |
