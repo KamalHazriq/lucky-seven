@@ -253,3 +253,11 @@ Lucky Seven is designed to run comfortably within Firebase's free Spark plan.
 | ~50 games | 50 | ~8K | Comfortable on free tier |
 | ~200 games | 200 | ~32K | Approaching limit, consider Blaze |
 | ~500+ games | 500+ | ~80K+ | Requires Blaze (pay-as-you-go) |
+
+### License
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License.
+
+You may view, study, and modify the code for personal or educational use.
+
+Commercial use, redistribution for profit, or selling derivative works based on this project is strictly prohibited without permission from the author.
