@@ -1129,7 +1129,7 @@ export default function Game() {
                   })()}
                   <div className="text-center relative" ref={discardPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Discard</p>
-                    {game.discardTop ? (
+                    {game.discardTop && privateState?.drawnCardSource !== 'discard' ? (
                       <div className="relative">
                         <CardView
                           card={game.discardTop}
@@ -1317,7 +1317,7 @@ export default function Game() {
 
               <div className="text-center relative" ref={discardPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Discard</p>
-                {game.discardTop ? (
+                {game.discardTop && privateState?.drawnCardSource !== 'discard' ? (
                   <div className="relative">
                     <CardView
                       card={game.discardTop}
