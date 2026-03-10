@@ -24,12 +24,6 @@ A real-time multiplayer card game for 2-8 players, built by Kamal Hazriq. Hosted
 
 When you use a power card, it gets discarded after the effect resolves. You can always choose to swap or discard a power card instead of using its ability.
 
-### Ending the Game
-
-Any player can call **"End Game"** on their turn. When called, every other player gets **one final turn** to finish the round, then all cards are revealed and scored.
-
-The game also ends immediately if the draw pile runs out.
-
 ### Lock Mechanics
 
 - Locked cards show a red lock icon and **cannot** be swapped (by you, Queen, or Joker).
