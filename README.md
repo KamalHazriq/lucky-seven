@@ -30,6 +30,12 @@ When you use a power card, it gets discarded after the effect resolves. You can 
 - A Joker's Chaos only shuffles the target player's **unlocked** cards.
 - Use a 10 (Key) to unlock any locked card.
 
+### Ending the Game
+
+The game ends when the **pile of cards reaches 0** or when the pile is fully finished.  
+Once this happens, all players reveal their cards and the scores are calculated.  
+The player with the **lowest total score wins**.
+
 ## Tech Stack
 
 - **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS v4
