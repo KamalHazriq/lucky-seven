@@ -240,7 +240,6 @@ export async function joinGame(
       if (colorConflict) throw new Error(`Color already taken by ${colorConflict.displayName}`)
     }
 
-    txHistory(tx, gameId, `${displayName} joined`)
     tx.update(gameRef(gameId), {
       playerOrder: [...game.playerOrder, user.uid],
       log: boundLog(game.log, logEntry(`${displayName} joined`)),
@@ -262,6 +261,7 @@ export async function joinGame(
       known: {},
     } satisfies PrivatePlayerDoc)
   })
+  addHistory(gameId, `${displayName} joined`)
 }
 
 // ─── Start Game ─────────────────────────────────────────────────
@@ -1315,6 +1315,8 @@ export async function playAgain(
   const candidateSeed = nanoid(12)
 
   let result: string | null = null
+  let historyGameId: string | null = null
+  let historyMsg = ''
 
   try {
     await runTransaction(db, async (tx) => {
@@ -1342,7 +1344,6 @@ export async function playAgain(
 
           if (canJoin) {
             const seatIndex = rematch.playerOrder.length
-            txHistory(tx, existingRematchId, `${displayName} joined`)
             tx.update(gameRef(existingRematchId), {
               playerOrder: [...rematch.playerOrder, user.uid],
               log: boundLog(rematch.log, logEntry(`${displayName} joined`)),
@@ -1361,6 +1362,8 @@ export async function playAgain(
               drawnCardSource: null,
               known: {},
             } satisfies PrivatePlayerDoc)
+            historyGameId = existingRematchId
+            historyMsg = `${displayName} joined`
             result = existingRematchId
             return
           }
@@ -1377,7 +1380,6 @@ export async function playAgain(
         turnSeconds: settings?.turnSeconds ?? DEFAULT_GAME_SETTINGS.turnSeconds,
       }
       const now = Date.now()
-      txHistory(tx, candidateGameId, `Game created by ${displayName}`)
       tx.set(gameRef(candidateGameId), {
         status: 'lobby',
         hostId: user.uid,
@@ -1419,12 +1421,16 @@ export async function playAgain(
       // Atomically point the finished game to the new rematch lobby
       tx.update(gameRef(finishedGameId), { rematchLobbyId: candidateGameId })
 
+      historyGameId = candidateGameId
+      historyMsg = `Game created by ${displayName}`
       result = candidateGameId
     })
   } catch {
     // Permission denied (e.g. kicked player) or transient error — solo fallback
     result = null
   }
+
+  if (historyGameId && historyMsg) addHistory(historyGameId, historyMsg)
 
   if (result === null) {
     // Fallback: create a standalone lobby (no rematch link)
