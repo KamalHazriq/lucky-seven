@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react'
+import { usePerformanceMode } from '../hooks/usePerformanceMode'
 import { motion, type Transition } from 'framer-motion'
 
 /** Shared spring configs for premium buttery-smooth motion */
@@ -43,7 +44,7 @@ const sizes = {
   lg: 'w-24 h-34 text-base',
 }
 
-export default function CardView({
+function CardView({
   card,
   faceUp = false,
   known = false,
@@ -57,8 +58,17 @@ export default function CardView({
   ownerColor,
 }: CardViewProps) {
   const showFace = faceUp && card
+  const perfMode = usePerformanceMode()
   const [showTooltip, setShowTooltip] = useState(false)
   const lockerName = lockInfo?.lockerName
+
+  const ownerColorStyle = useMemo(() => {
+    if (!ownerColor) return null
+    return {
+      background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.85)} 0%, ${hexToRgba(ownerColor, 0.5)} 35%, ${hexToRgba(ownerColor, 0.6)} 70%, ${hexToRgba(ownerColor, 0.75)} 100%)`,
+      boxShadow: `inset 0 1px 0 ${hexToRgba('#ffffff', 0.06)}, 0 4px 12px ${hexToRgba(ownerColor, 0.25)}`,
+    }
+  }, [ownerColor])
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
 
@@ -107,10 +117,7 @@ export default function CardView({
       `}
       style={{
         perspective: '600px',
-        ...(!showFace && ownerColor ? {
-          background: `linear-gradient(145deg, ${hexToRgba(ownerColor, 0.85)} 0%, ${hexToRgba(ownerColor, 0.5)} 35%, ${hexToRgba(ownerColor, 0.6)} 70%, ${hexToRgba(ownerColor, 0.75)} 100%)`,
-          boxShadow: `inset 0 1px 0 ${hexToRgba('#ffffff', 0.06)}, 0 4px 12px ${hexToRgba(ownerColor, 0.25)}`,
-        } : {}),
+        ...(!showFace && ownerColorStyle ? ownerColorStyle : {}),
       }}
     >
       {showFace ? (
@@ -135,8 +142,8 @@ export default function CardView({
         </motion.div>
       ) : (
         <div
-          className="card-shimmer absolute inset-0 rounded-xl"
-          style={ownerColor ? {
+          className={perfMode ? 'absolute inset-0 rounded-xl' : 'card-shimmer absolute inset-0 rounded-xl'}
+          style={ownerColor && !perfMode ? {
             '--shimmer-color': ownerColor,
           } as React.CSSProperties : undefined}
         >
@@ -212,3 +219,5 @@ export default function CardView({
     </motion.div>
   )
 }
+
+export default memo(CardView)

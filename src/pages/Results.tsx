@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { subscribeReveals, revealHand, writeGameSummary, createGame } from '../lib/gameService'
+import { subscribeReveals, revealHand, writeGameSummary, playAgain } from '../lib/gameService'
 import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
 import type { PlayerScore } from '../lib/types'
@@ -184,13 +184,15 @@ export default function Results() {
         <div className="text-center mt-6 flex items-center justify-center gap-3">
           <button
             onClick={async () => {
-              if (playAgainBusy) return
+              if (playAgainBusy || !gameId) return
               setPlayAgainBusy(true)
               try {
-                const myName = players[user?.uid ?? '']?.displayName ?? 'Player'
+                const myPlayer = players[user?.uid ?? '']
+                const myName = myPlayer?.displayName ?? 'Player'
+                const myColorKey = myPlayer?.colorKey
                 const maxP = game?.maxPlayers ?? 4
-                const newGameId = await createGame(myName, maxP, game?.settings ?? undefined)
-                navigate(`/lobby/${newGameId}`)
+                const targetId = await playAgain(gameId, myName, maxP, game?.settings ?? {}, myColorKey)
+                navigate(`/lobby/${targetId}`)
               } catch (e) {
                 toast.error((e as Error).message)
                 setPlayAgainBusy(false)
@@ -199,7 +201,7 @@ export default function Results() {
             disabled={playAgainBusy}
             className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 text-white rounded-xl font-semibold transition-all cursor-pointer"
           >
-            {playAgainBusy ? 'Creating...' : 'Play Again'}
+            {playAgainBusy ? 'Joining...' : 'Play Again'}
           </button>
           <button
             onClick={() => navigate('/')}

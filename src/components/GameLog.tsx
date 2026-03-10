@@ -9,9 +9,10 @@ interface GameLogProps {
   players: Record<string, PlayerDoc>
   /** Display mode — 'bottom' (default) or 'left' (sidebar) */
   position?: LogPosition
+  onOpenHistory?: () => void
 }
 
-export default function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
+export default function GameLog({ log, players, position = 'bottom', onOpenHistory }: GameLogProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,9 +40,21 @@ export default function GameLog({ log, players, position = 'bottom' }: GameLogPr
           : 'max-h-48 bg-slate-900/60 border-slate-700/50 p-3'
       }`}
     >
-      <h3 className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: 'var(--text-dim)' }}>
-        Game Log
-      </h3>
+      <div className="flex items-center justify-between mb-2 px-1">
+        <h3 className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
+          Game Log
+        </h3>
+        {onOpenHistory && (
+          <button
+            onClick={onOpenHistory}
+            className="text-[10px] text-slate-500 hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-0.5"
+            title="Full history"
+          >
+            <span>🕐</span>
+            <span>History</span>
+          </button>
+        )}
+      </div>
       <div className="flex flex-col">
         <AnimatePresence initial={false}>
           {entries.map((entry, i) => {

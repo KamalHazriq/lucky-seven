@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.6.0'
+export const CURRENT_VERSION = 'v1.7.1'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,91 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.7.1',
+    title: 'Turn Timer & Moderation',
+    date: '11 March 2026',
+    sections: [
+      {
+        heading: 'Turn Timer',
+        items: [
+          'Configurable turn timer: Off, 30s, 60s, 90s, or 120s — set when creating a game',
+          'Live countdown bar below the turn indicator (green → amber → red)',
+          'Critical pulse animation on the timer when ≤5 seconds remain',
+          'Timer resets when the turn advances to the next player',
+        ],
+      },
+      {
+        heading: 'AFK System',
+        items: [
+          'If the timer expires, the turn is auto-skipped and the player gets 1 AFK strike',
+          'Drawn cards are auto-discarded when a turn is skipped',
+          'On 2 consecutive AFK strikes, the player is kicked from the game',
+          'AFK strikes reset whenever a player takes any action (draw from pile or discard)',
+        ],
+      },
+      {
+        heading: 'Vote-Kick',
+        items: [
+          'Any player can initiate a vote to kick another player via the Settings menu',
+          'All players see a modal with vote progress — majority required to kick',
+          'Voting "No" immediately cancels the vote to prevent griefing',
+          'Kicked player is removed, turn advances if needed, host transfers if needed',
+        ],
+      },
+      {
+        heading: 'Technical',
+        items: [
+          'Auto-skip uses actionVersion guard so only one client triggers the skip',
+          'All timer operations are client-side with Date.now() — no server timestamps needed',
+          'Vote-kick data stored on game doc — real-time updates for all players',
+          'Firestore rules updated to allow afkStrikes field on player docs',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.7.0',
+    title: 'Identity & Lobby',
+    date: '11 March 2026',
+    sections: [
+      {
+        heading: 'Unique Player Colors',
+        items: [
+          '16 high-contrast colors in the lobby picker — readable on dark felt UI',
+          'Colors are "booked" — no two players can pick the same color',
+          'Taken colors appear dimmed with tooltip showing who took them',
+          'Color selection uses Firestore transactions to prevent race conditions',
+        ],
+      },
+      {
+        heading: 'Unique Player Names',
+        items: [
+          'No duplicate names allowed in a lobby (case-insensitive)',
+          '"Azam" and "azam" are treated as the same name',
+          'Validated at join time and when editing name in the lobby',
+          'Clear error toast: "Name already taken in this lobby"',
+        ],
+      },
+      {
+        heading: 'Invite Link Flow',
+        items: [
+          'Invite links now show a name + color picker modal before joining',
+          'See lobby player count, taken colors, and name conflicts in real-time',
+          'Full/started lobbies show a clear message instead of auto-joining',
+          'Cancel button returns to the Home page',
+        ],
+      },
+      {
+        heading: 'Security',
+        items: [
+          'Firestore rules restrict player doc updates to safe fields only',
+          'Players can only modify: displayName, colorKey, connected, locks, lockedBy',
+          'Prevents overwriting other players\' data through direct Firestore calls',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.6.0',
     title: 'Premium Polish',

@@ -18,6 +18,8 @@ import {
   useRearrange,
   revealHand,
   leaveGame,
+  initiateVoteKick,
+  castVoteKick,
 } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
@@ -46,12 +48,18 @@ import { getPlayerColor } from '../lib/playerColors'
 import { useLayout } from '../hooks/useLayout'
 import { useUiMode } from '../hooks/useUiMode'
 import { useLogPosition } from '../hooks/useLogPosition'
+import { useTurnTimer } from '../hooks/useTurnTimer'
+import TurnTimer from '../components/TurnTimer'
+import VoteKickModal from '../components/VoteKickModal'
+import HistoryModal from '../components/HistoryModal'
+import { useGameHistory } from '../hooks/useGameHistory'
 import { getSeatPositions } from '../lib/seatPositions'
 import ActionBar from '../components/ActionBar'
 import { useSelectionMode } from '../hooks/useSelectionMode'
 import type { SelectionConstraint, SelectedTarget } from '../hooks/useSelectionMode'
 import { useChoreography } from '../hooks/useChoreography'
 import { playSfx, vibrate } from '../lib/sfx'
+import { useRemoteSfx } from '../hooks/useRemoteSfx'
 import { copyToClipboard } from '../lib/share'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
@@ -101,11 +109,14 @@ export default function Game() {
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const history = useGameHistory(gameId)
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
   const { uiMode, toggleMode: toggleUiMode, isDesktop } = useUiMode()
   const { position: logPosition, toggle: toggleLogPosition, canSidebar: canLogSidebar } = useLogPosition()
+  const turnTimer = useTurnTimer(game, gameId, user?.uid)
   const { flyingCard, triggerFly, queueFly, flushQueue, clearFly } = useFlyingCard()
   const {
     choreo,
@@ -241,6 +252,9 @@ export default function Game() {
     players,
   )
 
+  // Remote SFX — plays sounds for other players' actions; local actions use playSfx() directly
+  useRemoteSfx(game?.actionVersion ?? 0, game?.log ?? [], players, user?.uid)
+
   // Remote player flying card detection
   const prevActionVersion = useRef(game?.actionVersion ?? 0)
   useEffect(() => {
@@ -333,30 +347,37 @@ export default function Game() {
     const targetEl = otherPanelRefs.current[actorId]
     if (!targetEl) return
 
-    // Remote draw/take animations fly to staging area (center), not to opponent's panel
-    const stagingEl = stagingRef.current
-    const stagingRect = stagingEl?.getBoundingClientRect()
-    const toRect = stagingRect ?? targetEl.getBoundingClientRect()
+    // Helper: get staging rect, always preferring the staging slot over opponent panel.
+    // If stagingRef is somehow null, fall back to opponent panel as last resort.
+    const getStagingRect = (): DOMRect => {
+      const el = stagingRef.current
+      return el ? el.getBoundingClientRect() : targetEl.getBoundingClientRect()
+    }
 
     if (msg.includes('drew from the pile')) {
-      const fromEl = drawPileRef.current
-      if (fromEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toRect, false, null, actorColor)
-      }
-      // Show face-down card tinted with actor's color in staging for remote viewer
+      // Set remote staging FIRST so StagingSlot renders as active
       setRemoteStaging({ card: null, faceUp: false, ownerColor: actorColor })
+      // Defer animation to next frame so staging slot has painted with active state
+      requestAnimationFrame(() => {
+        const fromEl = drawPileRef.current
+        if (fromEl) {
+          triggerFly(fromEl.getBoundingClientRect(), getStagingRect(), false, null, actorColor)
+        }
+      })
     } else if (msg.includes('took from discard')) {
-      const fromEl = discardPileRef.current
-      // Use previously tracked discardTop since it's now cleared
       const takenCard = prevDiscardTopRef.current
-      if (fromEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toRect, true, takenCard, actorColor)
-      }
-      // Show face-up discard card in staging for remote viewer
+      // Set remote staging FIRST so StagingSlot renders as active
       setRemoteStaging({ card: takenCard, faceUp: true, ownerColor: actorColor })
+      // Defer animation to next frame so staging slot has painted with active state
+      requestAnimationFrame(() => {
+        const fromEl = discardPileRef.current
+        if (fromEl) {
+          triggerFly(fromEl.getBoundingClientRect(), getStagingRect(), true, takenCard, actorColor)
+        }
+      })
     } else if (msg.includes('discarded') || msg.includes('swapped their card')) {
       // Resolution always routes FROM staging → discard/slot (never from opponent seat directly)
-      const fromEl = stagingEl ?? otherPanelRefs.current[actorId]
+      const fromEl = stagingRef.current ?? otherPanelRefs.current[actorId]
       if (msg.includes('swapped their card')) {
         // Parse slot index from "swapped their card #N"
         const slotMatch = msg.match(/swapped their card #(\d)/)
@@ -447,7 +468,7 @@ export default function Game() {
     const discardCard = game?.discardTop ?? null
     withBusy(async () => {
       await takeFromDiscard(gameId!)
-      playSfx('draw'); vibrate()
+      playSfx('take'); vibrate()
       if (!reduced && fromEl && stagingEl && discardCard) {
         // Section 2: fly discard card to staging area
         startDiscardTake(discardCard, fromEl.getBoundingClientRect(), stagingEl.getBoundingClientRect())
@@ -584,6 +605,7 @@ export default function Game() {
           // No target selection — execute immediately, show modal
           withBusy(async () => {
             const cards = await usePeekAll(gameId!)
+            playSfx('peekAll')
             setModal({ type: 'peekAll', cards })
           })
           break
@@ -612,10 +634,12 @@ export default function Game() {
         setModal({ type: 'none' })
         withBusy(async () => {
           const cards = await usePeekAll(gameId!)
+          playSfx('peekAll')
           setModal({ type: 'peekAll', cards })
         })
         break
       case 'peek_one_of_your_cards':
+        playSfx('peek')
         setModal({ type: 'peekOne' })
         break
       case 'swap_one_to_one':
@@ -649,6 +673,7 @@ export default function Game() {
         // Peek one — Section F: temporary reveal
         withBusy(async () => {
           const card = await usePeekOne(gameId!, first.slotIndex)
+          playSfx('peek')
           if (reduced) {
             setModal({ type: 'peekResult', card, slot: first.slotIndex })
           } else {
@@ -706,7 +731,7 @@ export default function Game() {
         // Rearrange/chaos — Section G
         withBusy(async () => {
           await useRearrange(gameId!, first.playerId)
-          playSfx('swap'); vibrate(80)
+          playSfx('chaos'); vibrate(80)
         })
         break
       }
@@ -797,7 +822,7 @@ export default function Game() {
 
   const handleRearrangeSelect = (targetPlayerId: string) => {
     setModal({ type: 'none' })
-    withBusy(async () => { await useRearrange(gameId!, targetPlayerId); playSfx('swap'); vibrate(80) })
+    withBusy(async () => { await useRearrange(gameId!, targetPlayerId); playSfx('chaos'); vibrate(80) })
   }
 
   const handleCancelPower = () => {
@@ -1000,7 +1025,7 @@ export default function Game() {
               borderColor: 'var(--border)',
             }}
           >
-            <GameLog log={game.log} players={players} position="left" />
+            <GameLog log={game.log} players={players} position="left" onOpenHistory={() => setHistoryOpen(true)} />
           </aside>
         )}
 
@@ -1037,11 +1062,18 @@ export default function Game() {
           )}
         </motion.div>
 
+        {/* Turn Timer Bar */}
+        {turnTimer.remaining !== null && (
+          <div className="mb-3 px-1">
+            <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={isMyTurn} />
+          </div>
+        )}
+
         {layout === 'table' ? (
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            const panelW = otherPlayers.length <= 3 ? '200px' : otherPlayers.length <= 5 ? '175px' : '155px'
+            const panelW = otherPlayers.length <= 3 ? '220px' : otherPlayers.length <= 5 ? '200px' : '185px'
             return (
               <>
               <div
@@ -1131,7 +1163,8 @@ export default function Game() {
                         top: `${pos.top}%`,
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
-                        width: otherPlayers.length <= 4 ? '42%' : '36%',
+                        width: otherPlayers.length <= 4 ? '42%' : otherPlayers.length <= 6 ? '38%' : '36%',
+                        minWidth: '185px',
                         overflow: 'visible',
                       }}
                     >
@@ -1232,6 +1265,7 @@ export default function Game() {
                       isCurrentTurn={game.currentTurnPlayerId === pid}
                       isLocalPlayer={false}
                       seatIndex={players[pid]?.seatIndex ?? 0}
+                      colorKey={players[pid]?.colorKey}
                       connected={players[pid]?.connected ?? false}
                       locks={players[pid]?.locks ?? [false, false, false]}
                       lockedBy={players[pid]?.lockedBy}
@@ -1273,6 +1307,7 @@ export default function Game() {
                     card={stagingCard}
                     faceUp={stagingFaceUp}
                     active={choreo.phase === 'staging' || !!remoteStaging}
+                    ownerColor={remoteStaging?.ownerColor}
                     onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
                       ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
                       : undefined}
@@ -1315,6 +1350,7 @@ export default function Game() {
                   known: { ...myKnown, [String(peekReveal.slot)]: peekReveal.card },
                 } : privateState}
                 seatIndex={players[user.uid]?.seatIndex ?? 0}
+                colorKey={players[user.uid]?.colorKey}
                 connected
                 locks={myLocks}
                 lockedBy={myPlayer?.lockedBy}
@@ -1355,7 +1391,7 @@ export default function Game() {
 
         {/* Game Log — bottom position (default) */}
         {logPosition === 'bottom' && (
-          <GameLog log={game.log} players={players} position="bottom" />
+          <GameLog log={game.log} players={players} position="bottom" onOpenHistory={() => setHistoryOpen(true)} />
         )}
 
         </div>{/* end of content wrapper for left-log layout */}
@@ -1465,6 +1501,12 @@ export default function Game() {
         showLayoutToggle={!isMobile}
         showUiModeToggle={!isMobile}
         showLogToggle={canLogSidebar}
+        onVoteKick={(targetId) => {
+          setShowSettings(false)
+          initiateVoteKick(gameId!, targetId).catch((e) => toast.error((e as Error).message))
+        }}
+        otherPlayers={otherPlayers.map((pid) => ({ id: pid, name: players[pid]?.displayName ?? 'Unknown' }))}
+        voteKickActive={!!game.voteKick?.active}
         onLeaveGame={async () => {
           if (!confirm('Are you sure you want to leave? You cannot rejoin this game.')) return
           setShowSettings(false)
@@ -1513,12 +1555,32 @@ export default function Game() {
         />
       )}
 
+      {/* Vote-Kick Modal — shows for all players when a vote is active */}
+      <VoteKickModal
+        voteKick={game.voteKick ?? null}
+        localPlayerId={user.uid}
+        onVoteYes={() => {
+          castVoteKick(gameId!, true).catch((e) => toast.error((e as Error).message))
+        }}
+        onVoteNo={() => {
+          castVoteKick(gameId!, false).catch((e) => toast.error((e as Error).message))
+        }}
+      />
+
       <ChatPanel
         open={chat.isOpen}
         messages={chat.messages}
         localUserId={user.uid}
         onSend={chat.send}
         onClose={chat.closeChat}
+      />
+
+      <HistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        gameId={gameId}
+        players={players}
+        history={history}
       />
 
       <VersionLabel />

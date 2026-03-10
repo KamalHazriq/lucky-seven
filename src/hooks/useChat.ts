@@ -17,10 +17,15 @@ function getStoredPref(): boolean | null {
 }
 
 /**
- * Chat hook with lazy/eager subscription and localStorage-persisted open state.
- * - Desktop: open by default (subscribes immediately)
- * - Mobile: closed by default (subscribes only on first open)
- * - User preference persists in localStorage
+ * Chat hook with smart subscription lifecycle and localStorage-persisted open state.
+ *
+ * Subscription rules (quota-conscious):
+ * - Desktop: stays subscribed while chat is open (default open). Closing on desktop
+ *   keeps the subscription alive so chat bubbles + unread counts still work.
+ * - Mobile: subscribes only while chat is open. Closing tears down the listener
+ *   to save Firestore reads. Bubbles use the last-known messages array.
+ *
+ * Only one onSnapshot listener is ever active at a time.
  */
 export function useChat(
   gameId: string | undefined,
@@ -36,14 +41,19 @@ export function useChat(
     if (stored !== null) return stored
     return !getIsMobile() // desktop = open, mobile = closed
   })
-  const [subscribed, setSubscribed] = useState(isOpen) // if open by default, subscribe immediately
+
+  // Track whether we should be subscribed right now.
+  // Desktop: subscribe eagerly (for bubble notifications even when panel closed).
+  // Mobile: subscribe only while chat panel is open.
+  const [subscribed, setSubscribed] = useState(isOpen)
+
   const isOpenRef = useRef(isOpen)
   const prevMsgCountRef = useRef(0)
 
   // Keep ref in sync
   isOpenRef.current = isOpen
 
-  // Subscribe to chat (lazy: only after subscribed flag set, or immediately if desktop default)
+  // ─── Firestore subscription (single listener) ────────────────
   useEffect(() => {
     if (!gameId || !subscribed) return
     const unsub = subscribeChat(gameId, (msgs) => {
@@ -67,6 +77,11 @@ export function useChat(
   const closeChat = useCallback(() => {
     setIsOpen(false)
     localStorage.setItem(STORAGE_KEY, 'false')
+    // On mobile, tear down listener to save Firestore reads.
+    // On desktop, keep it alive for bubbles + unread badge.
+    if (getIsMobile()) {
+      setSubscribed(false)
+    }
   }, [])
 
   const toggleChat = useCallback(() => {

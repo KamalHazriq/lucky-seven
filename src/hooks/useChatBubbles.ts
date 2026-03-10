@@ -41,7 +41,7 @@ export function useChatBubbles(
       if (msg.userId === localUserId) continue
 
       const uid = msg.userId
-      const text = msg.text.length > 40 ? msg.text.slice(0, 38) + '\u2026' : msg.text
+      const text = msg.text.length > 140 ? msg.text.slice(0, 138) + '\u2026' : msg.text
 
       // Clear existing timer for this user
       if (timersRef.current[uid]) clearTimeout(timersRef.current[uid])

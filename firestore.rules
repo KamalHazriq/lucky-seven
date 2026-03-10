@@ -38,15 +38,18 @@ service cloud.firestore {
           && request.auth.uid == playerId;
 
         // Update rules:
-        // 1) Own player doc: can update any field (profile, connected, etc.)
-        // 2) Other player docs: only locks/lockedBy (game powers in transactions)
+        // 1) Own player doc: profile fields OR game state fields
+        // 2) Other player docs: locks/lockedBy/connected/afkStrikes (game powers + AFK system)
         //    Requires the updater to be a participant in the game
         allow update: if request.auth != null
           && (
-            request.auth.uid == playerId
+            (
+              request.auth.uid == playerId
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'colorKey', 'connected', 'locks', 'lockedBy', 'afkStrikes'])
+            )
             || (
               request.auth.uid in get(/databases/$(database)/documents/games/$(gameId)).data.playerOrder
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locks', 'lockedBy'])
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locks', 'lockedBy', 'connected', 'afkStrikes'])
             )
           );
 
@@ -90,6 +93,16 @@ service cloud.firestore {
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 300;
+        allow update, delete: if false;
+      }
+
+      // ─── History (full game event log, unbounded subcollection) ─
+      match /history/{entryId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly(['ts', 'msg'])
+          && request.resource.data.ts is int
+          && request.resource.data.msg is string;
         allow update, delete: if false;
       }
     }

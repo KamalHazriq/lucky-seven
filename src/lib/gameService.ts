@@ -13,7 +13,10 @@ import {
   where,
   orderBy,
   limit as firestoreLimit,
+  startAfter,
   type Unsubscribe,
+  type DocumentSnapshot,
+  type Transaction,
 } from 'firebase/firestore'
 import { db, ensureAuth } from './firebase'
 import { buildDeck, shuffleDeck, scoreHand } from './deck'
@@ -57,6 +60,19 @@ function boundLog(log: LogEntry[], newEntry: LogEntry): LogEntry[] {
   return updated.length > 50 ? updated.slice(-50) : updated
 }
 
+// ─── History Subcollection ──────────────────────────────────────
+/** Write one event into games/{gameId}/history (inside a transaction). */
+function txHistory(tx: Transaction, gameId: string, msg: string) {
+  tx.set(doc(collection(db, 'games', gameId, 'history')), { ts: Date.now(), msg })
+}
+
+/** Write one history event outside a transaction (fire-and-forget). */
+async function addHistory(gameId: string, msg: string) {
+  try {
+    await setDoc(doc(collection(db, 'games', gameId, 'history')), { ts: Date.now(), msg })
+  } catch { /* non-critical */ }
+}
+
 // ─── Turn advancement with ending-round logic ──────────────────
 function advanceTurn(game: GameDoc, currentPlayerId: string): {
   nextPlayerId: string
@@ -82,13 +98,15 @@ function buildEndTurnUpdates(
   logMsg: string,
 ): Record<string, unknown> {
   const { nextPlayerId, shouldFinish } = advanceTurn(game, currentPlayerId)
+  const now = Date.now()
 
   const updates: Record<string, unknown> = {
     discardTop: discardCard,
     currentTurnPlayerId: shouldFinish ? null : nextPlayerId,
     turnPhase: shouldFinish ? null : 'draw',
     actionVersion: game.actionVersion + 1,
-    lastActionAt: Date.now(),
+    lastActionAt: now,
+    turnStartAt: shouldFinish ? 0 : now,
     log: arrayUnion(logEntry(logMsg)),
   }
 
@@ -135,6 +153,7 @@ export async function createGame(
     powerAssignments: { ...DEFAULT_GAME_SETTINGS.powerAssignments, ...settings?.powerAssignments },
     jokerCount: settings?.jokerCount ?? DEFAULT_GAME_SETTINGS.jokerCount,
     deckSize: settings?.deckSize ?? DEFAULT_GAME_SETTINGS.deckSize,
+    turnSeconds: settings?.turnSeconds ?? DEFAULT_GAME_SETTINGS.turnSeconds,
   }
 
   const gameData: GameDoc = {
@@ -156,6 +175,8 @@ export async function createGame(
     lastActionAt: Date.now(),
     settings: gameSettings,
     spentPowerCardIds: {},
+    turnStartAt: 0,
+    voteKick: null,
   }
 
   const playerData: PlayerDoc = {
@@ -176,12 +197,17 @@ export async function createGame(
   await setDoc(gameRef(gameId), gameData)
   await setDoc(playerRef(gameId, user.uid), playerData)
   await setDoc(privateRef(gameId, user.uid), privateData)
+  addHistory(gameId, `Game created by ${displayName}`)
 
   return gameId
 }
 
 // ─── Join Game ──────────────────────────────────────────────────
-export async function joinGame(gameId: string, displayName: string): Promise<void> {
+export async function joinGame(
+  gameId: string,
+  displayName: string,
+  colorKey?: number,
+): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
@@ -193,6 +219,28 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
     if (game.playerOrder.includes(user.uid)) return
     if (game.playerOrder.length >= game.maxPlayers) throw new Error('Game is full')
 
+    // Read existing players to validate uniqueness
+    const playerSnaps = await Promise.all(
+      game.playerOrder.map((pid) => tx.get(playerRef(gameId, pid))),
+    )
+    const existingPlayers = playerSnaps
+      .filter((s) => s.exists())
+      .map((s) => s.data() as PlayerDoc)
+
+    // Check name uniqueness (case-insensitive)
+    const nameLower = displayName.toLowerCase()
+    const nameConflict = existingPlayers.find(
+      (p) => p.displayName.toLowerCase() === nameLower,
+    )
+    if (nameConflict) throw new Error('Name already taken in this lobby')
+
+    // Check color uniqueness
+    if (colorKey != null) {
+      const colorConflict = existingPlayers.find((p) => p.colorKey === colorKey)
+      if (colorConflict) throw new Error(`Color already taken by ${colorConflict.displayName}`)
+    }
+
+    txHistory(tx, gameId, `${displayName} joined`)
     tx.update(gameRef(gameId), {
       playerOrder: [...game.playerOrder, user.uid],
       log: boundLog(game.log, logEntry(`${displayName} joined`)),
@@ -204,6 +252,7 @@ export async function joinGame(gameId: string, displayName: string): Promise<voi
       connected: true,
       locks: [false, false, false],
       lockedBy: [...EMPTY_LOCKED_BY],
+      ...(colorKey != null ? { colorKey } : {}),
     } satisfies PlayerDoc)
 
     tx.set(privateRef(gameId, user.uid), {
@@ -255,6 +304,7 @@ export async function startGame(gameId: string): Promise<void> {
 
     tx.set(drawPileRef(gameId), { cards: remaining })
 
+    txHistory(tx, gameId, 'Game started! Cards dealt.')
     tx.update(gameRef(gameId), {
       status: 'active',
       drawPileCount: remaining.length,
@@ -263,9 +313,11 @@ export async function startGame(gameId: string): Promise<void> {
       turnPhase: 'draw',
       actionVersion: 1,
       lastActionAt: Date.now(),
+      turnStartAt: Date.now(),
       endCalledBy: null,
       endRoundStartSeatIndex: null,
       spentPowerCardIds: {},
+      voteKick: null,
       log: boundLog(game.log, logEntry('Game started! Cards dealt.')),
     })
   })
@@ -294,6 +346,9 @@ export async function drawFromPile(gameId: string): Promise<void> {
 
     tx.update(drawPileRef(gameId), { cards: newPile })
     tx.update(privateRef(gameId, user.uid), { drawnCard: drawn, drawnCardSource: 'pile' })
+    // Reset AFK strikes on action
+    tx.update(playerRef(gameId, user.uid), { afkStrikes: 0 })
+    txHistory(tx, gameId, `${pName} drew from the pile`)
     tx.update(gameRef(gameId), {
       drawPileCount: newPile.length,
       turnPhase: 'action',
@@ -320,6 +375,9 @@ export async function takeFromDiscard(gameId: string): Promise<void> {
     if (!game.discardTop) throw new Error('No discard card')
 
     tx.update(privateRef(gameId, user.uid), { drawnCard: game.discardTop, drawnCardSource: 'discard' })
+    // Reset AFK strikes on action
+    tx.update(playerRef(gameId, user.uid), { afkStrikes: 0 })
+    txHistory(tx, gameId, `${pName} took from discard`)
     tx.update(gameRef(gameId), {
       discardTop: null,
       turnPhase: 'action',
@@ -398,10 +456,9 @@ export async function swapWithSlot(gameId: string, slotIndex: number): Promise<v
       known: newKnown,
     })
 
-    tx.update(gameRef(gameId), buildEndTurnUpdates(
-      game, user.uid, oldCard,
-      `${pd.displayName} swapped their card #${slotIndex + 1}`,
-    ))
+    const swapMsg = `${pd.displayName} swapped their card #${slotIndex + 1}`
+    txHistory(tx, gameId, swapMsg)
+    tx.update(gameRef(gameId), buildEndTurnUpdates(game, user.uid, oldCard, swapMsg))
   })
 }
 
@@ -423,10 +480,8 @@ export async function discardDrawn(gameId: string): Promise<void> {
 
     const discardCard = priv.drawnCard
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
-    tx.update(gameRef(gameId), buildEndTurnUpdates(
-      game, user.uid, discardCard,
-      `${pName} discarded`,
-    ))
+    txHistory(tx, gameId, `${pName} discarded`)
+    tx.update(gameRef(gameId), buildEndTurnUpdates(game, user.uid, discardCard, `${pName} discarded`))
   })
 }
 
@@ -483,9 +538,11 @@ export async function usePeekAll(gameId: string): Promise<Record<number, Card>> 
     }
 
     const discardCard = priv.drawnCard
+    const peekAllMsg = `${pd.displayName} used ${rankKey} as peek_all`
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null, known: newKnown })
+    txHistory(tx, gameId, peekAllMsg)
     tx.update(gameRef(gameId), {
-      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as peek_all`),
+      ...buildEndTurnUpdates(game, user.uid, discardCard, peekAllMsg),
       ...spentField(discardCard.id),
     })
   })
@@ -517,9 +574,11 @@ export async function usePeekOne(gameId: string, slotIndex: number): Promise<Car
     newKnown[String(slotIndex)] = peekedCard
 
     const discardCard = priv.drawnCard
+    const peekOneMsg = `${pd.displayName} used ${rankKey} as peek_one`
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null, known: newKnown })
+    txHistory(tx, gameId, peekOneMsg)
     tx.update(gameRef(gameId), {
-      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as peek_one`),
+      ...buildEndTurnUpdates(game, user.uid, discardCard, peekOneMsg),
       ...spentField(discardCard.id),
     })
   })
@@ -594,8 +653,10 @@ export async function useSwap(
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
 
     const discardCard = priv.drawnCard
+    const swapPowerMsg = `${pd.displayName} used ${rankKey} as swap: ${playerAData.displayName}'s #${targetA.slotIndex + 1} ↔ ${playerBData.displayName}'s #${targetB.slotIndex + 1}`
+    txHistory(tx, gameId, swapPowerMsg)
     tx.update(gameRef(gameId), {
-      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as swap: ${playerAData.displayName}'s #${targetA.slotIndex + 1} ↔ ${playerBData.displayName}'s #${targetB.slotIndex + 1}`),
+      ...buildEndTurnUpdates(game, user.uid, discardCard, swapPowerMsg),
       ...spentField(discardCard.id),
     })
   })
@@ -637,8 +698,10 @@ export async function useLock(
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
 
     const targetName = targetPlayerId === user.uid ? 'their own' : `${targetPD.displayName}'s`
+    const lockMsg = `${pd.displayName} used ${rankKey} as lock on ${targetName} card #${slotIndex + 1}`
+    txHistory(tx, gameId, lockMsg)
     tx.update(gameRef(gameId), {
-      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as lock on ${targetName} card #${slotIndex + 1}`),
+      ...buildEndTurnUpdates(game, user.uid, discardCard, lockMsg),
       ...spentField(discardCard.id),
     })
   })
@@ -687,6 +750,7 @@ export async function useUnlock(
     const logMsg = isActuallyLocked
       ? `${pd.displayName} used ${rankKey} as unlock on ${targetPlayerId === user.uid ? 'their own' : `${targetPD.displayName}'s`} card #${slotIndex + 1}`
       : `${pd.displayName} used ${rankKey} as unlock but no card was locked (power fizzled)`
+    txHistory(tx, gameId, logMsg)
     tx.update(gameRef(gameId), {
       ...buildEndTurnUpdates(game, user.uid, discardCard, logMsg),
       ...spentField(discardCard.id),
@@ -744,10 +808,11 @@ export async function useRearrange(
     }
 
     const discardCard = priv.drawnCard
+    const rearrangeMsg = `${pd.displayName} used ${rankKey} as rearrange on ${targetPD.displayName}'s cards!`
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
-
+    txHistory(tx, gameId, rearrangeMsg)
     tx.update(gameRef(gameId), {
-      ...buildEndTurnUpdates(game, user.uid, discardCard, `${pd.displayName} used ${rankKey} as rearrange on ${targetPD.displayName}'s cards!`),
+      ...buildEndTurnUpdates(game, user.uid, discardCard, rearrangeMsg),
       ...spentField(discardCard.id),
     })
   })
@@ -768,6 +833,7 @@ export async function callEnd(gameId: string): Promise<void> {
 
     const callerIdx = game.playerOrder.indexOf(user.uid)
 
+    txHistory(tx, gameId, `${pd.displayName} called END! Finishing the round...`)
     tx.update(gameRef(gameId), {
       status: 'ending',
       endCalledBy: user.uid,
@@ -795,12 +861,14 @@ export async function leaveLobby(gameId: string): Promise<void> {
 
     if (newOrder.length === 0) {
       // Last player — delete the game doc (or mark abandoned)
+      txHistory(tx, gameId, 'All players left. Game abandoned.')
       tx.update(gameRef(gameId), {
         status: 'finished',
         playerOrder: [],
         log: arrayUnion(logEntry('All players left. Game abandoned.')),
       })
     } else {
+      txHistory(tx, gameId, 'A player left the lobby')
       const updates: Record<string, unknown> = {
         playerOrder: newOrder,
         log: arrayUnion(logEntry(`A player left the lobby`)),
@@ -837,6 +905,7 @@ export async function leaveGame(gameId: string): Promise<void> {
 
     if (newOrder.length < 2) {
       // Not enough players — end the game
+      txHistory(tx, gameId, `${pd.displayName} left. Not enough players — game over.`)
       tx.update(gameRef(gameId), {
         status: 'finished',
         currentTurnPlayerId: null,
@@ -847,6 +916,7 @@ export async function leaveGame(gameId: string): Promise<void> {
         log: arrayUnion(logEntry(`${pd.displayName} left. Not enough players — game over.`)),
       })
     } else {
+      txHistory(tx, gameId, `${pd.displayName} left the game`)
       const updates: Record<string, unknown> = {
         playerOrder: newOrder,
         actionVersion: game.actionVersion + 1,
@@ -860,11 +930,20 @@ export async function leaveGame(gameId: string): Promise<void> {
         const nextIdx = idx % newOrder.length
         updates.currentTurnPlayerId = newOrder[nextIdx]
         updates.turnPhase = 'draw'
+        updates.turnStartAt = Date.now()
       }
 
       // If host leaves, transfer
       if (game.hostId === user.uid) {
         updates.hostId = newOrder[0]
+      }
+
+      // Cancel active vote kick if the target or voter left
+      if (game.voteKick?.active && (
+        game.voteKick.targetId === user.uid ||
+        game.voteKick.startedBy === user.uid
+      )) {
+        updates.voteKick = null
       }
 
       tx.update(gameRef(gameId), updates)
@@ -936,6 +1015,243 @@ export async function writeGameSummary(
   }
 }
 
+// ─── Skip Turn (timer expired — auto-skip) ─────────────────────────
+export async function skipTurn(gameId: string, expectedActionVersion: number): Promise<void> {
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) return
+    const game = gameSnap.data() as GameDoc
+
+    // Guard: only skip if actionVersion still matches (prevents double-skip)
+    if (game.actionVersion !== expectedActionVersion) return
+    if (!game.currentTurnPlayerId) return
+    if (game.status !== 'active' && game.status !== 'ending') return
+
+    const currentPid = game.currentTurnPlayerId
+    const playerSnap = await tx.get(playerRef(gameId, currentPid))
+    const pd = playerSnap.data() as PlayerDoc
+    const privSnap = await tx.get(privateRef(gameId, currentPid))
+    const priv = privSnap.data() as PrivatePlayerDoc
+
+    const { nextPlayerId, shouldFinish } = advanceTurn(game, currentPid)
+    const now = Date.now()
+    const currentStrikes = (pd.afkStrikes ?? 0) + 1
+
+    // If they had a drawn card, discard it automatically
+    const hasDrawnCard = !!priv.drawnCard
+    const discardUpdates: Record<string, unknown> = {}
+    if (hasDrawnCard && priv.drawnCard) {
+      discardUpdates.discardTop = priv.drawnCard
+      tx.update(privateRef(gameId, currentPid), { drawnCard: null, drawnCardSource: null })
+    }
+
+    // Check if this is 2nd consecutive AFK → kick
+    if (currentStrikes >= 2) {
+      // Kick the player
+      const newOrder = game.playerOrder.filter((pid) => pid !== currentPid)
+      if (newOrder.length < 2) {
+        txHistory(tx, gameId, `${pd.displayName} was AFK-kicked. Not enough players — game over.`)
+        tx.update(gameRef(gameId), {
+          ...discardUpdates,
+          status: 'finished',
+          currentTurnPlayerId: null,
+          turnPhase: null,
+          playerOrder: newOrder,
+          actionVersion: game.actionVersion + 1,
+          lastActionAt: now,
+          turnStartAt: 0,
+          log: arrayUnion(logEntry(`${pd.displayName} was AFK-kicked. Not enough players — game over.`)),
+        })
+      } else {
+        const idx = game.playerOrder.indexOf(currentPid)
+        const nextIdx = idx % newOrder.length
+        const nextPid = newOrder[nextIdx]
+        txHistory(tx, gameId, `${pd.displayName} was AFK-kicked (2 timeouts).`)
+        tx.update(gameRef(gameId), {
+          ...discardUpdates,
+          playerOrder: newOrder,
+          currentTurnPlayerId: nextPid,
+          turnPhase: 'draw',
+          actionVersion: game.actionVersion + 1,
+          lastActionAt: now,
+          turnStartAt: now,
+          log: arrayUnion(logEntry(`${pd.displayName} was AFK-kicked (2 timeouts).`)),
+          ...(game.hostId === currentPid ? { hostId: newOrder[0] } : {}),
+        })
+      }
+      tx.update(playerRef(gameId, currentPid), { connected: false, afkStrikes: 0 })
+      tx.update(privateRef(gameId, currentPid), { drawnCard: null, drawnCardSource: null })
+    } else {
+      // First AFK strike — just skip the turn
+      tx.update(playerRef(gameId, currentPid), { afkStrikes: currentStrikes })
+
+      txHistory(tx, gameId, `${pd.displayName}'s turn was skipped (AFK).`)
+      const updates: Record<string, unknown> = {
+        ...discardUpdates,
+        currentTurnPlayerId: shouldFinish ? null : nextPlayerId,
+        turnPhase: shouldFinish ? null : 'draw',
+        actionVersion: game.actionVersion + 1,
+        lastActionAt: now,
+        turnStartAt: shouldFinish ? 0 : now,
+        log: arrayUnion(logEntry(`${pd.displayName}'s turn was skipped (AFK).`)),
+      }
+      if (shouldFinish) {
+        updates.status = 'finished'
+      }
+      tx.update(gameRef(gameId), updates)
+    }
+  })
+}
+
+// ─── Vote-Kick: Initiate ───────────────────────────────────────────
+export async function initiateVoteKick(gameId: string, targetPlayerId: string): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) throw new Error('Game not found')
+    const game = gameSnap.data() as GameDoc
+
+    if (game.status !== 'active' && game.status !== 'ending') throw new Error('Game not active')
+    if (!game.playerOrder.includes(user.uid)) throw new Error('You are not in this game')
+    if (!game.playerOrder.includes(targetPlayerId)) throw new Error('Target is not in this game')
+    if (user.uid === targetPlayerId) throw new Error('Cannot vote to kick yourself')
+    if (game.voteKick?.active) throw new Error('A vote is already in progress')
+
+    const targetSnap = await tx.get(playerRef(gameId, targetPlayerId))
+    const targetPd = targetSnap.data() as PlayerDoc
+
+    // Majority = more than half of remaining players (excluding the target)
+    const voterCount = game.playerOrder.length - 1 // exclude target
+    const requiredVotes = Math.ceil(voterCount / 2)
+
+    txHistory(tx, gameId, `Vote to kick ${targetPd.displayName} started.`)
+    tx.update(gameRef(gameId), {
+      voteKick: {
+        active: true,
+        targetId: targetPlayerId,
+        targetName: targetPd.displayName,
+        startedBy: user.uid,
+        createdAt: Date.now(),
+        votes: [user.uid], // initiator auto-votes yes
+        requiredVotes,
+      },
+      log: arrayUnion(logEntry(`Vote to kick ${targetPd.displayName} started.`)),
+    })
+  })
+}
+
+// ─── Vote-Kick: Cast Vote ──────────────────────────────────────────
+export async function castVoteKick(gameId: string, voteYes: boolean): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) throw new Error('Game not found')
+    const game = gameSnap.data() as GameDoc
+
+    if (!game.voteKick?.active) throw new Error('No active vote')
+    if (!game.playerOrder.includes(user.uid)) throw new Error('You are not in this game')
+    if (user.uid === game.voteKick.targetId) throw new Error('Target cannot vote')
+    if (game.voteKick.votes.includes(user.uid)) throw new Error('Already voted')
+
+    const targetPid = game.voteKick.targetId
+
+    if (!voteYes) {
+      // Vote no — cancel the entire vote
+      txHistory(tx, gameId, `Vote to kick ${game.voteKick.targetName} failed.`)
+      tx.update(gameRef(gameId), {
+        voteKick: null,
+        log: arrayUnion(logEntry(`Vote to kick ${game.voteKick.targetName} failed.`)),
+      })
+      return
+    }
+
+    // Vote yes
+    const newVotes = [...game.voteKick.votes, user.uid]
+
+    if (newVotes.length >= game.voteKick.requiredVotes) {
+      // Threshold met — kick the player
+      const targetSnap = await tx.get(playerRef(gameId, targetPid))
+      const targetPd = targetSnap.data() as PlayerDoc
+      await tx.get(privateRef(gameId, targetPid)) // Read before write
+
+      const newOrder = game.playerOrder.filter((pid) => pid !== targetPid)
+
+      if (newOrder.length < 2) {
+        txHistory(tx, gameId, `${targetPd.displayName} was kicked. Not enough players — game over.`)
+        tx.update(gameRef(gameId), {
+          status: 'finished',
+          currentTurnPlayerId: null,
+          turnPhase: null,
+          playerOrder: newOrder,
+          voteKick: null,
+          actionVersion: game.actionVersion + 1,
+          lastActionAt: Date.now(),
+          turnStartAt: 0,
+          log: arrayUnion(logEntry(`${targetPd.displayName} was kicked. Not enough players — game over.`)),
+        })
+      } else {
+        txHistory(tx, gameId, `${targetPd.displayName} was kicked by vote.`)
+        const updates: Record<string, unknown> = {
+          playerOrder: newOrder,
+          voteKick: null,
+          actionVersion: game.actionVersion + 1,
+          lastActionAt: Date.now(),
+          log: arrayUnion(logEntry(`${targetPd.displayName} was kicked by vote.`)),
+        }
+
+        // If it was kicked player's turn, advance
+        if (game.currentTurnPlayerId === targetPid) {
+          const idx = game.playerOrder.indexOf(targetPid)
+          const nextIdx = idx % newOrder.length
+          updates.currentTurnPlayerId = newOrder[nextIdx]
+          updates.turnPhase = 'draw'
+          updates.turnStartAt = Date.now()
+        }
+
+        // If host was kicked, transfer
+        if (game.hostId === targetPid) {
+          updates.hostId = newOrder[0]
+        }
+
+        tx.update(gameRef(gameId), updates)
+      }
+
+      tx.update(playerRef(gameId, targetPid), { connected: false, afkStrikes: 0 })
+      tx.update(privateRef(gameId, targetPid), { drawnCard: null, drawnCardSource: null })
+    } else {
+      // Not enough votes yet — update the vote list
+      tx.update(gameRef(gameId), {
+        'voteKick.votes': newVotes,
+      })
+    }
+  })
+}
+
+// ─── Vote-Kick: Cancel (timeout or initiator cancels) ──────────────
+export async function cancelVoteKick(gameId: string): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) return
+    const game = gameSnap.data() as GameDoc
+
+    if (!game.voteKick?.active) return
+    // Only the initiator or host can cancel
+    if (user.uid !== game.voteKick.startedBy && user.uid !== game.hostId) {
+      throw new Error('Only the vote initiator or host can cancel')
+    }
+
+    txHistory(tx, gameId, `Vote to kick ${game.voteKick.targetName} was cancelled.`)
+    tx.update(gameRef(gameId), {
+      voteKick: null,
+      log: arrayUnion(logEntry(`Vote to kick ${game.voteKick.targetName} was cancelled.`)),
+    })
+  })
+}
+
 // ─── Presence (throttled) ─────────────────────────────────────────
 let lastPresenceWrite = 0
 const PRESENCE_THROTTLE_MS = 60_000 // 60 seconds
@@ -966,6 +1282,172 @@ export async function submitFeedback(data: FeedbackData): Promise<void> {
     userId: user.uid,
     createdAt: Date.now(),
   })
+}
+
+// ─── Play Again (shared rematch lobby) ─────────────────────────
+/**
+ * Quota-safe "Play Again" that funnels all players from a finished game into
+ * the SAME rematch lobby.
+ *
+ * Strategy (fully transactional — handles race conditions via Firestore's
+ * automatic transaction retry):
+ *   1. Read the finished game doc for rematchLobbyId.
+ *   2a. rematchLobbyId exists AND lobby is still joinable → join it.
+ *   2b. rematchLobbyId missing or lobby not joinable → create a new game
+ *       and write rematchLobbyId on the finished game atomically.
+ *
+ * Pre-generates IDs outside the transaction because generateUniqueJoinCode
+ * uses a getDocs query (not allowed inside transactions).
+ * The candidate IDs are only used if we end up creating the new game.
+ */
+export async function playAgain(
+  finishedGameId: string,
+  displayName: string,
+  maxPlayers: number,
+  settings: Partial<GameSettings>,
+  colorKey?: number,
+): Promise<string> {
+  const user = await ensureAuth()
+
+  // Pre-generate everything needed for a potential new game
+  const candidateGameId = nanoid(8)
+  const candidateJoinCode = await generateUniqueJoinCode()
+  const candidateSeed = nanoid(12)
+
+  let result: string | null = null
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const finishedSnap = await tx.get(gameRef(finishedGameId))
+      if (!finishedSnap.exists()) {
+        result = null
+        return
+      }
+      const finished = finishedSnap.data() as GameDoc
+      const existingRematchId = finished.rematchLobbyId ?? null
+
+      if (existingRematchId) {
+        const rematchSnap = await tx.get(gameRef(existingRematchId))
+        if (rematchSnap.exists()) {
+          const rematch = rematchSnap.data() as GameDoc
+          const alreadyIn = rematch.playerOrder.includes(user.uid)
+
+          if (alreadyIn) {
+            result = existingRematchId
+            return
+          }
+
+          const canJoin = rematch.status === 'lobby'
+            && rematch.playerOrder.length < rematch.maxPlayers
+
+          if (canJoin) {
+            const seatIndex = rematch.playerOrder.length
+            txHistory(tx, existingRematchId, `${displayName} joined`)
+            tx.update(gameRef(existingRematchId), {
+              playerOrder: [...rematch.playerOrder, user.uid],
+              log: boundLog(rematch.log, logEntry(`${displayName} joined`)),
+            })
+            tx.set(playerRef(existingRematchId, user.uid), {
+              displayName,
+              seatIndex,
+              connected: true,
+              locks: [false, false, false],
+              lockedBy: [...EMPTY_LOCKED_BY],
+              ...(colorKey != null ? { colorKey } : {}),
+            } satisfies PlayerDoc)
+            tx.set(privateRef(existingRematchId, user.uid), {
+              hand: [],
+              drawnCard: null,
+              drawnCardSource: null,
+              known: {},
+            } satisfies PrivatePlayerDoc)
+            result = existingRematchId
+            return
+          }
+          // Existing rematch started or is full — fall through to create new
+        }
+        // Existing rematch doc missing — fall through to create new
+      }
+
+      // Create new rematch lobby using pre-generated values
+      const gameSettings: GameSettings = {
+        powerAssignments: { ...DEFAULT_GAME_SETTINGS.powerAssignments, ...settings?.powerAssignments },
+        jokerCount: settings?.jokerCount ?? DEFAULT_GAME_SETTINGS.jokerCount,
+        deckSize: settings?.deckSize ?? DEFAULT_GAME_SETTINGS.deckSize,
+        turnSeconds: settings?.turnSeconds ?? DEFAULT_GAME_SETTINGS.turnSeconds,
+      }
+      const now = Date.now()
+      txHistory(tx, candidateGameId, `Game created by ${displayName}`)
+      tx.set(gameRef(candidateGameId), {
+        status: 'lobby',
+        hostId: user.uid,
+        createdAt: now,
+        maxPlayers,
+        currentTurnPlayerId: null,
+        drawPileCount: 0,
+        discardTop: null,
+        seed: candidateSeed,
+        endCalledBy: null,
+        endRoundStartSeatIndex: null,
+        log: [logEntry(`Game created by ${displayName}`)],
+        turnPhase: null,
+        playerOrder: [user.uid],
+        joinCode: candidateJoinCode,
+        actionVersion: 0,
+        lastActionAt: now,
+        settings: gameSettings,
+        spentPowerCardIds: {},
+        turnStartAt: 0,
+        voteKick: null,
+        rematchLobbyId: null,
+      } satisfies GameDoc)
+      tx.set(playerRef(candidateGameId, user.uid), {
+        displayName,
+        seatIndex: 0,
+        connected: true,
+        locks: [false, false, false],
+        lockedBy: [...EMPTY_LOCKED_BY],
+        ...(colorKey != null ? { colorKey } : {}),
+      } satisfies PlayerDoc)
+      tx.set(privateRef(candidateGameId, user.uid), {
+        hand: [],
+        drawnCard: null,
+        drawnCardSource: null,
+        known: {},
+      } satisfies PrivatePlayerDoc)
+
+      // Atomically point the finished game to the new rematch lobby
+      tx.update(gameRef(finishedGameId), { rematchLobbyId: candidateGameId })
+
+      result = candidateGameId
+    })
+  } catch {
+    // Permission denied (e.g. kicked player) or transient error — solo fallback
+    result = null
+  }
+
+  if (result === null) {
+    // Fallback: create a standalone lobby (no rematch link)
+    return createGame(displayName, maxPlayers, settings)
+  }
+
+  return result
+}
+
+// ─── History (paginated, desc) ──────────────────────────────────
+export async function fetchHistoryPage(
+  gameId: string,
+  cursor: DocumentSnapshot | null,
+  pageSize = 100,
+): Promise<{ entries: LogEntry[]; lastDoc: DocumentSnapshot | null }> {
+  const histCol = collection(db, 'games', gameId, 'history')
+  const constraints = cursor
+    ? [orderBy('ts', 'desc'), startAfter(cursor), firestoreLimit(pageSize)]
+    : [orderBy('ts', 'desc'), firestoreLimit(pageSize)]
+  const snap = await getDocs(query(histCol, ...constraints))
+  const entries: LogEntry[] = snap.docs.map((d) => d.data() as LogEntry)
+  const lastDoc = snap.docs.length === pageSize ? snap.docs[snap.docs.length - 1] : null
+  return { entries, lastDoc }
 }
 
 // ─── Subscriptions ──────────────────────────────────────────────
@@ -1031,24 +1513,51 @@ export async function updatePresence(gameId: string, connected: boolean): Promis
   await updateDoc(playerRef(gameId, user.uid), { connected })
 }
 
-// ─── Update Player Profile (Lobby) ─────────────────────────────
+// ─── Update Player Profile (Lobby) — transaction-safe unique name + color ──
 export async function updatePlayerProfile(
   gameId: string,
   updates: { displayName?: string; colorKey?: number },
 ): Promise<void> {
   const user = await ensureAuth()
-  const clean: Record<string, unknown> = {}
-  if (updates.displayName != null) {
-    const name = updates.displayName.trim().slice(0, 12)
-    if (name.length === 0) throw new Error('Name cannot be empty')
-    clean.displayName = name
-  }
-  if (updates.colorKey != null) {
-    clean.colorKey = updates.colorKey
-  }
-  if (Object.keys(clean).length > 0) {
-    await updateDoc(playerRef(gameId, user.uid), clean)
-  }
+
+  await runTransaction(db, async (tx) => {
+    // Read all player docs to check for conflicts
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) throw new Error('Game not found')
+    const game = gameSnap.data() as GameDoc
+
+    const playerSnaps = await Promise.all(
+      game.playerOrder.map((pid) => tx.get(playerRef(gameId, pid))),
+    )
+    const otherPlayers = playerSnaps
+      .filter((s) => s.exists() && s.id !== user.uid)
+      .map((s) => s.data() as PlayerDoc)
+
+    const clean: Record<string, unknown> = {}
+
+    // Validate display name uniqueness (case-insensitive)
+    if (updates.displayName != null) {
+      const name = updates.displayName.trim().slice(0, 12)
+      if (name.length === 0) throw new Error('Name cannot be empty')
+      const nameLower = name.toLowerCase()
+      const conflict = otherPlayers.find(
+        (p) => p.displayName.toLowerCase() === nameLower,
+      )
+      if (conflict) throw new Error('Name already taken in this lobby')
+      clean.displayName = name
+    }
+
+    // Validate color uniqueness
+    if (updates.colorKey != null) {
+      const takenBy = otherPlayers.find((p) => p.colorKey === updates.colorKey)
+      if (takenBy) throw new Error(`Color already taken by ${takenBy.displayName}`)
+      clean.colorKey = updates.colorKey
+    }
+
+    if (Object.keys(clean).length > 0) {
+      tx.update(playerRef(gameId, user.uid), clean)
+    }
+  })
 }
 
 // ─── Chat ──────────────────────────────────────────────────────
@@ -1082,16 +1591,16 @@ export function subscribeChat(
   gameId: string,
   cb: (messages: ChatMessage[]) => void,
 ): Unsubscribe {
+  // Query newest 50 descending, then reverse client-side for chronological display.
+  // Using snap.docs (guaranteed query order) instead of snap.forEach for safety.
   const chatQuery = query(
     collection(db, 'games', gameId, 'chat'),
     orderBy('ts', 'desc'),
     firestoreLimit(CHAT_MAX),
   )
   return onSnapshot(chatQuery, (snap) => {
-    const msgs: ChatMessage[] = []
-    snap.forEach((d) => msgs.push(d.data() as ChatMessage))
-    // Reverse so oldest first (display order)
-    msgs.reverse()
+    const msgs: ChatMessage[] = snap.docs.map((d) => d.data() as ChatMessage)
+    msgs.reverse() // oldest-first for display
     cb(msgs)
   })
 }

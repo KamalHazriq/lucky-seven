@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import type { PlayerDoc } from '../lib/types'
 import { getSeatColor } from '../lib/playerColors'
@@ -11,7 +12,7 @@ interface TurnQueueProps {
   compact?: boolean
 }
 
-export default function TurnQueue({
+function TurnQueue({
   playerOrder,
   players,
   currentTurnPlayerId,
@@ -107,8 +108,6 @@ export default function TurnQueue({
               <span className="text-slate-600 text-[10px]">›</span>
             )}
             <motion.span
-              layout
-              transition={{ type: 'spring', stiffness: 350, damping: 25, mass: 0.5 }}
               initial={isCurrent ? { scale: 0.9, opacity: 0 } : false}
               animate={{ scale: 1, opacity: isCurrent ? 1 : 0.7 }}
               className={`
@@ -149,3 +148,5 @@ export default function TurnQueue({
     </div>
   )
 }
+
+export default memo(TurnQueue)
