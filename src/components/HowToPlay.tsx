@@ -112,9 +112,9 @@ export default function HowToPlay() {
                 <section>
                   <h3 className="font-semibold text-emerald-400 mb-1">Ending the Game</h3>
                   <p className="text-slate-400">
-                    The current turn player can call <span className="text-red-300 font-medium">"End Game"</span>.
-                    When called, every other player gets <span className="text-amber-300">one final turn</span>,
-                    then all cards are revealed and scored. Lowest total wins!
+                    The game ends when the <span className="text-amber-300 font-medium">pile of cards reaches 0</span> or
+                    when the pile is fully finished. Once this happens, all players reveal their cards and the scores are
+                    calculated. The player with the <span className="text-emerald-300">lowest total score wins</span>.
                   </p>
                 </section>
 
