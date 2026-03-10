@@ -10,6 +10,8 @@ interface StagingSlotProps {
   faceUp: boolean
   /** Whether a card is currently staged */
   active: boolean
+  /** If provided, show a small "Resolve" chip that calls this handler */
+  onResolve?: () => void
 }
 
 /**
@@ -20,7 +22,7 @@ interface StagingSlotProps {
  * v1.5: Gentler float, subtle drop shadow, smoother entry.
  */
 const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
-  function StagingSlot({ card, faceUp, active }, ref) {
+  function StagingSlot({ card, faceUp, active, onResolve }, ref) {
     return (
       <div ref={ref} className="text-center relative" style={{ minWidth: '64px' }}>
         <p className="text-[10px] text-slate-500 mb-1">In play</p>
@@ -62,6 +64,17 @@ const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
             </motion.div>
           )}
         </AnimatePresence>
+        {/* Small "Resolve" chip when the player needs to act on a staged card */}
+        {onResolve && active && (
+          <motion.button
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-1 px-2 py-0.5 bg-amber-600/80 hover:bg-amber-500/90 text-white text-[9px] font-bold rounded-md cursor-pointer transition-colors"
+            onClick={onResolve}
+          >
+            Resolve
+          </motion.button>
+        )}
       </div>
     )
   },

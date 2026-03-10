@@ -26,6 +26,8 @@ interface ActionBarProps {
   isDesktop?: boolean
   /** Players map — for resolving display names in selection confirm */
   players?: Record<string, PlayerDoc>
+  /** Whether any card is locked anywhere — used to disable unlock power */
+  hasAnyLocks?: boolean
 }
 
 /**
@@ -52,12 +54,14 @@ export default function ActionBar({
   onSelectionGoBack,
   isDesktop = false,
   players,
+  hasAnyLocks = true,
 }: ActionBarProps) {
   const rankKey = card ? getCardRankKey(card) : null
   const effectType = rankKey ? (powerAssignments ?? DEFAULT_POWER_ASSIGNMENTS)[rankKey] : null
   const effectInfo = effectType ? EFFECT_LABELS[effectType] : null
   const rankLabel = rankKey === 'JOKER' ? 'Joker' : rankKey
   const isSpent = card ? !!spentPowerCardIds[card.id] : false
+  const isUnlockWithNoTargets = effectType === 'unlock_one_locked_card' && !hasAnyLocks
   const canCancel = drawnCardSource === 'discard'
 
   const isSelecting = selection && selection.phase !== 'idle'
@@ -196,15 +200,15 @@ export default function ActionBar({
 
                       {effectInfo && rankKey && effectType && (
                         <button
-                          onClick={() => !isSpent && onUsePower(rankKey, effectType)}
-                          disabled={isSpent}
+                          onClick={() => !isSpent && !isUnlockWithNoTargets && onUsePower(rankKey, effectType)}
+                          disabled={isSpent || isUnlockWithNoTargets}
                           className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors text-white ${
-                            isSpent
+                            isSpent || isUnlockWithNoTargets
                               ? 'bg-slate-700/50 opacity-50 cursor-not-allowed'
                               : `${effectInfo.color} cursor-pointer`
                           }`}
                         >
-                          {isSpent ? `${rankLabel} (spent)` : `${rankLabel}: ${effectInfo.label}`}
+                          {isSpent ? `${rankLabel} (spent)` : isUnlockWithNoTargets ? `${rankLabel}: No locks` : `${rankLabel}: ${effectInfo.label}`}
                         </button>
                       )}
                     </div>

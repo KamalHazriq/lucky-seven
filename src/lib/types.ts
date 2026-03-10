@@ -111,6 +111,8 @@ export interface PlayerDoc {
   locks: [boolean, boolean, boolean]
   /** Who locked each slot (public metadata) */
   lockedBy: [LockInfo, LockInfo, LockInfo]
+  /** Optional color key (index into LOBBY_COLORS palette). If set, overrides seat color. */
+  colorKey?: number
 }
 
 export type DrawnCardSource = 'pile' | 'discard' | null

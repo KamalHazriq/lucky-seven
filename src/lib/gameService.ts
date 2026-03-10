@@ -934,6 +934,26 @@ export async function updatePresence(gameId: string, connected: boolean): Promis
   await updateDoc(playerRef(gameId, user.uid), { connected })
 }
 
+// ─── Update Player Profile (Lobby) ─────────────────────────────
+export async function updatePlayerProfile(
+  gameId: string,
+  updates: { displayName?: string; colorKey?: number },
+): Promise<void> {
+  const user = await ensureAuth()
+  const clean: Record<string, unknown> = {}
+  if (updates.displayName != null) {
+    const name = updates.displayName.trim().slice(0, 12)
+    if (name.length === 0) throw new Error('Name cannot be empty')
+    clean.displayName = name
+  }
+  if (updates.colorKey != null) {
+    clean.colorKey = updates.colorKey
+  }
+  if (Object.keys(clean).length > 0) {
+    await updateDoc(playerRef(gameId, user.uid), clean)
+  }
+}
+
 // ─── Chat ──────────────────────────────────────────────────────
 const CHAT_MAX = 50 // max messages kept in view
 const CHAT_THROTTLE_MS = 2000 // min interval between sends per user (1 msg / 2s)

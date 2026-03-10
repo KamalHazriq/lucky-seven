@@ -21,6 +21,8 @@ interface DrawnCardModalProps {
   onClose: () => void
   /** Dismiss modal — hides it without canceling; for pile draws user can view the board */
   onDismiss?: () => void
+  /** Whether any card is locked anywhere — used to disable unlock power */
+  hasAnyLocks?: boolean
 }
 
 export default function DrawnCardModal({
@@ -36,12 +38,14 @@ export default function DrawnCardModal({
   onUsePower,
   onClose,
   onDismiss,
+  hasAnyLocks = true,
 }: DrawnCardModalProps) {
   const rankKey = card ? getCardRankKey(card) : null
   const effectType = rankKey ? (powerAssignments ?? DEFAULT_POWER_ASSIGNMENTS)[rankKey] : null
   const effectInfo = effectType ? EFFECT_LABELS[effectType] : null
   const rankLabel = rankKey === 'JOKER' ? 'Joker' : rankKey
   const isSpent = card ? !!spentPowerCardIds[card.id] : false
+  const isUnlockWithNoTargets = effectType === 'unlock_one_locked_card' && !hasAnyLocks
   const canCancel = drawnCardSource === 'discard'
   // Treat null source as pile draw (card is committed; can dismiss but not cancel)
   const isPileDraw = drawnCardSource === 'pile' || drawnCardSource === null
@@ -165,22 +169,24 @@ export default function DrawnCardModal({
 
               {effectInfo && rankKey && effectType && (
                 <button
-                  onClick={() => !isSpent && onUsePower(rankKey, effectType)}
-                  disabled={isSpent}
+                  onClick={() => !isSpent && !isUnlockWithNoTargets && onUsePower(rankKey, effectType)}
+                  disabled={isSpent || isUnlockWithNoTargets}
                   className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors mt-1 text-white ${
-                    isSpent
+                    isSpent || isUnlockWithNoTargets
                       ? 'bg-slate-700 opacity-50 cursor-not-allowed'
                       : `${effectInfo.color} cursor-pointer`
                   }`}
                 >
-                  <span className="font-semibold">{rankLabel}: {effectInfo.label}</span>
+                  <span className="font-semibold">
+                    {rankLabel}: {isUnlockWithNoTargets ? 'No cards locked' : effectInfo.label}
+                  </span>
                   {isSpent && (
                     <span className="inline-block ml-1.5 px-1.5 py-0.5 bg-slate-600/80 text-slate-400 text-[9px] font-bold rounded align-middle">
                       SPENT
                     </span>
                   )}
                   <span className="block text-xs opacity-80 mt-0.5">
-                    {isSpent ? 'Power already used for this card.' : effectInfo.desc}
+                    {isSpent ? 'Power already used for this card.' : isUnlockWithNoTargets ? 'No locked cards to unlock.' : effectInfo.desc}
                   </span>
                 </button>
               )}

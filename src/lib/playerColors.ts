@@ -23,3 +23,23 @@ const SEAT_COLORS: SeatColor[] = [
 export function getSeatColor(seatIndex: number): SeatColor {
   return SEAT_COLORS[seatIndex % SEAT_COLORS.length]
 }
+
+// ─── Lobby color picker palette (16 colors) ────────────────────
+export const LOBBY_COLORS: string[] = [
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#f43f5e', // rose
+  '#8b5cf6', // violet
+  '#06b6d4', // cyan
+  '#f97316', // orange
+  '#84cc16', // lime
+  '#ec4899', // pink
+  '#14b8a6', // teal
+  '#a855f7', // purple
+  '#ef4444', // red
+  '#eab308', // yellow
+  '#6366f1', // indigo
+  '#78716c', // stone
+  '#e2e8f0', // slate-light
+]

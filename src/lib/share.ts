@@ -7,9 +7,9 @@
 /** Get the shareable room link for a lobby */
 export function getRoomLink(gameId: string): string {
   const origin = window.location.origin
-  const base = window.location.pathname.replace(/\/$/, '')
+  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
   // HashRouter: links are like https://host/path/#/lobby/GAMEID
-  return `${origin}${base}#/lobby/${gameId}`
+  return `${origin}${base}/#/lobby/${gameId}`
 }
 
 /** Get a copyable invite message */

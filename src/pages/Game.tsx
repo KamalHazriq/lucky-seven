@@ -125,6 +125,7 @@ export default function Game() {
   const localPanelRef = useRef<HTMLDivElement>(null)
   const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const headerRef = useRef<HTMLDivElement>(null)
+  const bannerRef = useRef<HTMLDivElement>(null)
   const [, setHeaderH] = useState(0)
 
   // Selection mode for actionbar power flows
@@ -146,15 +147,24 @@ export default function Game() {
   const [peekReveal, setPeekReveal] = useState<{ slot: number; card: Card } | null>(null)
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Measure sticky header height for table layout safe-area offset
+  // Measure sticky header + banner stack height for layout offsets.
+  // Sets CSS custom properties so the left sidebar and table zone adapt dynamically.
   useEffect(() => {
-    const el = headerRef.current
-    if (!el) return
-    const ro = new ResizeObserver(([entry]) => {
-      setHeaderH(entry.contentRect.height + 8) // 8px extra spacing
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
+    const headerEl = headerRef.current
+    const bannerEl = bannerRef.current
+    if (!headerEl) return
+    const update = () => {
+      const hH = headerEl.getBoundingClientRect().height
+      const bH = bannerEl?.getBoundingClientRect().height ?? 0
+      const total = hH + bH
+      setHeaderH(total + 8)
+      document.documentElement.style.setProperty('--header-h', `${hH}px`)
+      document.documentElement.style.setProperty('--top-offset', `${total}px`)
+    }
+    const ro = new ResizeObserver(update)
+    ro.observe(headerEl)
+    if (bannerEl) ro.observe(bannerEl)
+    return () => { ro.disconnect(); document.documentElement.style.removeProperty('--header-h'); document.documentElement.style.removeProperty('--top-offset') }
   }, [])
 
   // Chat (lazy subscribe — only on first open)
@@ -216,6 +226,8 @@ export default function Game() {
   const powerAssignments = game?.settings?.powerAssignments ?? DEFAULT_GAME_SETTINGS.powerAssignments
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
+  // Check if any card is locked anywhere (for disabling unlock power when no targets)
+  const hasAnyLocks = Object.values(players).some((p) => p.locks?.some(Boolean))
 
   // Action highlights (temporary colored ring on actor's panel + per-slot overlays + swap labels)
   const { highlights: actionHighlights, slotOverlays, swapLabels } = useActionHighlight(
@@ -254,8 +266,11 @@ export default function Game() {
     const targetEl = otherPanelRefs.current[actorId]
     if (!targetEl) return
 
-    const toRect = targetEl.getBoundingClientRect()
     const actorColor = getSeatColor(players[actorId]?.seatIndex ?? 0).solid
+    // Remote draw/take animations fly to staging area (center), not to opponent's panel
+    const stagingEl = stagingRef.current
+    const stagingRect = stagingEl?.getBoundingClientRect()
+    const toRect = stagingRect ?? targetEl.getBoundingClientRect()
 
     if (msg.includes('drew from the pile')) {
       const fromEl = drawPileRef.current
@@ -876,24 +891,8 @@ export default function Game() {
       </div>
 
       {/* ─── Safe Layout Stack: banners push content down ────── */}
-      <div className="safe-layout-stack flex flex-col">
-        {/* Resume banner */}
-        {hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="px-3 md:px-5 pt-2"
-          >
-            <button
-              onClick={() => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }}
-              className="w-full py-2 px-4 bg-amber-900/40 border border-amber-600/50 rounded-xl text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 hover:bg-amber-900/60 transition-colors cursor-pointer"
-            >
-              <span className="text-sm">{'\u{1F0A0}'}</span>
-              You have a drawn card — tap to resume
-            </button>
-          </motion.div>
-        )}
+      <div ref={bannerRef} className="safe-layout-stack flex flex-col">
+        {/* Resume banner removed — drawn card now shown in staging slot with "Resolve" chip */}
 
         {/* Selection mode prompt banner */}
         {isSelecting && (
@@ -917,7 +916,13 @@ export default function Game() {
 
         {/* Left sidebar log */}
         {logPosition === 'left' && (
-          <div className="shrink-0 w-56 min-h-0 sticky top-14 self-start max-h-[calc(100dvh-4.5rem)] pt-1">
+          <div
+            className="shrink-0 w-56 min-h-0 sticky self-start pt-1"
+            style={{
+              top: 'calc(var(--header-h, 56px) + 4px)',
+              maxHeight: 'calc(100dvh - var(--header-h, 56px) - 12px)',
+            }}
+          >
             <GameLog log={game.log} players={players} position="left" />
           </div>
         )}
@@ -964,9 +969,9 @@ export default function Game() {
               <div
                 className="table-zone relative w-full mb-4"
                 style={{
-                  /* Use 70-80% viewport height, clamped for very small/large screens */
-                  minHeight: 'max(420px, 70vh)',
-                  maxHeight: 'min(800px, 80vh)',
+                  /* Fill remaining viewport below header+banners, clamped for sanity */
+                  minHeight: 'max(400px, calc(100dvh - var(--top-offset, 56px) - 6rem))',
+                  maxHeight: 'min(800px, calc(100dvh - var(--top-offset, 56px) - 2rem))',
                 }}
               >
                 {/* Table surface — oval felt gradient */}
@@ -999,6 +1004,9 @@ export default function Game() {
                     card={choreo.staging.card}
                     faceUp={choreo.staging.faceUp}
                     active={choreo.phase === 'staging'}
+                    onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
+                      ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
+                      : undefined}
                   />
                   <div className="text-center relative" ref={discardPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Discard</p>
@@ -1080,7 +1088,7 @@ export default function Game() {
                     locks={myLocks}
                     lockedBy={myPlayer?.lockedBy}
                     onSlotClick={isActionPhase ? handleSwap : undefined}
-                    slotClickable={isActionPhase && hasDrawnCard}
+                    slotClickable={isActionPhase && hasDrawnCard && modal.type === 'none' && !isSelecting}
                     actionHighlight={actionHighlights[user.uid] ?? null}
                     queueNumber={queueNumbers[user.uid] ?? null}
                     slotOverlays={slotOverlays[user.uid] ?? null}
@@ -1110,6 +1118,7 @@ export default function Game() {
                     onSelectionGoBack={goBackSelection}
                     isDesktop={isDesktop}
                     players={players}
+                    hasAnyLocks={hasAnyLocks}
                   />
                 </div>
               )}
@@ -1169,6 +1178,9 @@ export default function Game() {
                 card={choreo.staging.card}
                 faceUp={choreo.staging.faceUp}
                 active={choreo.phase === 'staging'}
+                onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
+                  ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
+                  : undefined}
               />
 
               <div className="text-center relative" ref={discardPileRef}>
@@ -1210,7 +1222,7 @@ export default function Game() {
                 locks={myLocks}
                 lockedBy={myPlayer?.lockedBy}
                 onSlotClick={isActionPhase ? handleSwap : undefined}
-                slotClickable={isActionPhase && hasDrawnCard}
+                slotClickable={isActionPhase && hasDrawnCard && modal.type === 'none' && !isSelecting}
                 actionHighlight={actionHighlights[user.uid] ?? null}
                 queueNumber={queueNumbers[user.uid] ?? null}
                 slotOverlays={slotOverlays[user.uid] ?? null}
@@ -1237,6 +1249,7 @@ export default function Game() {
                   onSelectionGoBack={goBackSelection}
                   isDesktop={isDesktop}
                   players={players}
+                  hasAnyLocks={hasAnyLocks}
                 />
               )}
             </div>
@@ -1267,6 +1280,7 @@ export default function Game() {
         onUsePower={handleUsePower}
         onClose={handleCancelDraw}
         onDismiss={() => setDrawnCardDismissed(true)}
+        hasAnyLocks={hasAnyLocks}
       />
 
       <PeekModal

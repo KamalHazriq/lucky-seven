@@ -22,7 +22,7 @@ export interface SeatPosition {
 }
 
 // ─── Safe bounds — reserve header, sides, and local player zone ───
-const MIN_TOP = 4    // Reserve top for header safe-area
+const MIN_TOP = 6    // Reserve top for header safe-area (bumped from 4)
 const MAX_TOP = 76   // Reserve bottom for local player
 const MIN_LEFT = 4   // Left edge padding
 const MAX_LEFT = 96  // Right edge padding
@@ -98,7 +98,7 @@ export function getSeatPositions(
   if (otherCount === 1) {
     // Single opponent: top center
     return validateSpacing([
-      clamp({ left: CX, top: 6 }),
+      clamp({ left: CX, top: 8 }),
     ])
   }
 
@@ -114,7 +114,7 @@ export function getSeatPositions(
     // Three: arc across the top
     return validateSpacing([
       clamp({ left: 12, top: 24 }),
-      clamp({ left: CX, top: 6 }),
+      clamp({ left: CX, top: 8 }),
       clamp({ left: 88, top: 24 }),
     ])
   }
@@ -123,8 +123,8 @@ export function getSeatPositions(
     // Four: wider arc, sides lower
     return validateSpacing([
       clamp({ left: 6, top: 34 }),
-      clamp({ left: 24, top: 8 }),
-      clamp({ left: 76, top: 8 }),
+      clamp({ left: 24, top: 10 }),
+      clamp({ left: 76, top: 10 }),
       clamp({ left: 94, top: 34 }),
     ])
   }
@@ -136,9 +136,9 @@ export function getSeatPositions(
     // Row 2 (sides): 2 players flanking lower
     return validateSpacing([
       clamp({ left: 4, top: 42 }),
-      clamp({ left: 18, top: 10 }),
-      clamp({ left: CX, top: 5 }),
-      clamp({ left: 82, top: 10 }),
+      clamp({ left: 18, top: 12 }),
+      clamp({ left: CX, top: 7 }),
+      clamp({ left: 82, top: 12 }),
       clamp({ left: 96, top: 42 }),
     ])
   }
@@ -149,8 +149,8 @@ export function getSeatPositions(
     return validateSpacing([
       clamp({ left: 4, top: 44 }),
       clamp({ left: 12, top: 18 }),
-      clamp({ left: 35, top: 5 }),
-      clamp({ left: 65, top: 5 }),
+      clamp({ left: 35, top: 7 }),
+      clamp({ left: 65, top: 7 }),
       clamp({ left: 88, top: 18 }),
       clamp({ left: 96, top: 44 }),
     ])
@@ -162,9 +162,9 @@ export function getSeatPositions(
     return validateSpacing([
       clamp({ left: 4, top: 48 }),
       clamp({ left: 8, top: 22 }),
-      clamp({ left: 28, top: 5 }),
-      clamp({ left: CX, top: 4 }),
-      clamp({ left: 72, top: 5 }),
+      clamp({ left: 28, top: 7 }),
+      clamp({ left: CX, top: 6 }),
+      clamp({ left: 72, top: 7 }),
       clamp({ left: 92, top: 22 }),
       clamp({ left: 96, top: 48 }),
     ])

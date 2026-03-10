@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { startGame } from '../lib/gameService'
+import { startGame, updatePlayerProfile } from '../lib/gameService'
 import VersionLabel from '../components/VersionLabel'
 import FeedbackModal from '../components/FeedbackModal'
 import PatchNotesModal from '../components/PatchNotesModal'
 import ChatPanel from '../components/ChatPanel'
 import { useChat } from '../hooks/useChat'
 import { getRoomLink, getInviteMessage, copyToClipboard } from '../lib/share'
+import { LOBBY_COLORS } from '../lib/playerColors'
 
 export default function Lobby() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -19,6 +20,9 @@ export default function Lobby() {
   const navigate = useNavigate()
   const [showFeedback, setShowFeedback] = useState(false)
   const [showPatchNotes, setShowPatchNotes] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const nameRef = useRef<HTMLInputElement>(null)
   const myPlayer = user ? players[user.uid] : null
   const chat = useChat(
     gameId,
@@ -69,6 +73,32 @@ export default function Lobby() {
     if (game?.joinCode && gameId) {
       copyToClipboard(getInviteMessage(game.joinCode, gameId))
       toast.success('Invite message copied!')
+    }
+  }
+
+  const handleStartEditName = () => {
+    setNameInput(myPlayer?.displayName ?? '')
+    setEditingName(true)
+    setTimeout(() => nameRef.current?.focus(), 50)
+  }
+
+  const handleSaveName = async () => {
+    if (!gameId || !nameInput.trim()) return
+    try {
+      await updatePlayerProfile(gameId, { displayName: nameInput.trim() })
+      toast.success('Name updated!')
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+    setEditingName(false)
+  }
+
+  const handlePickColor = async (colorIdx: number) => {
+    if (!gameId) return
+    try {
+      await updatePlayerProfile(gameId, { colorKey: colorIdx })
+    } catch (e) {
+      toast.error((e as Error).message)
     }
   }
 
@@ -148,6 +178,66 @@ export default function Lobby() {
             </div>
           </div>
 
+          {/* Your Profile — name edit + color picker */}
+          {myPlayer && (
+            <div className="border-t border-slate-700/50 pt-4 mb-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Your Profile</p>
+              <div className="flex items-center gap-2 mb-2">
+                {editingName ? (
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <input
+                      ref={nameRef}
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value.slice(0, 12))}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false) }}
+                      maxLength={12}
+                      className="flex-1 px-2 py-1 bg-slate-900/80 border border-slate-600/60 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500/60"
+                    />
+                    <button
+                      onClick={handleSaveName}
+                      disabled={!nameInput.trim()}
+                      className="px-2 py-1 bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingName(false)}
+                      className="px-2 py-1 bg-slate-700/60 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-medium text-slate-200 text-sm">{myPlayer.displayName}</span>
+                    <button
+                      onClick={handleStartEditName}
+                      className="px-2 py-0.5 bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-slate-200 rounded-md text-[10px] font-medium cursor-pointer transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </>
+                )}
+              </div>
+              <div className="grid grid-cols-8 gap-1.5">
+                {LOBBY_COLORS.map((color, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handlePickColor(idx)}
+                    className={`w-7 h-7 rounded-full border-2 transition-all cursor-pointer hover:scale-110 ${
+                      myPlayer.colorKey === idx
+                        ? 'border-white scale-110 ring-2 ring-white/30'
+                        : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={`Pick color ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="border-t border-slate-700/50 pt-4 mb-4">
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">
               Players ({playerList.length}/{game.maxPlayers})
@@ -162,7 +252,14 @@ export default function Lobby() {
                   transition={{ delay: i * 0.1 }}
                   className="flex items-center gap-3 bg-slate-900/40 rounded-lg p-3"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-sm font-bold text-white">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                    style={{
+                      backgroundColor: p.colorKey != null && p.colorKey >= 0 && p.colorKey < LOBBY_COLORS.length
+                        ? LOBBY_COLORS[p.colorKey]
+                        : '#6366f1',
+                    }}
+                  >
                     {p.displayName?.[0]?.toUpperCase() ?? '?'}
                   </div>
                   <span className="font-medium text-slate-200">
