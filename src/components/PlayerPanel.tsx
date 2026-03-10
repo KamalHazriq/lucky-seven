@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { Card, PrivatePlayerDoc, LockInfo } from '../lib/types'
 import { getSeatColor } from '../lib/playerColors'
+import type { SelectionTargetType, SelectedTarget } from '../hooks/useSelectionMode'
+import { isSlotSelectable } from '../hooks/useSelectionMode'
 
 export interface ActionHighlight {
   color: string
@@ -28,6 +30,22 @@ interface PlayerPanelProps {
   queueNumber?: number | null
   /** Per-slot effect overlays: slotIndex → color (actor's color) */
   slotOverlays?: Record<number, string> | null
+
+  // ─── Selection mode props ──────────────────────────
+  /** When non-null, we're in selection mode. Provides the current target type. */
+  selectionTargetType?: SelectionTargetType | null
+  /** Local player ID — used for selectability checks */
+  localPlayerId?: string
+  /** Players map — used for selectability checks */
+  players?: Record<string, import('../lib/types').PlayerDoc>
+  /** Called when a slot is clicked during selection mode */
+  onSelectionClick?: (target: SelectedTarget) => void
+  /** Called when a player is clicked during 'anyPlayer' selection (rearrange) */
+  onPlayerSelect?: (playerId: string) => void
+  /** The currently selected first target (highlighted with a badge) */
+  selectedTarget?: SelectedTarget | null
+  /** Stamp overlay for lock/unlock choreography */
+  stampOverlay?: 'lock' | 'unlock' | null
 }
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
@@ -38,6 +56,7 @@ const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
 
 export default function PlayerPanel({
   displayName,
+  playerId,
   isCurrentTurn,
   isLocalPlayer,
   privateState,
@@ -51,17 +70,37 @@ export default function PlayerPanel({
   chatBubble,
   queueNumber,
   slotOverlays,
+  selectionTargetType,
+  localPlayerId,
+  players,
+  onSelectionClick,
+  onPlayerSelect,
+  selectedTarget,
+  stampOverlay,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
   const color = getSeatColor(seatIndex)
 
+  const inSelectionMode = selectionTargetType != null
+
+  // For 'anyPlayer' selection: is this whole panel clickable?
+  const isPlayerTarget = selectionTargetType === 'anyPlayer' && playerId !== localPlayerId
+
+  // Dim the entire panel if in selection mode and no slots are selectable here
+  const panelDimmed = inSelectionMode && !isPlayerTarget && localPlayerId && players
+    ? ![0, 1, 2].some((i) =>
+        isSlotSelectable(selectionTargetType!, playerId, i, localPlayerId, players),
+      )
+    : false
+
   return (
     <motion.div
       layout
       className={`
-        relative rounded-2xl p-4 backdrop-blur-sm
+        relative rounded-2xl p-4 backdrop-blur-sm transition-opacity
+        ${panelDimmed ? 'opacity-40' : ''}
         ${isLocalPlayer && isCurrentTurn
           ? 'bg-emerald-900/40 border-2 border-amber-500/50 ring-1 ring-emerald-500/30 turn-glow'
           : isCurrentTurn
@@ -70,12 +109,14 @@ export default function PlayerPanel({
               ? 'bg-amber-900/15 border-2 border-amber-500/30'
               : 'bg-slate-800/40 border border-slate-700/50'
         }
+        ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/50 hover:ring-amber-400' : ''}
       `}
       style={{
         borderLeftWidth: '4px',
         borderLeftColor: color.solid,
         ...(isCurrentTurn ? { '--turn-glow-color': color.solid + '60' } as React.CSSProperties : {}),
       }}
+      onClick={isPlayerTarget ? () => onPlayerSelect?.(playerId) : undefined}
     >
       {/* Chat bubble — floating above panel */}
       <AnimatePresence>
@@ -117,6 +158,23 @@ export default function PlayerPanel({
         </motion.div>
       )}
 
+      {/* Stamp overlay for lock/unlock choreography */}
+      <AnimatePresence>
+        {stampOverlay && (
+          <motion.div
+            initial={{ opacity: 0, scale: 2, rotate: -15 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: 'spring', damping: 12, stiffness: 300 }}
+            className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center"
+          >
+            <div className={`text-4xl ${stampOverlay === 'lock' ? 'text-red-400' : 'text-cyan-400'} drop-shadow-lg`}>
+              {stampOverlay === 'lock' ? '🔒' : '🔓'}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center gap-2 mb-3">
         <div
           className="w-2.5 h-2.5 rounded-full ring-1 ring-white/20"
@@ -150,6 +208,12 @@ export default function PlayerPanel({
             {isLocalPlayer ? 'Your turn' : 'Playing...'}
           </motion.span>
         )}
+        {/* Player-level selection indicator (rearrange) */}
+        {isPlayerTarget && (
+          <span className="ml-auto px-1.5 py-0.5 bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[9px] font-bold rounded-md animate-pulse">
+            Select
+          </span>
+        )}
       </div>
 
       <div className="flex gap-2 justify-center">
@@ -161,9 +225,28 @@ export default function PlayerPanel({
           const lockInfo = lockInfos[i]
           const slotColor = slotOverlays?.[i]
 
+          // Selection mode: is this slot selectable?
+          const slotSelectable = inSelectionMode && selectionTargetType !== 'anyPlayer'
+            && localPlayerId && players
+            ? isSlotSelectable(selectionTargetType!, playerId, i, localPlayerId, players)
+            : false
+
+          // Is this slot the currently selected target?
+          const isSelected = selectedTarget?.playerId === playerId && selectedTarget?.slotIndex === i
+
+          const handleSlotClick = () => {
+            if (inSelectionMode && slotSelectable && onSelectionClick) {
+              onSelectionClick({ playerId, slotIndex: i })
+            } else if (!inSelectionMode && slotClickable && onSlotClick) {
+              onSlotClick(i)
+            }
+          }
+
           const slotWrapper = (child: React.ReactNode) => (
             <div key={i} className="relative">
               {child}
+
+              {/* Effect overlay (action highlights) */}
               {slotColor && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -174,6 +257,41 @@ export default function PlayerPanel({
                     boxShadow: `inset 0 0 0 2px ${slotColor}, 0 0 12px ${slotColor}80, 0 0 24px ${slotColor}30`,
                   }}
                 />
+              )}
+
+              {/* Selection mode: selectable pulse ring */}
+              {inSelectionMode && slotSelectable && !isSelected && (
+                <motion.div
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="absolute inset-0 rounded-xl pointer-events-none z-10"
+                  style={{
+                    boxShadow: 'inset 0 0 0 2px rgba(251,191,36,0.6), 0 0 12px rgba(251,191,36,0.3)',
+                  }}
+                />
+              )}
+
+              {/* Selection mode: selected badge */}
+              {isSelected && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center z-20 shadow-lg"
+                >
+                  <span className="text-[10px] text-white font-bold">✓</span>
+                </motion.div>
+              )}
+
+              {/* Selection mode: dim non-selectable slots */}
+              {inSelectionMode && !slotSelectable && selectionTargetType !== 'anyPlayer' && (
+                <div className="absolute inset-0 rounded-xl bg-black/40 pointer-events-none z-10" />
+              )}
+
+              {/* Known card badge for face-down cards (visible to all in selection) */}
+              {isKnown && !isLocalPlayer && inSelectionMode && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[8px] font-semibold px-1 py-0.5 rounded-full z-20">
+                  Known
+                </span>
               )}
             </div>
           )
@@ -187,9 +305,9 @@ export default function PlayerPanel({
                 locked={isLocked}
                 lockInfo={isLocked ? lockInfo : null}
                 size="md"
-                onClick={slotClickable ? () => onSlotClick?.(i) : undefined}
-                highlight={slotClickable && !isLocked}
-                disabled={slotClickable && isLocked}
+                onClick={(slotClickable || (inSelectionMode && slotSelectable)) ? handleSlotClick : undefined}
+                highlight={(slotClickable && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable)}
+                disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable)}
                 label={`#${i + 1}`}
               />,
             )
@@ -202,9 +320,10 @@ export default function PlayerPanel({
               locked={isLocked}
               lockInfo={isLocked ? lockInfo : null}
               size={isLocalPlayer ? 'md' : 'sm'}
-              onClick={slotClickable && isLocalPlayer ? () => onSlotClick?.(i) : undefined}
-              highlight={slotClickable && isLocalPlayer && !isLocked}
-              disabled={slotClickable && isLocked}
+              onClick={(slotClickable && isLocalPlayer && !inSelectionMode) || (inSelectionMode && slotSelectable)
+                ? handleSlotClick : undefined}
+              highlight={(slotClickable && isLocalPlayer && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable)}
+              disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable)}
               label={isLocalPlayer ? `#${i + 1}` : undefined}
               ownerColor={color.solid}
             />,

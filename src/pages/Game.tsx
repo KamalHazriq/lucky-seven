@@ -45,6 +45,8 @@ import { useLayout } from '../hooks/useLayout'
 import { useUiMode } from '../hooks/useUiMode'
 import { getSeatPositions } from '../lib/seatPositions'
 import ActionBar from '../components/ActionBar'
+import { useSelectionMode } from '../hooks/useSelectionMode'
+import type { SelectionConstraint, SelectedTarget } from '../hooks/useSelectionMode'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
@@ -59,6 +61,30 @@ type ModalState =
   | { type: 'unlock' }
   | { type: 'rearrange' }
 
+// ─── Selection constraints for each power ──────────────────
+const PEEK_ONE_CONSTRAINT: SelectionConstraint = {
+  targetType: 'yourSlot',
+  prompt: 'Pick one of your cards to peek',
+}
+const SWAP_CONSTRAINT: SelectionConstraint = {
+  targetType: 'anyPlayerSlot',
+  prompt: 'Pick the first card to swap',
+  secondTargetType: 'anyPlayerSlot',
+  secondPrompt: 'Pick the second card to swap',
+}
+const LOCK_CONSTRAINT: SelectionConstraint = {
+  targetType: 'anyUnlockedSlot',
+  prompt: 'Pick an unlocked card to lock',
+}
+const UNLOCK_CONSTRAINT: SelectionConstraint = {
+  targetType: 'anyLockedSlot',
+  prompt: 'Pick a locked card to unlock',
+}
+const REARRANGE_CONSTRAINT: SelectionConstraint = {
+  targetType: 'anyPlayer',
+  prompt: 'Pick a player to shuffle their cards',
+}
+
 export default function Game() {
   const { gameId } = useParams<{ gameId: string }>()
   const { user } = useAuth()
@@ -72,7 +98,7 @@ export default function Game() {
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
-  const { uiMode, toggleMode: toggleUiMode } = useUiMode()
+  const { uiMode, toggleMode: toggleUiMode, isDesktop } = useUiMode()
   const { flyingCard, triggerFly, queueFly, flushQueue, clearFly } = useFlyingCard()
   const drawPileRef = useRef<HTMLDivElement>(null)
   const discardPileRef = useRef<HTMLDivElement>(null)
@@ -80,6 +106,25 @@ export default function Game() {
   const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const headerRef = useRef<HTMLDivElement>(null)
   const [headerH, setHeaderH] = useState(0)
+
+  // Selection mode for actionbar power flows
+  const {
+    selection,
+    isSelecting,
+    currentTargetType,
+    startSelection,
+    selectTarget,
+    confirm: confirmSelection,
+    cancel: cancelSelection,
+    goBack: goBackSelection,
+  } = useSelectionMode()
+
+  // Stamp overlay state for lock/unlock choreography (Section E)
+  const [stampOverlays, setStampOverlays] = useState<Record<string, 'lock' | 'unlock' | null>>({})
+
+  // Temporary peek reveal state (Section F)
+  const [peekReveal, setPeekReveal] = useState<{ slot: number; card: Card } | null>(null)
+  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Measure sticky header height for table layout safe-area offset
   useEffect(() => {
@@ -206,7 +251,6 @@ export default function Game() {
       const fromEl = otherPanelRefs.current[actorId]
       const toEl = discardPileRef.current
       if (fromEl && toEl) {
-        // Discarded/swapped card goes to discard pile — show face-up since it's now the discard top
         triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
       }
     }
@@ -240,7 +284,6 @@ export default function Game() {
     withBusy(async () => {
       await drawFromPile(gameId!)
       playSfx('draw'); vibrate()
-      // Queue fly — modal opens immediately after draw, so defer animation
       if (!reduced && fromEl && toEl) {
         queueFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
       }
@@ -254,14 +297,12 @@ export default function Game() {
     withBusy(async () => {
       await takeFromDiscard(gameId!)
       playSfx('draw'); vibrate()
-      // Queue fly — modal opens immediately after draw, so defer animation
       if (!reduced && fromEl && toEl) {
         queueFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, discardCard)
       }
     })
   }
 
-  // Cancel draw: undo the draw choice, return card to where it came from
   const handleCancelDraw = () => {
     withBusy(async () => { await cancelDraw(gameId!) })
   }
@@ -271,7 +312,6 @@ export default function Game() {
     withBusy(async () => {
       await swapWithSlot(gameId!, slotIndex)
       playSfx('swap'); vibrate()
-      // Flush any queued local fly animations now that the action is resolved
       flushQueue()
     })
   }
@@ -286,13 +326,42 @@ export default function Game() {
       if (!reduced && fromEl && toEl) {
         triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), false)
       }
-      // Flush any queued local fly animations
       flushQueue()
     })
   }
 
-  // ─── Power handlers (route by effectType, not rank) ────
+  // ─── Power handlers ────────────────────────────────────────
+  // In actionbar mode, powers use selection mode instead of modals
   const handleUsePower = (_rankKey: PowerRankKey, effectType: PowerEffectType) => {
+    if (uiMode === 'actionbar') {
+      switch (effectType) {
+        case 'peek_all_three_of_your_cards':
+          // No target selection — execute immediately, show modal
+          withBusy(async () => {
+            const cards = await usePeekAll(gameId!)
+            setModal({ type: 'peekAll', cards })
+          })
+          break
+        case 'peek_one_of_your_cards':
+          startSelection(PEEK_ONE_CONSTRAINT)
+          break
+        case 'swap_one_to_one':
+          startSelection(SWAP_CONSTRAINT)
+          break
+        case 'lock_one_card':
+          startSelection(LOCK_CONSTRAINT)
+          break
+        case 'unlock_one_locked_card':
+          startSelection(UNLOCK_CONSTRAINT)
+          break
+        case 'rearrange_cards':
+          startSelection(REARRANGE_CONSTRAINT)
+          break
+      }
+      return
+    }
+
+    // Modal mode — original behavior
     switch (effectType) {
       case 'peek_all_three_of_your_cards':
         setModal({ type: 'none' })
@@ -318,6 +387,142 @@ export default function Game() {
         break
     }
   }
+
+  // ─── Selection mode confirm handler ────────────────────────
+  const handleSelectionConfirm = useCallback(() => {
+    if (!selection.constraint || selection.phase !== 'confirming') return
+    const { targetType } = selection.constraint
+    const first = selection.firstTarget
+    const second = selection.secondTarget
+
+    if (!first) return
+
+    confirmSelection()
+
+    switch (targetType) {
+      case 'yourSlot': {
+        // Peek one — Section F: temporary reveal
+        withBusy(async () => {
+          const card = await usePeekOne(gameId!, first.slotIndex)
+          if (reduced) {
+            setModal({ type: 'peekResult', card, slot: first.slotIndex })
+          } else {
+            // Temporary reveal: flip card face-up briefly then flip back
+            setPeekReveal({ slot: first.slotIndex, card })
+            if (peekTimerRef.current) clearTimeout(peekTimerRef.current)
+            peekTimerRef.current = setTimeout(() => {
+              setPeekReveal(null)
+            }, 1200)
+          }
+        })
+        break
+      }
+      case 'anyPlayerSlot': {
+        // Queen swap
+        if (!second) return
+        withBusy(async () => {
+          await useSwap(gameId!,
+            { playerId: first.playerId, slotIndex: first.slotIndex },
+            { playerId: second.playerId, slotIndex: second.slotIndex },
+          )
+          playSfx('swap'); vibrate()
+        })
+        break
+      }
+      case 'anyUnlockedSlot': {
+        // Lock — Section E: stamp overlay
+        withBusy(async () => {
+          await useLock(gameId!, first.playerId, first.slotIndex)
+          playSfx('lock'); vibrate(50)
+          if (!reduced) {
+            setStampOverlays((prev) => ({ ...prev, [first.playerId]: 'lock' }))
+            setTimeout(() => {
+              setStampOverlays((prev) => ({ ...prev, [first.playerId]: null }))
+            }, 800)
+          }
+        })
+        break
+      }
+      case 'anyLockedSlot': {
+        // Unlock — Section E: stamp overlay
+        withBusy(async () => {
+          await useUnlock(gameId!, first.playerId, first.slotIndex)
+          playSfx('unlock')
+          if (!reduced) {
+            setStampOverlays((prev) => ({ ...prev, [first.playerId]: 'unlock' }))
+            setTimeout(() => {
+              setStampOverlays((prev) => ({ ...prev, [first.playerId]: null }))
+            }, 800)
+          }
+        })
+        break
+      }
+      case 'anyPlayer': {
+        // Rearrange/chaos — Section G
+        withBusy(async () => {
+          await useRearrange(gameId!, first.playerId)
+          playSfx('swap'); vibrate(80)
+        })
+        break
+      }
+    }
+  }, [selection, confirmSelection, withBusy, gameId, reduced])
+
+  // Handle selection target clicks from PlayerPanel
+  const handleSelectionClick = useCallback((target: SelectedTarget) => {
+    selectTarget(target)
+  }, [selectTarget])
+
+  // Handle player-level selection for rearrange
+  const handlePlayerSelect = useCallback((playerId: string) => {
+    selectTarget({ playerId, slotIndex: 0 })
+  }, [selectTarget])
+
+  // ─── Keyboard shortcuts (Section H) ───────────────────────
+  useEffect(() => {
+    if (!isDesktop || !isMyTurn) return
+
+    const handler = (e: KeyboardEvent) => {
+      // Don't capture when chat input or other input is focused
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      // During selection mode, Enter to confirm
+      if (isSelecting) {
+        if (e.key === 'Enter' && selection.phase === 'confirming') {
+          e.preventDefault()
+          handleSelectionConfirm()
+        }
+        // Esc is handled by useSelectionMode hook
+        return
+      }
+
+      // Actionbar mode: 1/2/3 for swap, Esc for cancel
+      if (uiMode === 'actionbar' && hasDrawnCard && isActionPhase && modal.type === 'none' && !drawnCardDismissed) {
+        const num = parseInt(e.key)
+        if (num >= 1 && num <= 3) {
+          const slotIdx = num - 1
+          if (!myLocks[slotIdx]) {
+            e.preventDefault()
+            handleSwap(slotIdx)
+          }
+        }
+        if (e.key === 'Escape') {
+          if (privateState?.drawnCardSource === 'discard') {
+            e.preventDefault()
+            handleCancelDraw()
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [
+    isDesktop, isMyTurn, isSelecting, selection.phase, uiMode,
+    hasDrawnCard, isActionPhase, modal.type, drawnCardDismissed,
+    myLocks, handleSelectionConfirm, privateState?.drawnCardSource,
+  ])
 
   const handlePeekSelect = (slotIndex: number) => {
     setModal({ type: 'none' })
@@ -350,7 +555,6 @@ export default function Game() {
     withBusy(async () => { await useRearrange(gameId!, targetPlayerId); playSfx('swap'); vibrate(80) })
   }
 
-  // Cancel power: return to DrawnCardModal without consuming the card
   const handleCancelPower = () => {
     setModal({ type: 'none' })
   }
@@ -361,6 +565,13 @@ export default function Game() {
     )) return
     withBusy(async () => { await callEnd(gameId!); playSfx('endGame') })
   }
+
+  // Clean up peek timer on unmount
+  useEffect(() => {
+    return () => {
+      if (peekTimerRef.current) clearTimeout(peekTimerRef.current)
+    }
+  }, [])
 
   if (loading || !game || !user) {
     return (
@@ -374,7 +585,6 @@ export default function Game() {
     )
   }
 
-  // Show a "revealing" state if game just ended
   if (game.status === 'finished') {
     return (
       <div className="min-h-dvh flex items-center justify-center">
@@ -394,6 +604,16 @@ export default function Game() {
   const currentTurnName = game.currentTurnPlayerId
     ? players[game.currentTurnPlayerId]?.displayName ?? 'Unknown'
     : null
+
+  // Selection mode props — passed to all PlayerPanels
+  const selectionProps = isSelecting ? {
+    selectionTargetType: currentTargetType,
+    localPlayerId: user.uid,
+    players,
+    onSelectionClick: handleSelectionClick,
+    onPlayerSelect: handlePlayerSelect,
+    selectedTarget: selection.firstTarget,
+  } : {}
 
   return (
     <div className="min-h-dvh flex flex-col max-w-5xl mx-auto">
@@ -483,7 +703,7 @@ export default function Game() {
       </div>
 
       {/* ─── Resume banner — visible when drawn card exists AND (sub-modal open OR dismissed) ─── */}
-      {hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && (
+      {hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -497,6 +717,22 @@ export default function Game() {
             <span className="text-sm">{'\u{1F0A0}'}</span>
             You have a drawn card — tap to resume
           </button>
+        </motion.div>
+      )}
+
+      {/* ─── Selection mode prompt banner ─── */}
+      {isSelecting && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mx-3 md:mx-4 mt-2"
+        >
+          <div className="py-2 px-4 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-xs font-semibold text-center">
+            {selection.phase === 'choosingTarget' && selection.constraint?.prompt}
+            {selection.phase === 'choosingSecondTarget' && selection.constraint?.secondPrompt}
+            {selection.phase === 'confirming' && 'Ready to confirm — check the Action Bar below'}
+          </div>
         </motion.div>
       )}
 
@@ -535,7 +771,6 @@ export default function Game() {
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            // Compute available height: viewport minus header, turn bars, and padding
             const baseH = otherPlayers.length <= 3 ? 520 : otherPlayers.length <= 5 ? 580 : 640
             const panelW = otherPlayers.length <= 4 ? '210px' : '180px'
             return (
@@ -544,7 +779,6 @@ export default function Game() {
                 className="relative w-full mb-4"
                 style={{
                   minHeight: `${baseH}px`,
-                  // Ensure top seats don't overlap the sticky header area
                   paddingTop: '16px',
                 }}
               >
@@ -620,6 +854,8 @@ export default function Game() {
                         chatBubble={chatBubbles[pid] ?? null}
                         queueNumber={queueNumbers[pid] ?? null}
                         slotOverlays={slotOverlays[pid] ?? null}
+                        stampOverlay={stampOverlays[pid] ?? null}
+                        {...selectionProps}
                       />
                     </div>
                   )
@@ -636,7 +872,10 @@ export default function Game() {
                     displayName={players[user.uid]?.displayName ?? 'You'}
                     isCurrentTurn={isMyTurn}
                     isLocalPlayer
-                    privateState={privateState}
+                    privateState={peekReveal ? {
+                      ...privateState!,
+                      known: { ...myKnown, [String(peekReveal.slot)]: peekReveal.card },
+                    } : privateState}
                     seatIndex={players[user.uid]?.seatIndex ?? 0}
                     connected
                     locks={myLocks}
@@ -646,6 +885,8 @@ export default function Game() {
                     actionHighlight={actionHighlights[user.uid] ?? null}
                     queueNumber={queueNumbers[user.uid] ?? null}
                     slotOverlays={slotOverlays[user.uid] ?? null}
+                    stampOverlay={stampOverlays[user.uid] ?? null}
+                    {...selectionProps}
                   />
                 </div>
               </div>
@@ -663,6 +904,12 @@ export default function Game() {
                     onDiscard={handleDiscard}
                     onUsePower={handleUsePower}
                     onClose={handleCancelDraw}
+                    selection={selection}
+                    onSelectionConfirm={handleSelectionConfirm}
+                    onSelectionCancel={cancelSelection}
+                    onSelectionGoBack={goBackSelection}
+                    isDesktop={isDesktop}
+                    players={players}
                   />
                 </div>
               )}
@@ -693,6 +940,8 @@ export default function Game() {
                       chatBubble={chatBubbles[pid] ?? null}
                       queueNumber={queueNumbers[pid] ?? null}
                       slotOverlays={slotOverlays[pid] ?? null}
+                      stampOverlay={stampOverlays[pid] ?? null}
+                      {...selectionProps}
                     />
                   </div>
                 ))}
@@ -701,7 +950,6 @@ export default function Game() {
 
             {/* Table area: Draw + Discard */}
             <div className="flex items-center justify-center gap-8 mb-6 py-4">
-              {/* Draw pile */}
               <div className="text-center" ref={drawPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
                 <CardView
@@ -714,7 +962,6 @@ export default function Game() {
                 />
               </div>
 
-              {/* Discard pile */}
               <div className="text-center" ref={discardPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Discard</p>
                 {game.discardTop ? (
@@ -741,7 +988,10 @@ export default function Game() {
                 displayName={players[user.uid]?.displayName ?? 'You'}
                 isCurrentTurn={isMyTurn}
                 isLocalPlayer
-                privateState={privateState}
+                privateState={peekReveal ? {
+                  ...privateState!,
+                  known: { ...myKnown, [String(peekReveal.slot)]: peekReveal.card },
+                } : privateState}
                 seatIndex={players[user.uid]?.seatIndex ?? 0}
                 connected
                 locks={myLocks}
@@ -751,6 +1001,8 @@ export default function Game() {
                 actionHighlight={actionHighlights[user.uid] ?? null}
                 queueNumber={queueNumbers[user.uid] ?? null}
                 slotOverlays={slotOverlays[user.uid] ?? null}
+                stampOverlay={stampOverlays[user.uid] ?? null}
+                {...selectionProps}
               />
               {/* Action Bar — inline alternative to drawn card modal */}
               {uiMode === 'actionbar' && (
@@ -765,6 +1017,12 @@ export default function Game() {
                   onDiscard={handleDiscard}
                   onUsePower={handleUsePower}
                   onClose={handleCancelDraw}
+                  selection={selection}
+                  onSelectionConfirm={handleSelectionConfirm}
+                  onSelectionCancel={cancelSelection}
+                  onSelectionGoBack={goBackSelection}
+                  isDesktop={isDesktop}
+                  players={players}
                 />
               )}
             </div>
@@ -793,21 +1051,18 @@ export default function Game() {
         onDismiss={() => setDrawnCardDismissed(true)}
       />
 
-      {/* Effect: peek_one — slot picker */}
       <PeekModal
         open={modal.type === 'peekOne'}
         onSelect={handlePeekSelect}
         onCancel={handleCancelPower}
       />
 
-      {/* Effect: peek result display */}
       <PeekResultModal
         card={modal.type === 'peekResult' ? modal.card : null}
         slotIndex={modal.type === 'peekResult' ? modal.slot : null}
         onClose={() => setModal({ type: 'none' })}
       />
 
-      {/* Effect: peek_all result display */}
       <PeekAllModal
         open={modal.type === 'peekAll'}
         revealedCards={modal.type === 'peekAll' ? modal.cards : {}}
@@ -815,7 +1070,6 @@ export default function Game() {
         onClose={() => setModal({ type: 'none' })}
       />
 
-      {/* Effect: swap_one_to_one */}
       <QueenSwapModal
         open={modal.type === 'swap'}
         players={players}
@@ -826,7 +1080,6 @@ export default function Game() {
         onCancel={handleCancelPower}
       />
 
-      {/* Effect: lock_one_card */}
       <SlotPickerModal
         open={modal.type === 'lock'}
         title="Power: Lock"
@@ -841,7 +1094,6 @@ export default function Game() {
         onCancel={handleCancelPower}
       />
 
-      {/* Effect: unlock_one_locked_card */}
       <SlotPickerModal
         open={modal.type === 'unlock'}
         title="Power: Unlock"
@@ -857,7 +1109,6 @@ export default function Game() {
         noTargetsMessage="No cards are locked."
       />
 
-      {/* Effect: rearrange_cards */}
       <JokerChaosModal
         open={modal.type === 'rearrange'}
         players={players}
@@ -867,14 +1118,12 @@ export default function Game() {
         onCancel={handleCancelPower}
       />
 
-      {/* Power guide modal */}
       <PowerGuideModal
         open={showPowerGuide}
         onClose={() => setShowPowerGuide(false)}
         powerAssignments={powerAssignments}
       />
 
-      {/* Flying card animation */}
       {flyingCard.active && flyingCard.from && flyingCard.to && (
         <FlyingCard
           from={flyingCard.from}
@@ -886,7 +1135,6 @@ export default function Game() {
         />
       )}
 
-      {/* Chat panel */}
       <ChatPanel
         open={chat.isOpen}
         messages={chat.messages}
@@ -897,7 +1145,6 @@ export default function Game() {
 
       <VersionLabel />
 
-      {/* Watermark */}
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
         Kamal Hazriq 2026
       </div>

@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.3'
+export const CURRENT_VERSION = 'v1.4'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,49 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.4',
+    title: 'Action Bar & Choreography',
+    date: '10 March 2026',
+    sections: [
+      {
+        heading: 'Action Bar',
+        items: [
+          'Inline Action Bar replaces the drawn-card modal on desktop — swap, discard, and use powers without leaving the board',
+          'Keyboard hints [1][2][3] and [Esc] shown on desktop for quick actions',
+          'Selection mode: power flows (peek, swap, lock, unlock, rearrange) work inline with slot highlighting',
+          'Toggle between Action Bar and Modal UI modes via the top bar',
+        ],
+      },
+      {
+        heading: 'Selection Mode',
+        items: [
+          'Selectable slots glow with an amber pulse ring; non-selectable slots are dimmed',
+          'Selected targets get a checkmark badge for clear visual feedback',
+          'Two-step selection for Queen Swap: pick first card, then second card',
+          'Player-level selection for Chaos/Rearrange: click an opponent\'s panel directly',
+          'Cancel anytime with Esc, or use the Back button to revert a pick',
+        ],
+      },
+      {
+        heading: 'Choreography',
+        items: [
+          'Lock/Unlock stamp overlay: a brief animated stamp appears on the affected player\'s panel',
+          'Peek UX: temporary card reveal (1.2s flip-back) when using Peek in Action Bar mode',
+          'All choreography animations respect reduced motion preferences',
+        ],
+      },
+      {
+        heading: 'Keyboard Shortcuts (Desktop)',
+        items: [
+          'Press [1], [2], or [3] to swap with that slot when you have a drawn card',
+          'Press [Esc] to cancel a discard draw',
+          'Press [Enter] to confirm a selection during power flows',
+          'Shortcuts are disabled when chat input is focused',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.3',
     title: 'Table & Effects Update',
