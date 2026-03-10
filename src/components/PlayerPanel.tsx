@@ -224,7 +224,7 @@ export default function PlayerPanel({
         )}
       </div>
 
-      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-3.5 px-1'} justify-center`}>
+      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-4 px-3'} justify-center`}>
         {[0, 1, 2].map((i) => {
           const card = hand[i] as Card | undefined
           const knownCard = known[String(i)]

@@ -23,13 +23,23 @@ const RANK_ROWS: { key: PowerRankKey; label: string; color: string }[] = [
 
 /** Floating card suits — decorative background elements */
 const FLOATING_SUITS = [
-  { emoji: '\u2660', x: '12%', y: '18%', delay: 0, dur: 5.5, size: 'text-3xl' },
-  { emoji: '\u2665', x: '82%', y: '22%', delay: 1.2, dur: 6, size: 'text-2xl' },
-  { emoji: '\u2666', x: '8%', y: '72%', delay: 2.3, dur: 5, size: 'text-xl' },
-  { emoji: '\u2663', x: '88%', y: '68%', delay: 0.8, dur: 6.5, size: 'text-3xl' },
-  { emoji: '7', x: '20%', y: '85%', delay: 3.0, dur: 7, size: 'text-4xl font-bold' },
-  { emoji: '\u2665', x: '75%', y: '82%', delay: 1.6, dur: 5.8, size: 'text-lg' },
-  { emoji: '\u2660', x: '50%', y: '8%', delay: 2.0, dur: 6.2, size: 'text-xl' },
+  // Large accent pieces
+  { emoji: '\u2660', x: '10%', y: '15%', delay: 0, dur: 6, size: 'text-4xl' },
+  { emoji: '\u2665', x: '85%', y: '20%', delay: 1.4, dur: 7, size: 'text-4xl' },
+  { emoji: '7', x: '18%', y: '82%', delay: 2.5, dur: 8, size: 'text-5xl font-bold' },
+  { emoji: '\u2666', x: '78%', y: '78%', delay: 0.6, dur: 6.5, size: 'text-4xl' },
+  // Medium scattered
+  { emoji: '\u2663', x: '5%', y: '48%', delay: 1.0, dur: 5.5, size: 'text-3xl' },
+  { emoji: '\u2660', x: '92%', y: '45%', delay: 2.2, dur: 6.2, size: 'text-3xl' },
+  { emoji: '\u2665', x: '45%', y: '6%', delay: 3.0, dur: 7.5, size: 'text-2xl' },
+  { emoji: '\u2666', x: '55%', y: '92%', delay: 0.4, dur: 5.8, size: 'text-2xl' },
+  { emoji: '7', x: '88%', y: '8%', delay: 1.8, dur: 6.8, size: 'text-3xl font-bold' },
+  // Small accents
+  { emoji: '\u2663', x: '30%', y: '30%', delay: 3.5, dur: 5, size: 'text-xl' },
+  { emoji: '\u2665', x: '70%', y: '55%', delay: 0.2, dur: 6.5, size: 'text-xl' },
+  { emoji: '\u2660', x: '25%', y: '60%', delay: 2.8, dur: 5.3, size: 'text-lg' },
+  { emoji: '\u2666', x: '65%', y: '35%', delay: 1.6, dur: 5.8, size: 'text-lg' },
+  { emoji: '7', x: '50%', y: '50%', delay: 4.0, dur: 9, size: 'text-6xl font-bold' },
 ]
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
@@ -126,10 +136,10 @@ export default function Home() {
           key={i}
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{
-            opacity: [0, 0.08, 0.12, 0.08, 0],
-            scale: [0.8, 1, 1.05, 1, 0.8],
-            y: [0, -15, -5, -20, 0],
-            rotate: [0, 5, -3, 8, 0],
+            opacity: [0, 0.12, 0.18, 0.12, 0],
+            scale: [0.8, 1, 1.08, 1, 0.8],
+            y: [0, -20, -8, -25, 0],
+            rotate: [0, 8, -5, 12, 0],
           }}
           transition={{
             duration: suit.dur,

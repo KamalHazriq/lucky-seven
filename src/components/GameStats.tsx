@@ -47,11 +47,6 @@ export default function GameStats() {
 
   if (loading) return null
 
-  // Local win tracking
-  const wins = parseInt(localStorage.getItem('lucky7_wins') ?? '0', 10)
-  const localGames = parseInt(localStorage.getItem('lucky7_local_games') ?? '0', 10)
-  const winRate = localGames > 0 ? Math.round((wins / localGames) * 100) : 0
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -87,24 +82,6 @@ export default function GameStats() {
           label="Total Visits"
           value={totalVisits}
           color="bg-slate-900/40 border-slate-700/40 hover:border-amber-600/40"
-        />
-        <StatCard
-          emoji={'\u{1F3C6}'}
-          label="Wins"
-          value={wins}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-yellow-600/40"
-        />
-        <StatCard
-          emoji={'\u{1F4AF}'}
-          label="Win Rate"
-          value={localGames > 0 ? `${winRate}%` : '--'}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-purple-600/40"
-        />
-        <StatCard
-          emoji={'\u{1F4C5}'}
-          label="Your Games"
-          value={localGames}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-cyan-600/40"
         />
       </motion.div>
     </motion.div>

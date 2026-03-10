@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.5.0'
+export const CURRENT_VERSION = 'v1.6.0'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,62 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.6.0',
+    title: 'Premium Polish',
+    date: '11 March 2026',
+    sections: [
+      {
+        heading: 'Premium Animations',
+        items: [
+          'Slower, floaty flying card arcs (1.4\u20131.7s) for a luxurious poker-table feel',
+          'Enhanced arc height, mid-flight scale lift (1.08x), and organic rotation tilt',
+          'Softer springs across StagingSlot, DiscardFlip, and CardView for buttery motion',
+          'Deeper 3D perspective (800px) and longer reveal on discard flip (1.5s)',
+          'Card hover lift enhanced: scale 1.07, y -5, subtle rotate',
+        ],
+      },
+      {
+        heading: 'Leave Game & Auto-End',
+        items: [
+          'End Game button removed \u2014 game ends automatically when the draw pile is empty',
+          'FINAL badge when \u22643 cards remain; LAST TURN badge when pile hits 0',
+          'Leave Game button in Settings \u2014 exit mid-game with confirmation',
+          'Leave Lobby button \u2014 exit before the game starts',
+          'Transaction-safe leave: host transfers, turn advances, drawn cards cleared',
+          'Game continues with remaining players (2+) when someone leaves',
+        ],
+      },
+      {
+        heading: 'Home Screen',
+        items: [
+          'Game Statistics section: Games Played (global), Time Played, Total Visits',
+          'Strategy Tips placeholder section with 4 tips (Coming Soon)',
+          'More floating background card suits with higher visibility',
+        ],
+      },
+      {
+        heading: 'Game Feel',
+        items: [
+          'Golden glow pulse on staging slot when a card is in play',
+          'Button hover glow effect across the UI',
+          'Responsive table-zone breakpoints for large screens (1024/1280/1440px)',
+          'Settings icon no longer rotates on hover \u2014 cleaner look',
+          'Improved tooltip positioning for right-aligned buttons',
+          'More card padding for opponent panels in classic layout',
+        ],
+      },
+      {
+        heading: 'Bug Fixes',
+        items: [
+          'Fixed remote discard-take animation timing in classic layout',
+          'Fixed unused import build errors (SPRING_TAP, setDoc, getSeatColor)',
+          'Fixed leaveGame redundant ternary and missing Firestore read-before-write',
+          'Selection mode and choreography properly reset on leave',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.5.0',
     title: 'Production Readiness',

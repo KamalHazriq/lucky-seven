@@ -251,6 +251,9 @@ export default function Game() {
     }
     prevActionVersion.current = av
 
+    // Defer to next frame so DOM refs (staging, piles) have settled after layout render
+    const rafId = requestAnimationFrame(() => {
+
     const lastEntry = game?.log?.[game.log.length - 1]
     if (!lastEntry) return
 
@@ -383,6 +386,9 @@ export default function Game() {
       // Clear remote staging when action is resolved
       setRemoteStaging(null)
     }
+
+    }) // end requestAnimationFrame
+    return () => cancelAnimationFrame(rafId)
   }, [game?.actionVersion, game?.log, players, user?.uid, reduced, triggerFly, queueFly, game?.discardTop])
 
   // Track previous discardTop for remote staging visuals
@@ -906,7 +912,7 @@ export default function Game() {
           <div className="flex items-center gap-1.5 shrink-0">
             {/* Settings — opens modal with all options */}
             <motion.button
-              whileHover={{ scale: 1.08, rotate: 45 }}
+              whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               onClick={() => setShowSettings(true)}
