@@ -171,6 +171,7 @@ export default function DrawnCardModal({
                 <button
                   onClick={() => !isSpent && !isUnlockWithNoTargets && onUsePower(rankKey, effectType)}
                   disabled={isSpent || isUnlockWithNoTargets}
+                  title={isSpent ? 'Power already used for this card' : isUnlockWithNoTargets ? 'No card is locked right now' : effectInfo.desc}
                   className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors mt-1 text-white ${
                     isSpent || isUnlockWithNoTargets
                       ? 'bg-slate-700 opacity-50 cursor-not-allowed'

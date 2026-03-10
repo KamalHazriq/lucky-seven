@@ -1,20 +1,27 @@
 /**
- * Share utilities — v1.5
- * Generates shareable room links and invite messages.
- * No backend changes — uses existing lobby route with gameId.
+ * Share utilities — v1.6
+ * Generates shareable auto-join links and invite messages.
+ * Links use /join?code=XXXXXX so recipients auto-join the game.
  */
 
-/** Get the shareable room link for a lobby */
+/** Get the shareable auto-join link (uses joinCode, not gameId) */
+export function getJoinLink(joinCode: string): string {
+  const origin = window.location.origin
+  const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+  // HashRouter: links are like https://host/path/#/join?code=XXXXXX
+  return `${origin}${base}/#/join?code=${joinCode}`
+}
+
+/** Get the direct lobby link for a gameId (fallback, non-auto-join) */
 export function getRoomLink(gameId: string): string {
   const origin = window.location.origin
   const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
-  // HashRouter: links are like https://host/path/#/lobby/GAMEID
   return `${origin}${base}/#/lobby/${gameId}`
 }
 
 /** Get a copyable invite message */
-export function getInviteMessage(joinCode: string, gameId: string): string {
-  const link = getRoomLink(gameId)
+export function getInviteMessage(joinCode: string, _gameId: string): string {
+  const link = getJoinLink(joinCode)
   return `Join my Lucky Seven room!\nCode: ${joinCode}\n${link}`
 }
 

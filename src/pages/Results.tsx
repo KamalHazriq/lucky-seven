@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { subscribeReveals, revealHand, writeGameSummary } from '../lib/gameService'
+import { subscribeReveals, revealHand, writeGameSummary, createGame } from '../lib/gameService'
 import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
 import type { PlayerScore } from '../lib/types'
@@ -14,6 +15,7 @@ export default function Results() {
   const { game, players, loading } = useGame(gameId, user?.uid)
   const navigate = useNavigate()
   const [scores, setScores] = useState<PlayerScore[]>([])
+  const [playAgainBusy, setPlayAgainBusy] = useState(false)
   const summaryWritten = useRef(false)
 
   // Subscribe to reveals in real-time (players reveal asynchronously)
@@ -178,12 +180,31 @@ export default function Results() {
           })}
         </div>
 
-        <div className="text-center mt-6">
+        <div className="text-center mt-6 flex items-center justify-center gap-3">
+          <button
+            onClick={async () => {
+              if (playAgainBusy) return
+              setPlayAgainBusy(true)
+              try {
+                const myName = players[user?.uid ?? '']?.displayName ?? 'Player'
+                const maxP = game?.maxPlayers ?? 4
+                const newGameId = await createGame(myName, maxP, game?.settings ?? undefined)
+                navigate(`/lobby/${newGameId}`)
+              } catch (e) {
+                toast.error((e as Error).message)
+                setPlayAgainBusy(false)
+              }
+            }}
+            disabled={playAgainBusy}
+            className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 text-white rounded-xl font-semibold transition-all cursor-pointer"
+          >
+            {playAgainBusy ? 'Creating...' : 'Play Again'}
+          </button>
           <button
             onClick={() => navigate('/')}
-            className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl font-semibold transition-all cursor-pointer"
+            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-semibold transition-all cursor-pointer"
           >
-            Play Again
+            Home
           </button>
         </div>
       </motion.div>

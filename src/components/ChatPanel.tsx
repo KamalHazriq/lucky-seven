@@ -109,7 +109,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
             maxHeight: 'min(420px, 60vh)',
             ...(isDesktop && pos
               ? { left: pos.x, top: pos.y, bottom: 'auto', right: 'auto' }
-              : { bottom: '4rem', right: '0.75rem' }),
+              : { bottom: '4.5rem', right: '0.75rem' }),
           }}
         >
           {/* Header — draggable on desktop */}

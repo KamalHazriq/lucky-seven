@@ -121,7 +121,7 @@ export default function PlayerPanel({
       }}
       onClick={isPlayerTarget ? () => onPlayerSelect?.(playerId) : undefined}
     >
-      {/* Chat bubble — floating above panel */}
+      {/* Chat bubble — floating above panel, clamped to avoid overflow */}
       <AnimatePresence>
         {chatBubble && (
           <motion.div
@@ -129,7 +129,7 @@ export default function PlayerPanel({
             initial={{ opacity: 0, y: 8, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.9 }}
-            className="absolute -top-9 left-4 right-4 z-20 pointer-events-none"
+            className="absolute -top-8 left-2 right-2 z-20 pointer-events-none"
           >
             <div
               className="inline-block max-w-full px-2.5 py-1 rounded-xl text-[11px] font-medium text-white truncate shadow-lg"

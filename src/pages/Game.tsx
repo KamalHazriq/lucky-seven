@@ -143,6 +143,10 @@ export default function Game() {
   // Stamp overlay state for lock/unlock choreography (Section E)
   const [stampOverlays, setStampOverlays] = useState<Record<string, 'lock' | 'unlock' | null>>({})
 
+  // Remote staging: when another player is in action phase, show a card in staging
+  const [remoteStaging, setRemoteStaging] = useState<{ card: Card | null; faceUp: boolean } | null>(null)
+  const prevDiscardTopRef = useRef<Card | null>(game?.discardTop ?? null)
+
   // Temporary peek reveal state (Section F)
   const [peekReveal, setPeekReveal] = useState<{ slot: number; card: Card } | null>(null)
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -277,22 +281,41 @@ export default function Game() {
       if (fromEl) {
         triggerFly(fromEl.getBoundingClientRect(), toRect, false, null, actorColor)
       }
+      // Show face-down card in staging for remote viewer
+      setRemoteStaging({ card: null, faceUp: false })
     } else if (msg.includes('took from discard')) {
       const fromEl = discardPileRef.current
+      // Use previously tracked discardTop since it's now cleared
+      const takenCard = prevDiscardTopRef.current
       if (fromEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toRect, true, game?.discardTop ?? null, actorColor)
+        triggerFly(fromEl.getBoundingClientRect(), toRect, true, takenCard, actorColor)
       }
+      // Show face-up discard card in staging for remote viewer
+      setRemoteStaging({ card: takenCard, faceUp: true })
     } else if (msg.includes('discarded') || msg.includes('swapped their card')) {
       const fromEl = otherPanelRefs.current[actorId]
       const toEl = discardPileRef.current
       if (fromEl && toEl) {
         triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
       }
+      // Clear remote staging when action is resolved
+      setRemoteStaging(null)
     }
   }, [game?.actionVersion, game?.log, players, user?.uid, reduced, triggerFly, game?.discardTop])
 
+  // Track previous discardTop for remote staging visuals
+  useEffect(() => {
+    if (game?.discardTop) prevDiscardTopRef.current = game.discardTop
+  }, [game?.discardTop])
+
+  // Clear remote staging when turn changes back to draw phase
+  useEffect(() => {
+    if (game?.turnPhase === 'draw') setRemoteStaging(null)
+  }, [game?.turnPhase])
+
   // Draw pile/discard clickable during draw phase only
   const canDraw = isDrawPhase && !busy
+  const canTakeDiscard = canDraw && !!game?.discardTop
 
   // Player order with local player first (for modals)
   const modalPlayerOrder = game ? [
@@ -327,7 +350,7 @@ export default function Game() {
   }
 
   const handleTakeDiscard = () => {
-    if (!canDraw) return
+    if (!canTakeDiscard) return
     const fromEl = discardPileRef.current
     const stagingEl = stagingRef.current
     const discardCard = game?.discardTop ?? null
@@ -747,7 +770,7 @@ export default function Game() {
   } : {}
 
   return (
-    <div className="min-h-dvh flex flex-col max-w-5xl mx-auto">
+    <div className={`min-h-dvh flex flex-col ${logPosition === 'left' ? '' : 'max-w-5xl mx-auto'}`}>
       {/* ─── Sticky Top Bar (v1.5 — 3-zone layout) ──────────── */}
       <div
         ref={headerRef}
@@ -912,22 +935,23 @@ export default function Game() {
       </div>
 
       {/* ─── Main Content ─────────────────────────────────────── */}
-      <div className={`flex-1 p-3 md:p-4 ${logPosition === 'left' ? 'flex gap-4' : 'flex flex-col'}`}>
+      <div className={`flex-1 ${logPosition === 'left' ? 'flex' : 'flex flex-col p-3 md:p-4'}`}>
 
-        {/* Left sidebar log */}
+        {/* Left sidebar log — full-height rail pinned to left edge */}
         {logPosition === 'left' && (
-          <div
-            className="shrink-0 w-56 min-h-0 sticky self-start pt-1"
+          <aside
+            className="shrink-0 w-56 min-h-0 sticky self-start overflow-y-auto border-r pt-1 px-2"
             style={{
-              top: 'calc(var(--header-h, 56px) + 4px)',
-              maxHeight: 'calc(100dvh - var(--header-h, 56px) - 12px)',
+              top: 'var(--header-h, 56px)',
+              height: 'calc(100dvh - var(--header-h, 56px))',
+              borderColor: 'var(--border)',
             }}
           >
             <GameLog log={game.log} players={players} position="left" />
-          </div>
+          </aside>
         )}
 
-        <div className={`${logPosition === 'left' ? 'flex-1 min-w-0 flex flex-col' : 'contents'}`}>
+        <div className={`${logPosition === 'left' ? 'flex-1 min-w-0 flex flex-col max-w-5xl mx-auto p-3 md:p-4 w-full' : 'contents'}`}>
 
         {/* Turn queue — mobile only (desktop shows in top bar) */}
         <div className="md:hidden">
@@ -998,12 +1022,12 @@ export default function Game() {
                       label={`${game.drawPileCount}`}
                     />
                   </div>
-                  {/* Staging slot — Section 2 */}
+                  {/* Staging slot — shows local choreo or remote staging */}
                   <StagingSlot
                     ref={stagingRef}
-                    card={choreo.staging.card}
-                    faceUp={choreo.staging.faceUp}
-                    active={choreo.phase === 'staging'}
+                    card={choreo.phase === 'staging' ? choreo.staging.card : remoteStaging?.card ?? null}
+                    faceUp={choreo.phase === 'staging' ? choreo.staging.faceUp : remoteStaging?.faceUp ?? false}
+                    active={choreo.phase === 'staging' || !!remoteStaging}
                     onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
                       ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
                       : undefined}
@@ -1016,15 +1040,15 @@ export default function Game() {
                           card={game.discardTop}
                           faceUp
                           size="md"
-                          onClick={canDraw ? handleTakeDiscard : undefined}
-                          disabled={!canDraw}
-                          highlight={canDraw}
+                          onClick={canTakeDiscard ? handleTakeDiscard : undefined}
+                          disabled={!canTakeDiscard}
+                          highlight={canTakeDiscard}
                         />
                         {/* Section 5: Discard flip overlay */}
                         <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                       </div>
                     ) : (
-                      <div className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
+                      <div className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
                         <span className="text-slate-600 text-[10px]">Empty</span>
                       </div>
                     )}
@@ -1172,12 +1196,12 @@ export default function Game() {
                 />
               </div>
 
-              {/* Staging slot — Section 2 */}
+              {/* Staging slot — shows local choreo or remote staging */}
               <StagingSlot
                 ref={stagingRef}
-                card={choreo.staging.card}
-                faceUp={choreo.staging.faceUp}
-                active={choreo.phase === 'staging'}
+                card={choreo.phase === 'staging' ? choreo.staging.card : remoteStaging?.card ?? null}
+                faceUp={choreo.phase === 'staging' ? choreo.staging.faceUp : remoteStaging?.faceUp ?? false}
+                active={choreo.phase === 'staging' || !!remoteStaging}
                 onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
                   ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
                   : undefined}
@@ -1191,15 +1215,15 @@ export default function Game() {
                       card={game.discardTop}
                       faceUp
                       size="lg"
-                      onClick={canDraw ? handleTakeDiscard : undefined}
-                      disabled={!canDraw}
-                      highlight={canDraw}
+                      onClick={canTakeDiscard ? handleTakeDiscard : undefined}
+                      disabled={!canTakeDiscard}
+                      highlight={canTakeDiscard}
                     />
                     {/* Section 5: Discard flip overlay */}
                     <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                   </div>
                 ) : (
-                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center">
+                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
                     <span className="text-slate-600 text-xs">Empty</span>
                   </div>
                 )}

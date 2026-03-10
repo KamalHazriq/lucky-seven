@@ -251,14 +251,14 @@ export async function startGame(gameId: string): Promise<void> {
     }
 
     const remaining = deck.slice(cardsNeeded)
-    const discardCard = remaining.shift()!
+    // No initial discard card — first move must be from draw pile
 
     tx.set(drawPileRef(gameId), { cards: remaining })
 
     tx.update(gameRef(gameId), {
       status: 'active',
       drawPileCount: remaining.length,
-      discardTop: discardCard,
+      discardTop: null,
       currentTurnPlayerId: game.playerOrder[0],
       turnPhase: 'draw',
       actionVersion: 1,

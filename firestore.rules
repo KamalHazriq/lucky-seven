@@ -37,9 +37,18 @@ service cloud.firestore {
         allow create: if request.auth != null
           && request.auth.uid == playerId;
 
-        // Any authenticated user can update player docs
-        // (needed for host to update seat indices, presence, etc.)
-        allow update: if request.auth != null;
+        // Update rules:
+        // 1) Own player doc: can update any field (profile, connected, etc.)
+        // 2) Other player docs: only locks/lockedBy (game powers in transactions)
+        //    Requires the updater to be a participant in the game
+        allow update: if request.auth != null
+          && (
+            request.auth.uid == playerId
+            || (
+              request.auth.uid in get(/databases/$(database)/documents/games/$(gameId)).data.playerOrder
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locks', 'lockedBy'])
+            )
+          );
 
         allow delete: if false;
       }

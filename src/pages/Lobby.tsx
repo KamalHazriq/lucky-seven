@@ -10,7 +10,7 @@ import FeedbackModal from '../components/FeedbackModal'
 import PatchNotesModal from '../components/PatchNotesModal'
 import ChatPanel from '../components/ChatPanel'
 import { useChat } from '../hooks/useChat'
-import { getRoomLink, getInviteMessage, copyToClipboard } from '../lib/share'
+import { getJoinLink, getInviteMessage, copyToClipboard } from '../lib/share'
 import { LOBBY_COLORS } from '../lib/playerColors'
 
 export default function Lobby() {
@@ -63,8 +63,8 @@ export default function Lobby() {
   }
 
   const handleCopyLink = () => {
-    if (gameId) {
-      copyToClipboard(getRoomLink(gameId))
+    if (game?.joinCode) {
+      copyToClipboard(getJoinLink(game.joinCode))
       toast.success('Room link copied!')
     }
   }

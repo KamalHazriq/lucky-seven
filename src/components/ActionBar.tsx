@@ -202,6 +202,7 @@ export default function ActionBar({
                         <button
                           onClick={() => !isSpent && !isUnlockWithNoTargets && onUsePower(rankKey, effectType)}
                           disabled={isSpent || isUnlockWithNoTargets}
+                          title={isSpent ? 'Power already used for this card' : isUnlockWithNoTargets ? 'No card is locked right now' : effectInfo.desc}
                           className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors text-white ${
                             isSpent || isUnlockWithNoTargets
                               ? 'bg-slate-700/50 opacity-50 cursor-not-allowed'
