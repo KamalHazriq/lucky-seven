@@ -49,16 +49,20 @@ export const DEFAULT_POWER_ASSIGNMENTS: PowerAssignments = {
 
 export type DeckSize = 1 | 1.5 | 2
 
+export type TurnSeconds = 0 | 30 | 60 | 90 | 120 // 0 = unlimited (no timer)
+
 export interface GameSettings {
   powerAssignments: PowerAssignments
   jokerCount: number // 1-4
   deckSize: DeckSize // 1 = standard, 1.5 = 1 full + 27 extra, 2 = double deck
+  turnSeconds: TurnSeconds // 0 = unlimited, 30/60/90/120
 }
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   powerAssignments: { ...DEFAULT_POWER_ASSIGNMENTS },
   jokerCount: 2,
   deckSize: 1,
+  turnSeconds: 0,
 }
 
 /** Human-readable effect label for UI */
@@ -78,6 +82,17 @@ export interface LockInfo {
 }
 
 export const EMPTY_LOCK_INFO: LockInfo = { lockerId: null, lockerName: null }
+
+// ─── Vote-Kick ──────────────────────────────────────────────
+export interface VoteKick {
+  active: boolean
+  targetId: string
+  targetName: string
+  startedBy: string
+  createdAt: number
+  votes: string[] // player IDs who voted yes
+  requiredVotes: number
+}
 
 // ─── Game Document ──────────────────────────────────────────
 export interface GameDoc {
@@ -101,6 +116,12 @@ export interface GameDoc {
   settings: GameSettings
   /** Tracks card IDs whose power has been used (spent). Spent cards cannot use power again. */
   spentPowerCardIds: Record<string, boolean>
+  /** Timestamp when the current turn started (used for turn timer countdown) */
+  turnStartAt: number
+  /** Active vote-kick data (null if no vote in progress) */
+  voteKick: VoteKick | null
+  /** ID of the rematch lobby created from this finished game (null/absent if none yet) */
+  rematchLobbyId?: string | null
 }
 
 export interface PlayerDoc {
@@ -113,6 +134,8 @@ export interface PlayerDoc {
   lockedBy: [LockInfo, LockInfo, LockInfo]
   /** Optional color key (index into LOBBY_COLORS palette). If set, overrides seat color. */
   colorKey?: number
+  /** Consecutive AFK timeout strikes. Reset to 0 on any action. Kicked on 2. */
+  afkStrikes?: number
 }
 
 export type DrawnCardSource = 'pile' | 'discard' | null

@@ -1,3 +1,4 @@
+import { memo, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { Card, PowerEffectType, PowerRankKey, PowerAssignments, DrawnCardSource, PlayerDoc } from '../lib/types'
@@ -37,7 +38,7 @@ interface ActionBarProps {
  * v1.4: Supports selection mode overlay for power flows (peek, swap, lock, etc.)
  *       Shows keyboard hints on desktop [1][2][3] and [Esc]
  */
-export default function ActionBar({
+function ActionBar({
   card,
   visible,
   locks,
@@ -56,9 +57,9 @@ export default function ActionBar({
   players,
   hasAnyLocks = true,
 }: ActionBarProps) {
-  const rankKey = card ? getCardRankKey(card) : null
-  const effectType = rankKey ? (powerAssignments ?? DEFAULT_POWER_ASSIGNMENTS)[rankKey] : null
-  const effectInfo = effectType ? EFFECT_LABELS[effectType] : null
+  const rankKey = useMemo(() => card ? getCardRankKey(card) : null, [card])
+  const effectType = useMemo(() => rankKey ? (powerAssignments ?? DEFAULT_POWER_ASSIGNMENTS)[rankKey] : null, [rankKey, powerAssignments])
+  const effectInfo = useMemo(() => effectType ? EFFECT_LABELS[effectType] : null, [effectType])
   const rankLabel = rankKey === 'JOKER' ? 'Joker' : rankKey
   const isSpent = card ? !!spentPowerCardIds[card.id] : false
   const isUnlockWithNoTargets = effectType === 'unlock_one_locked_card' && !hasAnyLocks
@@ -67,11 +68,11 @@ export default function ActionBar({
   const isSelecting = selection && selection.phase !== 'idle'
 
   // Resolve target names for confirmation view
-  const resolveTarget = (target: SelectedTarget | null): string => {
+  const resolveTarget = useCallback((target: SelectedTarget | null): string => {
     if (!target || !players) return '?'
     const pd = players[target.playerId]
     return pd ? `${pd.displayName}'s #${target.slotIndex + 1}` : `#${target.slotIndex + 1}`
-  }
+  }, [players])
 
   return (
     <AnimatePresence>
@@ -233,6 +234,8 @@ export default function ActionBar({
     </AnimatePresence>
   )
 }
+
+export default memo(ActionBar)
 
 /** Tiny keyboard hint badge */
 function Kbd({ children }: { children: React.ReactNode }) {

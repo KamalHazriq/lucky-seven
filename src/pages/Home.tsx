@@ -10,7 +10,7 @@ import VersionLabel from '../components/VersionLabel'
 import PatchNotesModal from '../components/PatchNotesModal'
 import GameStats from '../components/GameStats'
 import StrategyTips from '../components/StrategyTips'
-import type { PowerAssignments, PowerEffectType, PowerRankKey, DeckSize } from '../lib/types'
+import type { PowerAssignments, PowerEffectType, PowerRankKey, DeckSize, TurnSeconds } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS, ALL_EFFECT_TYPES, DEFAULT_POWER_ASSIGNMENTS } from '../lib/types'
 
 const RANK_ROWS: { key: PowerRankKey; label: string; color: string }[] = [
@@ -72,6 +72,7 @@ export default function Home() {
   const [assignments, setAssignments] = useState<PowerAssignments>({ ...DEFAULT_POWER_ASSIGNMENTS })
   const [jokerCount, setJokerCount] = useState(DEFAULT_GAME_SETTINGS.jokerCount)
   const [deckSize, setDeckSize] = useState<DeckSize>(DEFAULT_GAME_SETTINGS.deckSize)
+  const [turnSeconds, setTurnSeconds] = useState<TurnSeconds>(DEFAULT_GAME_SETTINGS.turnSeconds)
 
   const updateAssignment = (key: PowerRankKey, value: PowerEffectType) => {
     setAssignments((prev) => ({ ...prev, [key]: value }))
@@ -86,6 +87,7 @@ export default function Home() {
         powerAssignments: assignments,
         jokerCount,
         deckSize,
+        turnSeconds,
       })
       navigate(`/lobby/${gameId}`)
     } catch (e) {
@@ -311,6 +313,30 @@ export default function Home() {
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
                     {deckSize === 1 ? '54 cards (standard)' : deckSize === 1.5 ? '~81 cards (1 full + 27 extra)' : '~108 cards (double deck)'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Turn Timer</label>
+                  <div className="flex gap-1.5">
+                    {([0, 30, 60, 90, 120] as TurnSeconds[]).map((ts) => (
+                      <motion.button
+                        key={ts}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setTurnSeconds(ts)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                          turnSeconds === ts
+                            ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {ts === 0 ? 'Off' : `${ts}s`}
+                      </motion.button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {turnSeconds === 0 ? 'No time limit per turn' : `${turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
                   </p>
                 </div>
 

@@ -1,9 +1,11 @@
+import { memo, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { Card, PrivatePlayerDoc, LockInfo } from '../lib/types'
 import { getPlayerColor } from '../lib/playerColors'
 import type { SelectionTargetType, SelectedTarget } from '../hooks/useSelectionMode'
 import { isSlotSelectable } from '../hooks/useSelectionMode'
+import { usePerformanceMode } from '../hooks/usePerformanceMode'
 
 export interface ActionHighlight {
   color: string
@@ -58,7 +60,7 @@ const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
   { lockerId: null, lockerName: null },
 ]
 
-export default function PlayerPanel({
+function PlayerPanel({
   displayName,
   playerId,
   isCurrentTurn,
@@ -87,7 +89,8 @@ export default function PlayerPanel({
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
-  const color = getPlayerColor(seatIndex, colorKey)
+  const color = useMemo(() => getPlayerColor(seatIndex, colorKey), [seatIndex, colorKey])
+  const perfMode = usePerformanceMode()
 
   const inSelectionMode = selectionTargetType != null
 
@@ -101,27 +104,30 @@ export default function PlayerPanel({
       )
     : false
 
+  const panelStyle = useMemo(() => ({
+    borderLeftWidth: '4px',
+    borderLeftColor: color.solid,
+    ...(isCurrentTurn && !perfMode ? { '--turn-glow-color': color.solid + '60' } as React.CSSProperties : {}),
+  }), [color.solid, isCurrentTurn, perfMode])
+
+  const panelClassName = useMemo(() => `
+    relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'p-3.5 pb-4'} backdrop-blur-sm transition-opacity
+    ${panelDimmed ? 'opacity-40' : ''}
+    ${isLocalPlayer && isCurrentTurn
+      ? `bg-emerald-900/40 border-2 border-amber-500/50 ring-1 ring-emerald-500/30${perfMode ? '' : ' turn-glow'}`
+      : isCurrentTurn
+        ? `bg-emerald-900/40 border-2 border-emerald-500/50${perfMode ? '' : ' turn-glow'}`
+        : isLocalPlayer
+          ? 'bg-amber-900/15 border-2 border-amber-500/30'
+          : 'bg-slate-800/40 border border-slate-700/50'
+    }
+    ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/50 hover:ring-amber-400' : ''}
+  `, [isLocalPlayer, isCurrentTurn, panelDimmed, isPlayerTarget, perfMode])
+
   return (
     <motion.div
-      layout
-      className={`
-        relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'p-3.5 pb-4'} backdrop-blur-sm transition-opacity
-        ${panelDimmed ? 'opacity-40' : ''}
-        ${isLocalPlayer && isCurrentTurn
-          ? 'bg-emerald-900/40 border-2 border-amber-500/50 ring-1 ring-emerald-500/30 turn-glow'
-          : isCurrentTurn
-            ? 'bg-emerald-900/40 border-2 border-emerald-500/50 turn-glow'
-            : isLocalPlayer
-              ? 'bg-amber-900/15 border-2 border-amber-500/30'
-              : 'bg-slate-800/40 border border-slate-700/50'
-        }
-        ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/50 hover:ring-amber-400' : ''}
-      `}
-      style={{
-        borderLeftWidth: '4px',
-        borderLeftColor: color.solid,
-        ...(isCurrentTurn ? { '--turn-glow-color': color.solid + '60' } as React.CSSProperties : {}),
-      }}
+      className={panelClassName}
+      style={panelStyle}
       onClick={isPlayerTarget ? () => onPlayerSelect?.(playerId) : undefined}
     >
       {/* Chat bubble — floating well above panel to avoid overlap */}
@@ -137,8 +143,8 @@ export default function PlayerPanel({
             style={{ bottom: 'calc(100% + 10px)', zIndex: 50 }}
           >
             <div
-              className="inline-block max-w-full px-2.5 py-1 rounded-xl text-[11px] font-medium text-white truncate"
-              style={{ backgroundColor: color.solid, boxShadow: '0 4px 14px rgba(0,0,0,0.35)' }}
+              className="inline-block max-w-full px-2.5 py-1 rounded-xl text-[11px] font-medium text-white break-words whitespace-normal"
+              style={{ backgroundColor: color.solid, boxShadow: '0 4px 14px rgba(0,0,0,0.35)', maxHeight: '4.5em', overflowY: 'auto' }}
             >
               {chatBubble}
             </div>
@@ -224,7 +230,7 @@ export default function PlayerPanel({
         )}
       </div>
 
-      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-4 px-3'} justify-center`}>
+      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-3 sm:gap-4 px-2 sm:px-3'} justify-center`} style={!isLocalPlayer ? { minWidth: '190px' } : undefined}>
         {[0, 1, 2].map((i) => {
           const card = hand[i] as Card | undefined
           const knownCard = known[String(i)]
@@ -373,3 +379,5 @@ export default function PlayerPanel({
     </motion.div>
   )
 }
+
+export default memo(PlayerPanel)

@@ -1,4 +1,11 @@
-// WebAudio oscillator-based sound effects — no external audio files needed
+/**
+ * WebAudio oscillator-based sound effects — no external audio files needed.
+ *
+ * File-based override (future): place .mp3/.ogg files in /public/sfx/<name>.mp3
+ * and swap beep() calls for new Audio('/sfx/<name>.mp3').play().
+ * Key names match SFX object keys: draw, take, swap, discard, lock, unlock,
+ *   peek, peekAll, chaos, kick, endGame, error.
+ */
 let ctx: AudioContext | null = null
 
 function getCtx(): AudioContext | null {
@@ -9,6 +16,7 @@ function getCtx(): AudioContext | null {
       return null
     }
   }
+  // Resume after browser autoplay suspension (requires prior user interaction)
   if (ctx.state === 'suspended') ctx.resume()
   return ctx
 }
@@ -29,18 +37,60 @@ function beep(freq: number, duration: number, type: OscillatorType = 'sine', vol
 }
 
 export const SFX = {
-  draw: () => beep(660, 0.08, 'sine', 0.06),
-  swap: () => { beep(440, 0.06, 'square', 0.04); setTimeout(() => beep(550, 0.06, 'square', 0.04), 60) },
+  /** Draw from pile — bright short tick */
+  draw:    () => beep(660, 0.08, 'sine', 0.06),
+
+  /** Take from discard — warmer double-blip, distinct from draw */
+  take:    () => { beep(520, 0.06, 'sine', 0.06); setTimeout(() => beep(640, 0.08, 'sine', 0.05), 50) },
+
+  /** Swap card into a slot — two-tone square blip */
+  swap:    () => { beep(440, 0.06, 'square', 0.04); setTimeout(() => beep(550, 0.06, 'square', 0.04), 60) },
+
+  /** Discard drawn card */
   discard: () => beep(330, 0.1, 'triangle', 0.05),
-  lock: () => { beep(220, 0.1, 'sawtooth', 0.04); setTimeout(() => beep(180, 0.15, 'sawtooth', 0.03), 80) },
-  unlock: () => { beep(440, 0.06, 'sine', 0.05); setTimeout(() => beep(660, 0.08, 'sine', 0.05), 70) },
-  endGame: () => { beep(523, 0.12, 'sine', 0.06); setTimeout(() => beep(659, 0.12, 'sine', 0.06), 120); setTimeout(() => beep(784, 0.2, 'sine', 0.06), 240) },
-  error: () => { beep(200, 0.1, 'square', 0.05); setTimeout(() => beep(160, 0.15, 'square', 0.04), 100) },
+
+  /** Lock a card */
+  lock:    () => { beep(220, 0.1, 'sawtooth', 0.04); setTimeout(() => beep(180, 0.15, 'sawtooth', 0.03), 80) },
+
+  /** Unlock a card */
+  unlock:  () => { beep(440, 0.06, 'sine', 0.05); setTimeout(() => beep(660, 0.08, 'sine', 0.05), 70) },
+
+  /** Peek at one card — soft high curiosity tone */
+  peek:    () => { beep(900, 0.05, 'sine', 0.04); setTimeout(() => beep(1100, 0.07, 'sine', 0.035), 65) },
+
+  /** Peek at all three cards — ascending triple chime */
+  peekAll: () => {
+    beep(880, 0.05, 'sine', 0.04)
+    setTimeout(() => beep(1100, 0.05, 'sine', 0.04), 65)
+    setTimeout(() => beep(1320, 0.08, 'sine', 0.04), 130)
+  },
+
+  /** Chaos / rearrange power — rapid descending scramble */
+  chaos:   () => {
+    beep(660, 0.04, 'square', 0.04)
+    setTimeout(() => beep(550, 0.04, 'square', 0.04), 55)
+    setTimeout(() => beep(440, 0.04, 'square', 0.04), 110)
+    setTimeout(() => beep(330, 0.07, 'square', 0.03), 165)
+  },
+
+  /** Player kicked or left the game */
+  kick:    () => { beep(440, 0.1, 'triangle', 0.05); setTimeout(() => beep(330, 0.14, 'triangle', 0.04), 110) },
+
+  /** End of round fanfare */
+  endGame: () => {
+    beep(523, 0.12, 'sine', 0.06)
+    setTimeout(() => beep(659, 0.12, 'sine', 0.06), 120)
+    setTimeout(() => beep(784, 0.2, 'sine', 0.06), 240)
+  },
+
+  /** Error / invalid action */
+  error:   () => { beep(200, 0.1, 'square', 0.05); setTimeout(() => beep(160, 0.15, 'square', 0.04), 100) },
 }
 
-// Storage key
-const SFX_KEY = 'lucky7_sfx_enabled'
+// ─── Persistence ────────────────────────────────────────────
+const SFX_KEY    = 'lucky7_sfx_enabled'
 const HAPTIC_KEY = 'lucky7_haptic_enabled'
+const PERF_KEY   = 'lucky7_perf_mode'
 
 export function isSfxEnabled(): boolean {
   return localStorage.getItem(SFX_KEY) === 'true'
@@ -66,4 +116,13 @@ export function playSfx(name: keyof typeof SFX) {
 export function vibrate(ms = 30) {
   if (!isHapticEnabled()) return
   navigator.vibrate?.(ms)
+}
+
+export function isPerformanceModeEnabled(): boolean {
+  return localStorage.getItem(PERF_KEY) === 'true'
+}
+
+export function setPerformanceModeEnabled(v: boolean) {
+  localStorage.setItem(PERF_KEY, v ? 'true' : 'false')
+  window.dispatchEvent(new CustomEvent('lucky7_perf_change'))
 }

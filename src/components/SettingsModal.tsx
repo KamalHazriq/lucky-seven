@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { isSfxEnabled, setSfxEnabled, isHapticEnabled, setHapticEnabled } from '../lib/sfx'
+import { isSfxEnabled, setSfxEnabled, isHapticEnabled, setHapticEnabled, isPerformanceModeEnabled, setPerformanceModeEnabled } from '../lib/sfx'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useTheme, type Theme } from '../hooks/useTheme'
 import { useState, useEffect } from 'react'
@@ -24,6 +24,12 @@ interface SettingsModalProps {
   showLogToggle?: boolean
   /** Leave game handler */
   onLeaveGame?: () => void
+  /** Vote kick handler — pass player ID to initiate */
+  onVoteKick?: (targetId: string) => void
+  /** Other players for vote kick list */
+  otherPlayers?: { id: string; name: string }[]
+  /** Whether a vote is already in progress */
+  voteKickActive?: boolean
 }
 
 const THEMES: { value: Theme; label: string; icon: string; desc: string }[] = [
@@ -45,16 +51,21 @@ export default function SettingsModal({
   showUiModeToggle = false,
   showLogToggle = false,
   onLeaveGame,
+  onVoteKick,
+  otherPlayers,
+  voteKickActive = false,
 }: SettingsModalProps) {
   const { theme, setTheme } = useTheme()
   const { reduced, pref, cycle } = useReducedMotion()
   const [sfx, setSfxState] = useState(isSfxEnabled)
   const [haptic, setHapticState] = useState(isHapticEnabled)
+  const [perfMode, setPerfModeState] = useState(isPerformanceModeEnabled)
   const hasVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator
 
   useEffect(() => {
     setSfxState(isSfxEnabled())
     setHapticState(isHapticEnabled())
+    setPerfModeState(isPerformanceModeEnabled())
   }, [open])
 
   const toggleSfx = () => {
@@ -67,6 +78,12 @@ export default function SettingsModal({
     const next = !haptic
     setHapticEnabled(next)
     setHapticState(next)
+  }
+
+  const togglePerfMode = () => {
+    const next = !perfMode
+    setPerformanceModeEnabled(next)
+    setPerfModeState(next)
   }
 
   const motionLabel = pref === 'system' ? `System (${reduced ? 'reduced' : 'full'})` : pref === 'on' ? 'Reduced' : 'Full'
@@ -192,6 +209,29 @@ export default function SettingsModal({
                       Tap to cycle
                     </span>
                   </motion.button>
+
+                  {/* Performance mode toggle */}
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={togglePerfMode}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base">{perfMode ? '\u26A1' : '\u2728'}</span>
+                      <div className="text-left">
+                        <span className="text-sm font-medium text-slate-200 block">Performance Mode</span>
+                        <span className="text-[10px] text-slate-500">Disables shimmer, glow & float effects</span>
+                      </div>
+                    </div>
+                    <div className={`w-10 h-6 rounded-full p-0.5 transition-colors ${perfMode ? 'bg-emerald-500' : 'bg-slate-600'}`}>
+                      <motion.div
+                        animate={{ x: perfMode ? 16 : 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        className="w-5 h-5 rounded-full bg-white shadow-md"
+                      />
+                    </div>
+                  </motion.button>
                 </div>
               </section>
 
@@ -260,6 +300,34 @@ export default function SettingsModal({
                         </span>
                       </motion.button>
                     )}
+                  </div>
+                </section>
+              )}
+
+              {/* ─── Vote Kick ─── */}
+              {onVoteKick && otherPlayers && otherPlayers.length > 0 && (
+                <section>
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Vote to Kick</h4>
+                  <div className="space-y-1.5">
+                    {otherPlayers.map((p) => (
+                      <motion.button
+                        key={p.id}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => {
+                          if (voteKickActive) return
+                          if (!confirm(`Start a vote to kick ${p.name}?`)) return
+                          onVoteKick(p.id)
+                        }}
+                        disabled={voteKickActive}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-red-900/20 hover:border-red-700/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <span className="text-sm text-slate-200">{p.name}</span>
+                        <span className="text-[10px] font-bold text-red-400 bg-red-900/30 px-2 py-0.5 rounded-lg">
+                          {voteKickActive ? 'Vote active' : 'Kick'}
+                        </span>
+                      </motion.button>
+                    ))}
                   </div>
                 </section>
               )}

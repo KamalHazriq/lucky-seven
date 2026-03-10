@@ -1,7 +1,8 @@
-import { forwardRef, useRef, useEffect } from 'react'
+import { forwardRef, memo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence, useAnimate } from 'motion/react'
 import CardView from './CardView'
 import type { Card } from '../lib/types'
+import { usePerformanceMode } from '../hooks/usePerformanceMode'
 
 /** Spring-based motion configs for premium feel */
 const SPRING_ENTRY = { type: 'spring' as const, stiffness: 220, damping: 20, mass: 0.9 }
@@ -30,10 +31,11 @@ interface StagingSlotProps {
  * v1.6: Uses motion/react (Motion One) for smoother crossfade.
  * Respects reduced motion via shorter durations.
  */
-const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
+const StagingSlot = memo(forwardRef<HTMLDivElement, StagingSlotProps>(
   function StagingSlot({ card, faceUp, active, onResolve, ownerColor }, ref) {
     const [scope, animate] = useAnimate()
     const prevActive = useRef(active)
+    const perfMode = usePerformanceMode()
 
     // Subtle pulse when card state changes (crossfade effect)
     useEffect(() => {
@@ -45,7 +47,7 @@ const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
     }, [card, faceUp, active, animate, scope])
 
     return (
-      <div ref={ref} className={`text-center relative ${active ? 'staging-active' : ''}`} style={{ minWidth: '64px', borderRadius: '12px' }}>
+      <div ref={ref} className={`text-center relative ${active && !perfMode ? 'staging-active' : ''}`} style={{ minWidth: '64px', borderRadius: '12px' }}>
         <p className="text-[10px] text-slate-500 mb-1">In play</p>
         <AnimatePresence mode="wait">
           {active ? (
@@ -53,19 +55,16 @@ const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
               key={`staged-${faceUp ? 'up' : 'down'}`}
               ref={scope}
               initial={{ opacity: 0, scale: 0.78, y: 12 }}
-              animate={{
-                opacity: 1,
-                scale: 1,
-                y: [0, -5, 0],
-              }}
+              animate={perfMode
+                ? { opacity: 1, scale: 1, y: 0 }
+                : { opacity: 1, scale: 1, y: [0, -5, 0] }
+              }
               exit={{ opacity: 0, scale: 0.85, y: -10 }}
-              transition={{
-                opacity: SPRING_ENTRY,
-                scale: SPRING_ENTRY,
-                y: FLOAT_CONFIG,
-                default: SPRING_EXIT,
-              }}
-              style={{
+              transition={perfMode
+                ? { opacity: SPRING_ENTRY, scale: SPRING_ENTRY, default: SPRING_EXIT }
+                : { opacity: SPRING_ENTRY, scale: SPRING_ENTRY, y: FLOAT_CONFIG, default: SPRING_EXIT }
+              }
+              style={perfMode ? undefined : {
                 filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.35)) drop-shadow(0 3px 8px rgba(0,0,0,0.2)) drop-shadow(0 0 12px rgba(251,191,36,0.12))',
               }}
             >
@@ -106,6 +105,6 @@ const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
       </div>
     )
   },
-)
+))
 
 export default StagingSlot

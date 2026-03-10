@@ -7,6 +7,9 @@ const QUICK_EMOJIS = ['\u{1F44D}', '\u{1F44E}', '\u{1F602}', '\u{1F631}', '\u{1F
 
 const CHAT_POS_KEY = 'lucky7_chat_pos'
 
+/** Pixels from bottom within which we consider the user "at bottom" */
+const NEAR_BOTTOM_PX = 60
+
 function loadChatPos(): { x: number; y: number } | null {
   try {
     const raw = localStorage.getItem(CHAT_POS_KEY)
@@ -32,8 +35,14 @@ interface ChatPanelProps {
 export default function ChatPanel({ open, messages, localUserId, onSend, onClose }: ChatPanelProps) {
   const [text, setText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+
+  // Smart scroll state
+  const [isNearBottom, setIsNearBottom] = useState(true)
+  const [showNewPill, setShowNewPill] = useState(false)
+  const prevMsgCountRef = useRef(messages.length)
 
   // Draggable position state (desktop only)
   const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768
@@ -46,7 +55,6 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
     const el = panelRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    // Use current position or derive from element's position
     const currentX = pos?.x ?? rect.left
     const currentY = pos?.y ?? rect.top
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: currentX, origY: currentY }
@@ -68,12 +76,55 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
     if (pos) saveChatPos(pos.x, pos.y)
   }, [pos])
 
-  // Auto-scroll to bottom on new messages
+  // ─── Scroll position tracking ────────────────────────────────
+  const checkNearBottom = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+  }, [])
+
+  const handleScroll = useCallback(() => {
+    const nearBottom = checkNearBottom()
+    setIsNearBottom(nearBottom)
+    if (nearBottom) setShowNewPill(false)
+  }, [checkNearBottom])
+
+  // ─── Smart auto-scroll on new messages ───────────────────────
+  useEffect(() => {
+    if (!open) return
+    const hasNew = messages.length > prevMsgCountRef.current
+    prevMsgCountRef.current = messages.length
+
+    if (!hasNew) {
+      // Initial load or no new messages — snap to bottom instantly
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
+      return
+    }
+
+    // New messages arrived
+    if (isNearBottom) {
+      // User was at bottom → smooth scroll to stay at bottom
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      // User scrolled up → don't yank, show pill
+      setShowNewPill(true)
+    }
+  }, [messages.length, open, isNearBottom])
+
+  // Snap to bottom when first opened
   useEffect(() => {
     if (open) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      // Reset state on open
+      setShowNewPill(false)
+      setIsNearBottom(true)
+      prevMsgCountRef.current = messages.length
+      // Snap to bottom after panel animates in
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'instant' as ScrollBehavior })
+      })
     }
-  }, [messages.length, open])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   // Focus input when opened
   useEffect(() => {
@@ -82,10 +133,22 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
     }
   }, [open])
 
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setShowNewPill(false)
+    setIsNearBottom(true)
+  }, [])
+
   const handleSend = () => {
     if (!text.trim()) return
     onSend(text.trim())
     setText('')
+    // Always scroll to bottom after sending own message
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      setIsNearBottom(true)
+      setShowNewPill(false)
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -130,7 +193,11 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[120px]">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-[120px] relative"
+            onScroll={handleScroll}
+          >
             {messages.length === 0 && (
               <p className="text-xs text-slate-500 text-center py-4">No messages yet. Say hi!</p>
             )}
@@ -144,6 +211,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
                   key={msg.id}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15 }}
                   className={`flex flex-col ${isLocal ? 'items-end' : 'items-start'}`}
                 >
                   {/* Name label */}
@@ -183,6 +251,23 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
             })}
             <div ref={bottomRef} />
           </div>
+
+          {/* "New messages" pill — shown when user scrolled up and new msgs arrived */}
+          <AnimatePresence>
+            {showNewPill && (
+              <motion.button
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.18 }}
+                onClick={scrollToBottom}
+                className="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-full shadow-lg cursor-pointer"
+                style={{ bottom: '7.5rem' }}
+              >
+                New messages &darr;
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           {/* Quick emoji row */}
           <div className="flex gap-1 px-2 py-1.5 border-t border-slate-700/30">
