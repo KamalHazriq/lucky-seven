@@ -23,7 +23,6 @@ export function useTurnTimer(
 ): TurnTimerState {
   const [remaining, setRemaining] = useState<number | null>(null)
   const skipFiredRef = useRef(false)
-  const lastActionVersionRef = useRef(0)
 
   const turnSeconds = game?.settings?.turnSeconds ?? 0
   const turnStartAt = game?.turnStartAt ?? 0
@@ -31,13 +30,10 @@ export function useTurnTimer(
   const actionVersion = game?.actionVersion ?? 0
   const isActive = game?.status === 'active' || game?.status === 'ending'
 
-  // Reset skip-fired flag when turn changes (actionVersion bumps)
+  // Reset skip-fired flag only on actual turn change (new player or new timer start)
   useEffect(() => {
-    if (actionVersion !== lastActionVersionRef.current) {
-      lastActionVersionRef.current = actionVersion
-      skipFiredRef.current = false
-    }
-  }, [actionVersion])
+    skipFiredRef.current = false
+  }, [currentTurnPlayerId, turnStartAt])
 
   // Main countdown interval
   useEffect(() => {

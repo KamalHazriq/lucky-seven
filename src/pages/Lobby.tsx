@@ -313,16 +313,20 @@ export default function Lobby() {
                       transition={springBounce}
                       onClick={() => !isTaken && handlePickColor(idx)}
                       disabled={isTaken}
-                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                      className={`relative w-7 h-7 rounded-full border-2 transition-all ${
                         isMine
                           ? 'border-white scale-110 ring-2 ring-white/30 cursor-pointer'
                           : isTaken
-                            ? 'border-transparent opacity-30 cursor-not-allowed'
+                            ? 'border-transparent opacity-50 cursor-not-allowed'
                             : 'border-transparent cursor-pointer'
                       }`}
                       style={{ backgroundColor: lc.hex }}
                       title={isTaken ? `Taken by ${takenBy.displayName}` : lc.name}
-                    />
+                    >
+                      {isTaken && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs pointer-events-none" style={{ textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>✕</span>
+                      )}
+                    </motion.button>
                   )
                 })}
               </div>

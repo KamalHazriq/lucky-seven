@@ -250,16 +250,20 @@ export default function Join() {
                       whileTap={!isTaken ? { scale: 0.85 } : undefined}
                       onClick={() => !isTaken && setSelectedColor(idx)}
                       disabled={isTaken}
-                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                      className={`relative w-8 h-8 rounded-full border-2 transition-all ${
                         isMine
                           ? 'border-white scale-110 ring-2 ring-white/30 cursor-pointer'
                           : isTaken
-                            ? 'border-transparent opacity-30 cursor-not-allowed'
+                            ? 'border-transparent opacity-50 cursor-not-allowed'
                             : 'border-transparent cursor-pointer hover:border-white/30'
                       }`}
                       style={{ backgroundColor: lc.hex }}
                       title={isTaken ? `Taken by ${takenBy}` : lc.name}
-                    />
+                    >
+                      {isTaken && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs pointer-events-none" style={{ textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>✕</span>
+                      )}
+                    </motion.button>
                   )
                 })}
               </div>

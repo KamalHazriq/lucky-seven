@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { subscribeReveals, revealHand, writeGameSummary, playAgain } from '../lib/gameService'
+import { subscribeReveals, revealHand, writeGameSummary, playAgain, joinGame } from '../lib/gameService'
 import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
 import type { PlayerScore } from '../lib/types'
@@ -17,6 +17,7 @@ export default function Results() {
   const [scores, setScores] = useState<PlayerScore[]>([])
   const [playAgainBusy, setPlayAgainBusy] = useState(false)
   const summaryWritten = useRef(false)
+  const autoJoinedRef = useRef(false)
 
   // Subscribe to reveals in real-time (players reveal asynchronously)
   useEffect(() => {
@@ -42,6 +43,20 @@ export default function Results() {
     writeGameSummary(gameId, scores, game)
   }, [gameId, game, user, scores])
 
+
+  // Auto-redirect all players when someone initiates a rematch
+  useEffect(() => {
+    const rematchId = game?.rematchLobbyId
+    if (!rematchId || !user || !gameId || autoJoinedRef.current) return
+    autoJoinedRef.current = true
+    const myPlayer = players[user.uid]
+    const displayName = myPlayer?.displayName ?? 'Player'
+    const colorKey = myPlayer?.colorKey
+    setPlayAgainBusy(true)
+    joinGame(rematchId, displayName, colorKey)
+      .then(() => navigate(`/lobby/${rematchId}`))
+      .catch(() => navigate(`/lobby/${rematchId}`))
+  }, [game?.rematchLobbyId, user, gameId, players, navigate])
 
   if (loading || !game) {
     return (
