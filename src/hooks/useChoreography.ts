@@ -178,9 +178,17 @@ export function useChoreography() {
     })
   }, [])
 
-  /** When flyToPlayer completes */
+  /** When flyToPlayer (pile draw → staging) completes, enter staging phase */
   const onPlayerArrival = useCallback(() => {
-    setState(INITIAL)
+    setState({
+      phase: 'staging',
+      staging: { card: null, source: 'pile', faceUp: false },
+      flyFrom: null,
+      flyTo: null,
+      flyFaceUp: false,
+      flyCard: null,
+      flyOwnerColor: undefined,
+    })
   }, [])
 
   /** Reconstruct staging from Firestore state on resume/refresh (Section 6) */
@@ -188,18 +196,19 @@ export function useChoreography() {
     drawnCard: Card | null,
     source: 'pile' | 'discard' | null,
   ) => {
-    if (!drawnCard || !source) {
+    if (!source) {
       setState(INITIAL)
       return
     }
-    // Discard source: show card face-up in staging
-    // Pile source: show generic face-down in staging
+    // Always show drawn card face-up in staging for the local player.
+    // If drawnCard is null (Firestore hasn't delivered yet), show face-down placeholder
+    // which will be corrected when the listener fires.
     setState({
       phase: 'staging',
       staging: {
-        card: source === 'discard' ? drawnCard : null,
+        card: drawnCard ?? null,
         source,
-        faceUp: source === 'discard',
+        faceUp: !!drawnCard,
       },
       flyFrom: null,
       flyTo: null,

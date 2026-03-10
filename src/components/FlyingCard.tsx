@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { cardDisplay, suitColor } from '../lib/deck'
 import type { Card } from '../lib/types'
 
@@ -51,7 +51,7 @@ export default function FlyingCard({
   card,
   ownerColor,
   onComplete,
-  duration = 1.55,
+  duration = 1.5,
   reduced = false,
   flipOnLand = false,
   size = 'sm',
@@ -66,9 +66,10 @@ export default function FlyingCard({
   const ey = to.y + to.height / 2 - height / 2
 
   // Midpoint with upward arc offset — proportional to distance
+  // Premium feel: higher arc with gentle apex for floaty poker-table motion
   const mx = (sx + ex) / 2
   const dist = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2)
-  const arcHeight = Math.min(dist * 0.4, 110)
+  const arcHeight = Math.min(dist * 0.55, 150)
   const my = Math.min(sy, ey) - arcHeight
 
   // Generate high-res keyframe offsets along quadratic bezier (20 steps)
@@ -92,30 +93,30 @@ export default function FlyingCard({
     return { x: xs, y: ys }
   }, [sx, sy, mx, my, ex, ey, reduced])
 
-  // Scale keyframes — gentle 1.03 peak at ~35-45% of flight
+  // Scale keyframes — premium floaty lift to ~1.08 mid-flight, gentle overshoot landing
   const scaleFrames = reduced
     ? [1, 1]
     : [
-        1, 1.005, 1.015, 1.025, 1.03, 1.03, 1.03, 1.03, 1.025,
-        1.02, 1.015, 1.01, 1.005, 1.0, 1.0, 1.0, 1.0,
-        1.0, 1.0, 1.0, 1.0,
+        1, 1.015, 1.035, 1.055, 1.07, 1.08, 1.08, 1.075, 1.065,
+        1.05, 1.035, 1.02, 1.01, 1.0, 0.99, 0.98, 0.975,
+        0.98, 0.99, 0.997, 1.0,
       ]
 
-  // Opacity — fully visible during flight, gentle fade at end
+  // Opacity — fully visible throughout, very soft settle on landing
   const opacityFrames = reduced
     ? [0.5, 1]
     : [
-        1, 1, 1, 1, 1, 1, 1, 1, 1,
+        0.9, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1,
-        0.98, 0.95, 0.9, 0.85,
+        0.99, 0.97, 0.95, 0.92,
       ]
 
-  // Rotation keyframes — very subtle organic tilt during arc
+  // Rotation keyframes — organic tilt that follows the arc direction
   const rotateFrames = reduced
     ? [0, 0]
     : [
-        0, -0.5, -1.2, -1.5, -1.2, -0.8, -0.3, 0, 0.3,
-        0.5, 0.5, 0.3, 0.2, 0.1, 0, 0, 0,
+        0, -1.0, -2.0, -2.5, -2.2, -1.5, -0.6, 0, 0.5,
+        0.8, 0.8, 0.6, 0.3, 0.1, 0, -0.1, -0.05,
         0, 0, 0, 0,
       ]
 
@@ -144,7 +145,8 @@ export default function FlyingCard({
         ? { duration: reducedDuration, ease: 'easeOut' }
         : {
             duration,
-            ease: [0.22, 1, 0.36, 1], // gentle floaty cubic-bezier
+            // Premium: gentle launch, float at apex, slow elegant landing
+            ease: [0.22, 0.9, 0.36, 1],
           }
       }
       onAnimationComplete={onComplete}
@@ -156,8 +158,8 @@ export default function FlyingCard({
         width,
         height,
         zIndex: 9999,
-        filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.45)) drop-shadow(0 3px 8px rgba(0,0,0,0.25))',
-        willChange: 'transform',
+        filter: 'drop-shadow(0 14px 32px rgba(0,0,0,0.55)) drop-shadow(0 6px 14px rgba(0,0,0,0.35))',
+        willChange: 'transform, opacity',
       }}
     >
       <div

@@ -22,7 +22,7 @@ export interface SeatPosition {
 }
 
 // ─── Safe bounds — reserve header, sides, and local player zone ───
-const MIN_TOP = 6    // Reserve top for header safe-area (bumped from 4)
+const MIN_TOP = 8    // Reserve top for banner safe-gap (bumped from 6)
 const MAX_TOP = 76   // Reserve bottom for local player
 const MIN_LEFT = 4   // Left edge padding
 const MAX_LEFT = 96  // Right edge padding
@@ -98,34 +98,34 @@ export function getSeatPositions(
   if (otherCount === 1) {
     // Single opponent: top center
     return validateSpacing([
-      clamp({ left: CX, top: 8 }),
+      clamp({ left: CX, top: 10 }),
     ])
   }
 
   if (otherCount === 2) {
     // Two opponents: top-left and top-right
     return validateSpacing([
-      clamp({ left: 22, top: 16 }),
-      clamp({ left: 78, top: 16 }),
+      clamp({ left: 22, top: 18 }),
+      clamp({ left: 78, top: 18 }),
     ])
   }
 
   if (otherCount === 3) {
     // Three: arc across the top
     return validateSpacing([
-      clamp({ left: 12, top: 24 }),
-      clamp({ left: CX, top: 8 }),
-      clamp({ left: 88, top: 24 }),
+      clamp({ left: 12, top: 26 }),
+      clamp({ left: CX, top: 10 }),
+      clamp({ left: 88, top: 26 }),
     ])
   }
 
   if (otherCount === 4) {
     // Four: wider arc, sides lower
     return validateSpacing([
-      clamp({ left: 6, top: 34 }),
-      clamp({ left: 24, top: 10 }),
-      clamp({ left: 76, top: 10 }),
-      clamp({ left: 94, top: 34 }),
+      clamp({ left: 6, top: 36 }),
+      clamp({ left: 24, top: 12 }),
+      clamp({ left: 76, top: 12 }),
+      clamp({ left: 94, top: 36 }),
     ])
   }
 
@@ -135,11 +135,11 @@ export function getSeatPositions(
     // Row 1 (top arc): 3 players evenly spaced
     // Row 2 (sides): 2 players flanking lower
     return validateSpacing([
-      clamp({ left: 4, top: 42 }),
-      clamp({ left: 18, top: 12 }),
-      clamp({ left: CX, top: 7 }),
-      clamp({ left: 82, top: 12 }),
-      clamp({ left: 96, top: 42 }),
+      clamp({ left: 4, top: 44 }),
+      clamp({ left: 18, top: 14 }),
+      clamp({ left: CX, top: 9 }),
+      clamp({ left: 82, top: 14 }),
+      clamp({ left: 96, top: 44 }),
     ])
   }
 
@@ -147,12 +147,12 @@ export function getSeatPositions(
     // Row 1 (top arc): 4 players
     // Row 2 (sides): 2 players
     return validateSpacing([
-      clamp({ left: 4, top: 44 }),
-      clamp({ left: 12, top: 18 }),
-      clamp({ left: 35, top: 7 }),
-      clamp({ left: 65, top: 7 }),
-      clamp({ left: 88, top: 18 }),
-      clamp({ left: 96, top: 44 }),
+      clamp({ left: 4, top: 46 }),
+      clamp({ left: 12, top: 20 }),
+      clamp({ left: 35, top: 9 }),
+      clamp({ left: 65, top: 9 }),
+      clamp({ left: 88, top: 20 }),
+      clamp({ left: 96, top: 46 }),
     ])
   }
 
@@ -160,13 +160,13 @@ export function getSeatPositions(
     // Row 1 (top arc): 5 players
     // Row 2 (sides): 2 players lower
     return validateSpacing([
-      clamp({ left: 4, top: 48 }),
-      clamp({ left: 8, top: 22 }),
-      clamp({ left: 28, top: 7 }),
-      clamp({ left: CX, top: 6 }),
-      clamp({ left: 72, top: 7 }),
-      clamp({ left: 92, top: 22 }),
-      clamp({ left: 96, top: 48 }),
+      clamp({ left: 4, top: 50 }),
+      clamp({ left: 8, top: 24 }),
+      clamp({ left: 28, top: 9 }),
+      clamp({ left: CX, top: 8 }),
+      clamp({ left: 72, top: 9 }),
+      clamp({ left: 92, top: 24 }),
+      clamp({ left: 96, top: 50 }),
     ])
   }
 

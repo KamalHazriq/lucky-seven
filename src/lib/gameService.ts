@@ -779,6 +779,103 @@ export async function callEnd(gameId: string): Promise<void> {
   })
 }
 
+// ─── Leave Lobby (pre-game) ─────────────────────────────────────
+export async function leaveLobby(gameId: string): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) return
+    const game = gameSnap.data() as GameDoc
+
+    if (game.status !== 'lobby') throw new Error('Game has already started')
+    if (!game.playerOrder.includes(user.uid)) return // already gone
+
+    const newOrder = game.playerOrder.filter((pid) => pid !== user.uid)
+
+    if (newOrder.length === 0) {
+      // Last player — delete the game doc (or mark abandoned)
+      tx.update(gameRef(gameId), {
+        status: 'finished',
+        playerOrder: [],
+        log: arrayUnion(logEntry('All players left. Game abandoned.')),
+      })
+    } else {
+      const updates: Record<string, unknown> = {
+        playerOrder: newOrder,
+        log: arrayUnion(logEntry(`A player left the lobby`)),
+      }
+      // If host leaves, transfer host to next player
+      if (game.hostId === user.uid) {
+        updates.hostId = newOrder[0]
+      }
+      tx.update(gameRef(gameId), updates)
+    }
+
+    // Mark player as disconnected (don't delete — keeps Firestore rules happy)
+    tx.update(playerRef(gameId, user.uid), { connected: false })
+  })
+}
+
+// ─── Leave Game (mid-game) ──────────────────────────────────────
+export async function leaveGame(gameId: string): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) return
+    const game = gameSnap.data() as GameDoc
+
+    if (game.status !== 'active' && game.status !== 'ending') return
+    if (!game.playerOrder.includes(user.uid)) return
+
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pd = playerSnap.data() as PlayerDoc
+    await tx.get(privateRef(gameId, user.uid)) // Read before write
+
+    const newOrder = game.playerOrder.filter((pid) => pid !== user.uid)
+
+    if (newOrder.length < 2) {
+      // Not enough players — end the game
+      tx.update(gameRef(gameId), {
+        status: 'finished',
+        currentTurnPlayerId: null,
+        turnPhase: null,
+        playerOrder: newOrder,
+        actionVersion: game.actionVersion + 1,
+        lastActionAt: Date.now(),
+        log: arrayUnion(logEntry(`${pd.displayName} left. Not enough players — game over.`)),
+      })
+    } else {
+      const updates: Record<string, unknown> = {
+        playerOrder: newOrder,
+        actionVersion: game.actionVersion + 1,
+        lastActionAt: Date.now(),
+        log: arrayUnion(logEntry(`${pd.displayName} left the game`)),
+      }
+
+      // If it was their turn, advance to next player
+      if (game.currentTurnPlayerId === user.uid) {
+        const idx = game.playerOrder.indexOf(user.uid)
+        const nextIdx = idx % newOrder.length
+        updates.currentTurnPlayerId = newOrder[nextIdx]
+        updates.turnPhase = 'draw'
+      }
+
+      // If host leaves, transfer
+      if (game.hostId === user.uid) {
+        updates.hostId = newOrder[0]
+      }
+
+      tx.update(gameRef(gameId), updates)
+    }
+
+    // Mark disconnected and clear any in-flight drawn card
+    tx.update(playerRef(gameId, user.uid), { connected: false })
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
+  })
+}
+
 // ─── Reveal Hand ────────────────────────────────────────────────
 export async function revealHand(gameId: string): Promise<void> {
   const user = await ensureAuth()

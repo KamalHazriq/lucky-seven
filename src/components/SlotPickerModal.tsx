@@ -59,9 +59,10 @@ export default function SlotPickerModal({
           className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
         >
           <motion.div
-            initial={{ scale: 0.8, y: 40 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 40 }}
+            initial={{ scale: 0.85, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.88, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
             className={`bg-slate-800 border ${colors.border} rounded-2xl p-5 max-w-lg w-full shadow-2xl max-h-[80vh] overflow-y-auto`}
           >
             <h3 className={`text-center text-lg font-semibold ${colors.text} mb-1`}>

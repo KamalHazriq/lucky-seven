@@ -86,9 +86,9 @@ body {
 
 .card-shimmer {
   --shimmer-color: rgba(255,255,255,0.06);
-  background: linear-gradient(110deg, transparent 25%, var(--shimmer-color) 50%, transparent 75%);
-  background-size: 250% 100%;
-  animation: shimmer 5s ease-in-out infinite;
+  background: linear-gradient(110deg, transparent 20%, var(--shimmer-color) 50%, transparent 80%);
+  background-size: 300% 100%;
+  animation: shimmer 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
 /* Theme select dropdown options — ensure readability */
@@ -97,37 +97,40 @@ select option {
   color: var(--text);
 }
 
-/* Action highlight expanding pulse ring */
+/* Action highlight expanding pulse ring — smooth ease-in-out */
 @keyframes pulse-ring {
-  0% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.6; }
+  0% { transform: scale(1); opacity: 0.5; }
+  40% { transform: scale(1.04); opacity: 0.9; }
+  60% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.5; }
 }
 
 .action-pulse-ring {
-  animation: pulse-ring 0.6s ease-out 2;
+  animation: pulse-ring 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95) 2;
 }
 
-/* Slot-level pulse ring for effect overlays */
+/* Slot-level pulse ring for effect overlays — gentler breathing */
 @keyframes slot-pulse {
-  0% { opacity: 0.5; }
+  0% { opacity: 0.4; }
   50% { opacity: 1; }
-  100% { opacity: 0.5; }
+  100% { opacity: 0.4; }
 }
 
 .slot-pulse-ring {
-  animation: slot-pulse 0.5s ease-out 3;
+  animation: slot-pulse 0.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) 3;
 }
 
-/* Turn glow animation for active player panel */
+/* Turn glow animation for active player panel — smoother sine-like breath */
 @keyframes turn-glow {
-  0% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.3)); }
+  0% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.25)); }
+  25% { box-shadow: 0 0 14px var(--turn-glow-color, rgba(16,185,129,0.38)), 0 0 28px var(--turn-glow-color, rgba(16,185,129,0.1)); }
   50% { box-shadow: 0 0 20px var(--turn-glow-color, rgba(16,185,129,0.5)), 0 0 40px var(--turn-glow-color, rgba(16,185,129,0.15)); }
-  100% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.3)); }
+  75% { box-shadow: 0 0 14px var(--turn-glow-color, rgba(16,185,129,0.38)), 0 0 28px var(--turn-glow-color, rgba(16,185,129,0.1)); }
+  100% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.25)); }
 }
 
 .turn-glow {
-  animation: turn-glow 2s ease-in-out infinite;
+  animation: turn-glow 2.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
 /* Selection-mode slot pulse */
@@ -207,6 +210,55 @@ select option {
   opacity: 1;
 }
 
+/* ─── Premium button hover glow ──────────────────────────── */
+.btn-glow {
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* ─── In-play staging pulse ─────────────────────────────── */
+@keyframes staging-pulse {
+  0% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); }
+  50% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), 0 0 40px rgba(251, 191, 36, 0.1); }
+  100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); }
+}
+
+.staging-active {
+  animation: staging-pulse 2.5s ease-in-out infinite;
+}
+
+/* ─── Seat glow breathing for current turn ──────────────── */
+@keyframes seat-breathe {
+  0% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.3)); }
+  50% { box-shadow: 0 0 20px 4px var(--seat-color, rgba(16, 185, 129, 0.2)); }
+  100% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.3)); }
+}
+
+.seat-breathe {
+  animation: seat-breathe 3s ease-in-out infinite;
+}
+
+/* ─── Responsive layout fixes ───────────────────────────── */
+@media (min-width: 1024px) {
+  .table-zone {
+    min-height: max(450px, calc(100dvh - var(--top-offset, 56px) - 5rem)) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .table-zone {
+    min-height: max(500px, calc(100dvh - var(--top-offset, 56px) - 4rem)) !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .table-zone {
+    min-height: max(550px, calc(100dvh - var(--top-offset, 56px) - 3rem)) !important;
+  }
+}
+
 /* Respect prefers-reduced-motion at CSS level */
 @media (prefers-reduced-motion: reduce) {
   .card-shimmer { animation: none; }
@@ -216,4 +268,6 @@ select option {
   .slot-pulse-ring { animation: none; }
   .selection-pulse { animation: none; }
   .stamp-slam { animation: none; }
+  .staging-active { animation: none; }
+  .seat-breathe { animation: none; }
 }

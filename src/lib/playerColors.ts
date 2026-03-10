@@ -24,6 +24,37 @@ export function getSeatColor(seatIndex: number): SeatColor {
   return SEAT_COLORS[seatIndex % SEAT_COLORS.length]
 }
 
+/** Convert a hex color to a full SeatColor palette entry */
+function hexToSeatColor(hex: string): SeatColor {
+  // Parse hex to RGB
+  const clean = hex.replace('#', '')
+  const r = parseInt(clean.substring(0, 2), 16)
+  const g = parseInt(clean.substring(2, 4), 16)
+  const b = parseInt(clean.substring(4, 6), 16)
+  // Lighter version for text (mix with white ~60%)
+  const lr = Math.round(r + (255 - r) * 0.55)
+  const lg = Math.round(g + (255 - g) * 0.55)
+  const lb = Math.round(b + (255 - b) * 0.55)
+  return {
+    name: 'custom',
+    solid: hex,
+    tinted: `rgba(${r}, ${g}, ${b}, 0.25)`,
+    text: `rgb(${lr}, ${lg}, ${lb})`,
+    bg: `rgba(${r}, ${g}, ${b}, 0.15)`,
+  }
+}
+
+/**
+ * Get player color — uses lobby-chosen colorKey if available,
+ * falls back to deterministic seat-based color.
+ */
+export function getPlayerColor(seatIndex: number, colorKey?: number | null): SeatColor {
+  if (colorKey != null && colorKey >= 0 && colorKey < LOBBY_COLORS.length) {
+    return hexToSeatColor(LOBBY_COLORS[colorKey])
+  }
+  return getSeatColor(seatIndex)
+}
+
 // ─── Lobby color picker palette (16 colors) ────────────────────
 export const LOBBY_COLORS: string[] = [
   '#3b82f6', // blue

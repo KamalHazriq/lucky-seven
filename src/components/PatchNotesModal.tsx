@@ -66,9 +66,10 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
           onClick={onClose}
         >
           <motion.div
-            initial={{ scale: 0.85, y: 30 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.85, y: 30 }}
+            initial={{ scale: 0.85, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.88, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
             className="bg-slate-800 border border-slate-600 rounded-2xl p-5 max-w-md w-full shadow-2xl max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -128,7 +129,7 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
                               </div>
                               <motion.span
                                 animate={{ rotate: isExpanded ? 180 : 0 }}
-                                transition={{ duration: 0.2 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                                 className="text-slate-500 text-xs"
                               >
                                 {'\u25BC'}
@@ -140,7 +141,7 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
                                   initial={{ height: 0, opacity: 0 }}
                                   animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
+                                  transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.5 }}
                                   className="overflow-hidden"
                                 >
                                   <div className="px-3 py-2 border-t border-slate-700/30">

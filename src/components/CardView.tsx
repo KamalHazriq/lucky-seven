@@ -1,5 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, type Transition } from 'framer-motion'
+
+/** Shared spring configs for premium buttery-smooth motion */
+const SPRING_HOVER: Transition = { type: 'spring', stiffness: 350, damping: 22, mass: 0.6 }
+const SPRING_TAP: Transition   = { type: 'spring', stiffness: 450, damping: 28, mass: 0.5 }
+const SPRING_FLIP: Transition  = { type: 'spring', stiffness: 160, damping: 20, mass: 0.9 }
 import type { Card, LockInfo } from '../lib/types'
 import { cardDisplay, suitColor } from '../lib/deck'
 
@@ -82,15 +87,16 @@ export default function CardView({
 
   return (
     <motion.div
-      whileHover={onClick && !disabled ? { scale: 1.08, y: -4 } : undefined}
-      whileTap={onClick && !disabled ? { scale: 0.95 } : undefined}
+      whileHover={onClick && !disabled ? { scale: 1.07, y: -5, rotate: -1 } : undefined}
+      whileTap={onClick && !disabled ? { scale: 0.95, y: 0 } : undefined}
+      transition={onClick && !disabled ? SPRING_HOVER : undefined}
       onClick={!disabled ? onClick : undefined}
       className={`
         ${sizes[size]}
         relative rounded-xl select-none
         flex flex-col items-center justify-center
-        transition-shadow duration-200
-        ${onClick && !disabled ? 'cursor-pointer' : ''}
+        transition-shadow duration-300
+        ${onClick && !disabled ? 'cursor-pointer hover:shadow-xl' : ''}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
@@ -110,9 +116,9 @@ export default function CardView({
     >
       {showFace ? (
         <motion.div
-          initial={{ rotateY: 90 }}
-          animate={{ rotateY: 0 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
+          initial={{ rotateY: 90, scale: 0.92 }}
+          animate={{ rotateY: 0, scale: 1 }}
+          transition={SPRING_FLIP}
           className="flex flex-col items-center justify-center"
           style={{ backfaceVisibility: 'hidden' }}
         >

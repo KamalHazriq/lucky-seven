@@ -26,9 +26,10 @@ export default function PeekAllModal({
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
         >
           <motion.div
-            initial={{ scale: 0.8, y: 40 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 40 }}
+            initial={{ scale: 0.85, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.88, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
             className="bg-slate-800 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl text-center"
           >
             <h3 className="text-lg font-semibold text-amber-300 mb-2">

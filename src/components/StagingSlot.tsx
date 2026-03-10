@@ -1,7 +1,13 @@
-import { forwardRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { forwardRef, useRef, useEffect } from 'react'
+import { motion, AnimatePresence, useAnimate } from 'motion/react'
 import CardView from './CardView'
 import type { Card } from '../lib/types'
+
+/** Spring-based motion configs for premium feel */
+const SPRING_ENTRY = { type: 'spring' as const, stiffness: 220, damping: 20, mass: 0.9 }
+const SPRING_EXIT  = { type: 'spring' as const, stiffness: 260, damping: 26, mass: 0.7 }
+const FLOAT_CONFIG = { duration: 3.5, ease: 'easeInOut' as const, repeat: Infinity }
+const CROSSFADE_SPRING = { type: 'spring' as const, stiffness: 300, damping: 22, mass: 0.6 }
 
 interface StagingSlotProps {
   /** Card currently in staging (null = empty) */
@@ -12,6 +18,8 @@ interface StagingSlotProps {
   active: boolean
   /** If provided, show a small "Resolve" chip that calls this handler */
   onResolve?: () => void
+  /** Owner color tint for face-down cards (remote pile draws) */
+  ownerColor?: string
 }
 
 /**
@@ -19,45 +27,62 @@ interface StagingSlotProps {
  * Shows a card with a gentle floating animation when active.
  * Purely visual — no game state changes, no Firestore writes.
  *
- * v1.5: Gentler float, subtle drop shadow, smoother entry.
+ * v1.6: Uses motion/react (Motion One) for smoother crossfade.
+ * Respects reduced motion via shorter durations.
  */
 const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
-  function StagingSlot({ card, faceUp, active, onResolve }, ref) {
+  function StagingSlot({ card, faceUp, active, onResolve, ownerColor }, ref) {
+    const [scope, animate] = useAnimate()
+    const prevActive = useRef(active)
+
+    // Subtle pulse when card state changes (crossfade effect)
+    useEffect(() => {
+      if (active && prevActive.current && scope.current) {
+        // Card state changed while active — spring crossfade pulse
+        animate(scope.current, { opacity: [0.7, 1], scale: [0.96, 1] }, CROSSFADE_SPRING)
+      }
+      prevActive.current = active
+    }, [card, faceUp, active, animate, scope])
+
     return (
-      <div ref={ref} className="text-center relative" style={{ minWidth: '64px' }}>
+      <div ref={ref} className={`text-center relative ${active ? 'staging-active' : ''}`} style={{ minWidth: '64px', borderRadius: '12px' }}>
         <p className="text-[10px] text-slate-500 mb-1">In play</p>
         <AnimatePresence mode="wait">
           {active ? (
             <motion.div
-              key="staged-card"
-              initial={{ opacity: 0, scale: 0.85, y: 6 }}
+              key={`staged-${faceUp ? 'up' : 'down'}`}
+              ref={scope}
+              initial={{ opacity: 0, scale: 0.78, y: 12 }}
               animate={{
                 opacity: 1,
                 scale: 1,
-                y: [0, -2.5, 0],
+                y: [0, -5, 0],
               }}
-              exit={{ opacity: 0, scale: 0.85, y: -6 }}
+              exit={{ opacity: 0, scale: 0.85, y: -10 }}
               transition={{
-                opacity: { duration: 0.3 },
-                scale: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
-                y: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' },
+                opacity: SPRING_ENTRY,
+                scale: SPRING_ENTRY,
+                y: FLOAT_CONFIG,
+                default: SPRING_EXIT,
               }}
               style={{
-                filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))',
+                filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.35)) drop-shadow(0 3px 8px rgba(0,0,0,0.2)) drop-shadow(0 0 12px rgba(251,191,36,0.12))',
               }}
             >
               <CardView
                 card={faceUp ? card : undefined}
                 faceUp={faceUp}
                 size="md"
+                ownerColor={!faceUp ? ownerColor : undefined}
               />
             </motion.div>
           ) : (
             <motion.div
               key="empty-slot"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={SPRING_EXIT}
               className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700/30 flex items-center justify-center"
             >
               <span className="text-slate-700 text-[10px]" />
@@ -67,8 +92,11 @@ const StagingSlot = forwardRef<HTMLDivElement, StagingSlotProps>(
         {/* Small "Resolve" chip when the player needs to act on a staged card */}
         {onResolve && active && (
           <motion.button
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 6, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={SPRING_ENTRY}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             className="mt-1 px-2 py-0.5 bg-amber-600/80 hover:bg-amber-500/90 text-white text-[9px] font-bold rounded-md cursor-pointer transition-colors"
             onClick={onResolve}
           >

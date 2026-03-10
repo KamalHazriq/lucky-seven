@@ -67,9 +67,10 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
           onClick={handleClose}
         >
           <motion.div
-            initial={{ scale: 0.85, y: 30 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.85, y: 30 }}
+            initial={{ scale: 0.85, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.88, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
             className="bg-slate-800 border border-slate-600 rounded-2xl p-5 max-w-sm w-full shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >

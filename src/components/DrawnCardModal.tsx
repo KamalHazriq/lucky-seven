@@ -76,13 +76,15 @@ export default function DrawnCardModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
           className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={handleBackdropClick}
         >
           <motion.div
-            initial={{ scale: 0.8, y: 40 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.8, y: 40 }}
+            initial={{ scale: 0.85, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.88, y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
             className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >

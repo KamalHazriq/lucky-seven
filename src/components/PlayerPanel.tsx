@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { Card, PrivatePlayerDoc, LockInfo } from '../lib/types'
-import { getSeatColor } from '../lib/playerColors'
+import { getPlayerColor } from '../lib/playerColors'
 import type { SelectionTargetType, SelectedTarget } from '../hooks/useSelectionMode'
 import { isSlotSelectable } from '../hooks/useSelectionMode'
 
@@ -48,6 +48,8 @@ interface PlayerPanelProps {
   selectedTarget?: SelectedTarget | null
   /** Stamp overlay for lock/unlock choreography */
   stampOverlay?: 'lock' | 'unlock' | null
+  /** Lobby-chosen color key (index into LOBBY_COLORS) — overrides seat color */
+  colorKey?: number | null
 }
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
@@ -80,11 +82,12 @@ export default function PlayerPanel({
   onPlayerSelect,
   selectedTarget,
   stampOverlay,
+  colorKey,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
-  const color = getSeatColor(seatIndex)
+  const color = getPlayerColor(seatIndex, colorKey)
 
   const inSelectionMode = selectionTargetType != null
 
@@ -102,7 +105,7 @@ export default function PlayerPanel({
     <motion.div
       layout
       className={`
-        relative rounded-2xl p-4 backdrop-blur-sm transition-opacity
+        relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'p-3.5 pb-4'} backdrop-blur-sm transition-opacity
         ${panelDimmed ? 'opacity-40' : ''}
         ${isLocalPlayer && isCurrentTurn
           ? 'bg-emerald-900/40 border-2 border-amber-500/50 ring-1 ring-emerald-500/30 turn-glow'
@@ -121,7 +124,7 @@ export default function PlayerPanel({
       }}
       onClick={isPlayerTarget ? () => onPlayerSelect?.(playerId) : undefined}
     >
-      {/* Chat bubble — floating above panel, clamped to avoid overflow */}
+      {/* Chat bubble — floating well above panel to avoid overlap */}
       <AnimatePresence>
         {chatBubble && (
           <motion.div
@@ -129,11 +132,13 @@ export default function PlayerPanel({
             initial={{ opacity: 0, y: 8, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.9 }}
-            className="absolute -top-8 left-2 right-2 z-20 pointer-events-none"
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{ bottom: 'calc(100% + 10px)', zIndex: 50 }}
           >
             <div
-              className="inline-block max-w-full px-2.5 py-1 rounded-xl text-[11px] font-medium text-white truncate shadow-lg"
-              style={{ backgroundColor: color.solid }}
+              className="inline-block max-w-full px-2.5 py-1 rounded-xl text-[11px] font-medium text-white truncate"
+              style={{ backgroundColor: color.solid, boxShadow: '0 4px 14px rgba(0,0,0,0.35)' }}
             >
               {chatBubble}
             </div>
@@ -219,7 +224,7 @@ export default function PlayerPanel({
         )}
       </div>
 
-      <div className="flex gap-2 justify-center">
+      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-3.5 px-1'} justify-center`}>
         {[0, 1, 2].map((i) => {
           const card = hand[i] as Card | undefined
           const knownCard = known[String(i)]

@@ -108,9 +108,12 @@ export default function TurnQueue({
             )}
             <motion.span
               layout
+              transition={{ type: 'spring', stiffness: 350, damping: 25, mass: 0.5 }}
+              initial={isCurrent ? { scale: 0.9, opacity: 0 } : false}
+              animate={{ scale: 1, opacity: isCurrent ? 1 : 0.7 }}
               className={`
                 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold
-                ${isCurrent ? 'ring-1 ring-white/20 shadow-sm' : 'opacity-70'}
+                ${isCurrent ? 'ring-1 ring-white/20 shadow-sm' : ''}
               `}
               style={{
                 backgroundColor: isCurrent ? color.bg : 'rgba(100,116,139,0.15)',

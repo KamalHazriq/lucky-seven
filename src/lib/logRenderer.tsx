@@ -40,14 +40,30 @@ const powerPattern = new RegExp(
 // Matches patterns like (10♠), (K♥), (A♦), (Joker), (7♣)
 const CARD_PATTERN = /(\([^)]*[♠♥♦♣][^)]*\)|\(Joker\))/g
 
+// ─── Action verbs — highlighted in the log as colored text ──────
+// Matches whole words/phrases so "discarded" won't split into "discard" + "ed"
+const ACTION_KEYWORDS: Record<string, { label: string; color: string }> = {
+  'discarded':    { label: 'DISCARDED', color: 'text-orange-400' },
+  'swapped':      { label: 'SWAPPED',   color: 'text-amber-400' },
+  'drew':         { label: 'DREW',       color: 'text-blue-400' },
+  'took':         { label: 'TOOK',       color: 'text-orange-400' },
+  'called end':   { label: 'CALLED END', color: 'text-red-400' },
+  'joined':       { label: 'JOINED',     color: 'text-emerald-400' },
+}
+
+const actionKeywordsSorted = Object.keys(ACTION_KEYWORDS).sort((a, b) => b.length - a.length)
+const actionPattern = new RegExp(
+  `\\b(${actionKeywordsSorted.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`,
+  'gi',
+)
+
 // ─── Source keywords — DISCARD, PILE ────────────────────────
+// Use word boundaries to prevent matching inside longer words (e.g. "discarded")
 const SOURCE_KEYWORDS: Record<string, { label: string; color: string }> = {
-  'discard': { label: 'DISCARD', color: 'text-orange-400' },
-  'the discard': { label: 'DISCARD', color: 'text-orange-400' },
   'from discard': { label: 'DISCARD', color: 'text-orange-400' },
-  'the pile': { label: 'PILE', color: 'text-blue-400' },
+  'the discard':  { label: 'DISCARD', color: 'text-orange-400' },
   'from the pile': { label: 'PILE', color: 'text-blue-400' },
-  'drew from pile': { label: 'PILE', color: 'text-blue-400' },
+  'the pile':     { label: 'PILE', color: 'text-blue-400' },
 }
 
 const sourceKeywordsSorted = Object.keys(SOURCE_KEYWORDS).sort((a, b) => b.length - a.length)
@@ -87,14 +103,65 @@ function SourceChip({ label, color }: { label: string; color: string }) {
   )
 }
 
+/** Action verb chip — DISCARDED, DREW, SWAPPED, etc. */
+function ActionChip({ label, color }: { label: string; color: string }) {
+  return (
+    <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider leading-none align-middle ${color}`}>
+      {label}
+    </span>
+  )
+}
+
 /**
- * Process a text fragment for card patterns, source keywords, and power keywords.
+ * Process plain text for action verbs and power keywords.
+ * Handles the innermost split layers.
+ */
+function processInnerText(text: string, keyPrefix: string): ReactNode[] {
+  const result: ReactNode[] = []
+
+  // Layer 1: Action verbs (DISCARDED, DREW, SWAPPED, TOOK, etc.)
+  actionPattern.lastIndex = 0
+  const actionParts = text.split(actionPattern)
+
+  for (let a = 0; a < actionParts.length; a++) {
+    const ap = actionParts[a]
+    if (!ap) continue
+    const normalizedA = ap.toLowerCase()
+    const actionInfo = ACTION_KEYWORDS[normalizedA]
+    if (actionInfo) {
+      result.push(<ActionChip key={`${keyPrefix}-act-${a}`} label={actionInfo.label} color={actionInfo.color} />)
+      continue
+    }
+
+    // Layer 2: Power keywords
+    powerPattern.lastIndex = 0
+    const powerParts = ap.split(powerPattern)
+
+    for (let p = 0; p < powerParts.length; p++) {
+      const pp = powerParts[p]
+      if (!pp) continue
+      const normalizedP = pp.toLowerCase()
+      const powerLabel = POWER_KEYWORDS[normalizedP]
+      if (powerLabel) {
+        result.push(<PowerChip key={`${keyPrefix}-pow-${a}-${p}`} label={powerLabel} />)
+      } else {
+        result.push(<span key={`${keyPrefix}-txt-${a}-${p}`}>{pp}</span>)
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Process a text fragment for card patterns, source keywords, action verbs, and power keywords.
+ * Processing order: cards → source phrases → action verbs → power keywords.
  * Returns an array of ReactNode fragments.
  */
 function processTextFragment(text: string, keyPrefix: string): ReactNode[] {
   const result: ReactNode[] = []
 
-  // First split on card patterns
+  // Layer 0: Split on card patterns first
   CARD_PATTERN.lastIndex = 0
   const cardParts = text.split(CARD_PATTERN)
 
@@ -110,58 +177,20 @@ function processTextFragment(text: string, keyPrefix: string): ReactNode[] {
       continue
     }
 
-    // Check for source keywords
+    // Layer 1: Source phrases (from discard, the pile, etc.)
     sourcePattern.lastIndex = 0
     const sourceParts = cardPart.split(sourcePattern)
 
-    if (sourceParts.length === 1) {
-      // No source keywords — check for power keywords
-      powerPattern.lastIndex = 0
-      const powerParts = cardPart.split(powerPattern)
-
-      if (powerParts.length === 1) {
-        result.push(<span key={`${keyPrefix}-text-${c}`}>{cardPart}</span>)
+    for (let s = 0; s < sourceParts.length; s++) {
+      const sp = sourceParts[s]
+      if (!sp) continue
+      const normalized = sp.toLowerCase()
+      const sourceInfo = SOURCE_KEYWORDS[normalized]
+      if (sourceInfo) {
+        result.push(<SourceChip key={`${keyPrefix}-src-${c}-${s}`} label={sourceInfo.label} color={sourceInfo.color} />)
       } else {
-        for (let p = 0; p < powerParts.length; p++) {
-          const pp = powerParts[p]
-          if (!pp) continue
-          const normalized = pp.toLowerCase()
-          const powerLabel = POWER_KEYWORDS[normalized]
-          if (powerLabel) {
-            result.push(<PowerChip key={`${keyPrefix}-power-${c}-${p}`} label={powerLabel} />)
-          } else {
-            result.push(<span key={`${keyPrefix}-frag-${c}-${p}`}>{pp}</span>)
-          }
-        }
-      }
-    } else {
-      for (let s = 0; s < sourceParts.length; s++) {
-        const sp = sourceParts[s]
-        if (!sp) continue
-        const normalized = sp.toLowerCase()
-        const sourceInfo = SOURCE_KEYWORDS[normalized]
-        if (sourceInfo) {
-          result.push(<SourceChip key={`${keyPrefix}-src-${c}-${s}`} label={sourceInfo.label} color={sourceInfo.color} />)
-        } else {
-          // Recurse for power keywords in remaining text
-          powerPattern.lastIndex = 0
-          const powerParts = sp.split(powerPattern)
-          if (powerParts.length === 1) {
-            result.push(<span key={`${keyPrefix}-stxt-${c}-${s}`}>{sp}</span>)
-          } else {
-            for (let p = 0; p < powerParts.length; p++) {
-              const pp = powerParts[p]
-              if (!pp) continue
-              const normalizedP = pp.toLowerCase()
-              const powerLabel = POWER_KEYWORDS[normalizedP]
-              if (powerLabel) {
-                result.push(<PowerChip key={`${keyPrefix}-spow-${c}-${s}-${p}`} label={powerLabel} />)
-              } else {
-                result.push(<span key={`${keyPrefix}-sfrag-${c}-${s}-${p}`}>{pp}</span>)
-              }
-            }
-          }
-        }
+        // Layers 2+3: Action verbs → power keywords
+        result.push(...processInnerText(sp, `${keyPrefix}-inner-${c}-${s}`))
       }
     }
   }

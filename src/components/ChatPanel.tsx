@@ -100,10 +100,10 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
       {open && (
         <motion.div
           ref={panelRef}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          initial={{ opacity: 0, y: 20, scale: 0.94 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
+          exit={{ opacity: 0, y: 16, scale: 0.96 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 26, mass: 0.6 }}
           className="fixed z-40 w-80 max-w-[calc(100vw-24px)] bg-slate-800/95 backdrop-blur-md border border-slate-600/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           style={{
             maxHeight: 'min(420px, 60vh)',

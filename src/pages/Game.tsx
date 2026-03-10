@@ -16,8 +16,8 @@ import {
   useLock,
   useUnlock,
   useRearrange,
-  callEnd,
   revealHand,
+  leaveGame,
 } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
@@ -29,7 +29,7 @@ import PeekAllModal from '../components/PeekAllModal'
 import QueenSwapModal from '../components/QueenSwapModal'
 import SlotPickerModal from '../components/SlotPickerModal'
 import JokerChaosModal from '../components/JokerChaosModal'
-import GameSettingsBar from '../components/GameSettings'
+import SettingsModal from '../components/SettingsModal'
 import PowerGuideModal from '../components/PowerGuideModal'
 import VersionLabel from '../components/VersionLabel'
 import TurnQueue from '../components/TurnQueue'
@@ -42,7 +42,7 @@ import ChatPanel from '../components/ChatPanel'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useChat } from '../hooks/useChat'
 import { useChatBubbles } from '../hooks/useChatBubbles'
-import { getSeatColor } from '../lib/playerColors'
+import { getSeatColor, getPlayerColor } from '../lib/playerColors'
 import { useLayout } from '../hooks/useLayout'
 import { useUiMode } from '../hooks/useUiMode'
 import { useLogPosition } from '../hooks/useLogPosition'
@@ -100,12 +100,13 @@ export default function Game() {
   const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
   const { uiMode, toggleMode: toggleUiMode, isDesktop } = useUiMode()
   const { position: logPosition, toggle: toggleLogPosition, canSidebar: canLogSidebar } = useLogPosition()
-  const { flyingCard, triggerFly, flushQueue, clearFly } = useFlyingCard()
+  const { flyingCard, triggerFly, queueFly, flushQueue, clearFly } = useFlyingCard()
   const {
     choreo,
     startDiscardTake,
@@ -144,7 +145,7 @@ export default function Game() {
   const [stampOverlays, setStampOverlays] = useState<Record<string, 'lock' | 'unlock' | null>>({})
 
   // Remote staging: when another player is in action phase, show a card in staging
-  const [remoteStaging, setRemoteStaging] = useState<{ card: Card | null; faceUp: boolean } | null>(null)
+  const [remoteStaging, setRemoteStaging] = useState<{ card: Card | null; faceUp: boolean; ownerColor?: string } | null>(null)
   const prevDiscardTopRef = useRef<Card | null>(game?.discardTop ?? null)
 
   // Temporary peek reveal state (Section F)
@@ -264,13 +265,71 @@ export default function Game() {
       }
     }
 
-    // Only animate for remote players (local player already has animations)
-    if (!actorId || actorId === user?.uid) return
+    if (!actorId) return
+
+    const actorColor = getPlayerColor(players[actorId]?.seatIndex ?? 0, players[actorId]?.colorKey).solid
+
+    // Helper: calculate approximate slot position within a panel
+    const getSlotRect = (panelEl: HTMLDivElement, slot: number, isLocal: boolean): DOMRect => {
+      const panelRect = panelEl.getBoundingClientRect()
+      const cardW = isLocal ? 80 : 56
+      const cardH = isLocal ? 112 : 80
+      const gap = 14
+      const totalW = cardW * 3 + gap * 2
+      const startX = panelRect.left + (panelRect.width - totalW) / 2
+      const cardX = startX + slot * (cardW + gap)
+      const cardY = panelRect.top + (isLocal ? panelRect.height * 0.4 : panelRect.height * 0.35)
+      return new DOMRect(cardX, cardY, cardW, cardH)
+    }
+
+    // Helper: get panel element for a player (local or remote)
+    const getPanelEl = (pid: string): HTMLDivElement | null => {
+      if (pid === user?.uid) return localPanelRef.current
+      return otherPanelRefs.current[pid] ?? null
+    }
+
+    // ─── Queen swap: "used X as swap: A's #1 ↔ B's #2" ───
+    // Animate for ALL viewers (including local player)
+    const queenSwapMatch = msg.match(/as swap:\s*(.+)'s #(\d)\s*↔\s*(.+)'s #(\d)/)
+    if (queenSwapMatch) {
+      const nameA = queenSwapMatch[1]
+      const slotA = parseInt(queenSwapMatch[2], 10) - 1
+      const nameB = queenSwapMatch[3]
+      const slotB = parseInt(queenSwapMatch[4], 10) - 1
+
+      let pidA: string | null = null
+      let pidB: string | null = null
+      for (const [pid, pd] of Object.entries(players)) {
+        if (pd.displayName === nameA) pidA = pid
+        if (pd.displayName === nameB) pidB = pid
+      }
+
+      if (pidA && pidB) {
+        const panelA = getPanelEl(pidA)
+        const panelB = getPanelEl(pidB)
+        if (panelA && panelB) {
+          const colorA = getPlayerColor(players[pidA]?.seatIndex ?? 0, players[pidA]?.colorKey).solid
+          const colorB = getPlayerColor(players[pidB]?.seatIndex ?? 0, players[pidB]?.colorKey).solid
+          const rectA = getSlotRect(panelA, slotA, pidA === user?.uid)
+          const rectB = getSlotRect(panelB, slotB, pidB === user?.uid)
+
+          // Fly card A → B (with A's color initially)
+          triggerFly(rectA, rectB, false, null, colorA)
+          // Queue card B → A (with B's color initially)
+          queueFly(rectB, rectA, false, null, colorB)
+        }
+      }
+      // Clear remote staging if it was up
+      setRemoteStaging(null)
+      return
+    }
+
+    // ─── Only animate draw/take/discard for remote players ───
+    if (actorId === user?.uid) return
 
     const targetEl = otherPanelRefs.current[actorId]
     if (!targetEl) return
 
-    const actorColor = getSeatColor(players[actorId]?.seatIndex ?? 0).solid
     // Remote draw/take animations fly to staging area (center), not to opponent's panel
     const stagingEl = stagingRef.current
     const stagingRect = stagingEl?.getBoundingClientRect()
@@ -281,8 +340,8 @@ export default function Game() {
       if (fromEl) {
         triggerFly(fromEl.getBoundingClientRect(), toRect, false, null, actorColor)
       }
-      // Show face-down card in staging for remote viewer
-      setRemoteStaging({ card: null, faceUp: false })
+      // Show face-down card tinted with actor's color in staging for remote viewer
+      setRemoteStaging({ card: null, faceUp: false, ownerColor: actorColor })
     } else if (msg.includes('took from discard')) {
       const fromEl = discardPileRef.current
       // Use previously tracked discardTop since it's now cleared
@@ -291,17 +350,40 @@ export default function Game() {
         triggerFly(fromEl.getBoundingClientRect(), toRect, true, takenCard, actorColor)
       }
       // Show face-up discard card in staging for remote viewer
-      setRemoteStaging({ card: takenCard, faceUp: true })
+      setRemoteStaging({ card: takenCard, faceUp: true, ownerColor: actorColor })
     } else if (msg.includes('discarded') || msg.includes('swapped their card')) {
-      const fromEl = otherPanelRefs.current[actorId]
-      const toEl = discardPileRef.current
-      if (fromEl && toEl) {
-        triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
+      // Resolution always routes FROM staging → discard/slot (never from opponent seat directly)
+      const fromEl = stagingEl ?? otherPanelRefs.current[actorId]
+      if (msg.includes('swapped their card')) {
+        // Parse slot index from "swapped their card #N"
+        const slotMatch = msg.match(/swapped their card #(\d)/)
+        const slotIdx = slotMatch ? parseInt(slotMatch[1]) - 1 : 0
+
+        // Swap: staging → specific slot, then swapped card → discard
+        const actorPanel = otherPanelRefs.current[actorId]
+        const toEl = discardPileRef.current
+
+        if (fromEl && actorPanel) {
+          const slotRect = getSlotRect(actorPanel, slotIdx, false)
+          // First fly staging → specific slot
+          triggerFly(fromEl.getBoundingClientRect(), slotRect, false, null, actorColor)
+        }
+        // Then fly swapped card → discard
+        if (actorPanel && toEl) {
+          const slotRect = getSlotRect(actorPanel, slotIdx, false)
+          queueFly(slotRect, toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
+        }
+      } else {
+        // Discard: staging → discard pile
+        const toEl = discardPileRef.current
+        if (fromEl && toEl) {
+          triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
+        }
       }
       // Clear remote staging when action is resolved
       setRemoteStaging(null)
     }
-  }, [game?.actionVersion, game?.log, players, user?.uid, reduced, triggerFly, game?.discardTop])
+  }, [game?.actionVersion, game?.log, players, user?.uid, reduced, triggerFly, queueFly, game?.discardTop])
 
   // Track previous discardTop for remote staging visuals
   useEffect(() => {
@@ -338,13 +420,16 @@ export default function Game() {
   const handleDrawPile = () => {
     if (!canDraw) return
     const fromEl = drawPileRef.current
-    const toEl = localPanelRef.current
+    const stagingEl = stagingRef.current
     withBusy(async () => {
       await drawFromPile(gameId!)
       playSfx('draw'); vibrate()
-      if (!reduced && fromEl && toEl) {
-        // Section 3: face-down fly from pile to local panel (no staging for pile draws)
-        startPileDraw(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect())
+      if (!reduced && fromEl && stagingEl) {
+        // Fly from pile to staging area first (not directly to player panel)
+        startPileDraw(fromEl.getBoundingClientRect(), stagingEl.getBoundingClientRect())
+      } else {
+        // No animation — show in staging immediately (drawnCard comes via Firestore listener)
+        reconstructStaging(drawnCard, 'pile')
       }
     })
   }
@@ -713,13 +798,6 @@ export default function Game() {
     setModal({ type: 'none' })
   }
 
-  const handleCallEnd = () => {
-    if (!confirm(
-      'Are you sure? Every other player gets one more turn, then all cards are revealed.'
-    )) return
-    withBusy(async () => { await callEnd(gameId!); playSfx('endGame') })
-  }
-
   // Clean up peek timer on unmount
   useEffect(() => {
     return () => {
@@ -801,9 +879,14 @@ export default function Game() {
             <span className="text-[10px] font-medium whitespace-nowrap" style={{ color: 'var(--text-dim)' }}>
               {game.drawPileCount} left
             </span>
-            {game.status === 'ending' && (
+            {game.drawPileCount <= 3 && game.drawPileCount > 0 && (
               <span className="px-1.5 py-0.5 bg-amber-900/40 border border-amber-600/50 text-amber-300 rounded-md text-[9px] font-bold animate-pulse whitespace-nowrap">
-                ENDING
+                FINAL
+              </span>
+            )}
+            {game.drawPileCount === 0 && (
+              <span className="px-1.5 py-0.5 bg-red-900/40 border border-red-600/50 text-red-300 rounded-md text-[9px] font-bold animate-pulse whitespace-nowrap">
+                LAST TURN
               </span>
             )}
           </div>
@@ -819,96 +902,58 @@ export default function Game() {
             />
           </div>
 
-          {/* ── RIGHT: Compact icon cluster ── */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Theme dropdown */}
-            <GameSettingsBar />
-
-            {/* Layout toggle — desktop only */}
-            {!isMobile && (
-              <button
-                onClick={toggleLayout}
-                className={`topbar-btn group relative ${
-                  layout === 'table'
-                    ? 'bg-emerald-900/40 border-emerald-600/40 text-emerald-400'
-                    : ''
-                }`}
-                aria-label={`Switch to ${layout === 'classic' ? 'table' : 'classic'} layout`}
-              >
-                {layout === 'classic' ? '\u{1FA91}' : '\u{1F4CB}'}
-                <span className="toolbar-tooltip">{layout === 'classic' ? 'Table' : 'Classic'}</span>
-              </button>
-            )}
-
-            {/* UI Mode toggle — desktop only */}
-            {!isMobile && (
-              <button
-                onClick={toggleUiMode}
-                className={`topbar-btn group relative ${
-                  uiMode === 'actionbar'
-                    ? 'bg-teal-900/40 border-teal-600/40 text-teal-400'
-                    : ''
-                }`}
-                aria-label={`UI mode: ${uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}`}
-              >
-                {uiMode === 'actionbar' ? '\u{2261}' : '\u{25A1}'}
-                <span className="toolbar-tooltip">{uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}</span>
-              </button>
-            )}
-
-            {/* Log position toggle — wide screens only */}
-            {canLogSidebar && (
-              <button
-                onClick={toggleLogPosition}
-                className={`topbar-btn group relative ${
-                  logPosition === 'left'
-                    ? 'bg-orange-900/40 border-orange-600/40 text-orange-400'
-                    : ''
-                }`}
-                aria-label={`Log position: ${logPosition === 'left' ? 'Left sidebar' : 'Bottom'}`}
-              >
-                {logPosition === 'left' ? '\u{2190}' : '\u{2193}'}
-                <span className="toolbar-tooltip">{logPosition === 'left' ? 'Log: Side' : 'Log: Bottom'}</span>
-              </button>
-            )}
+          {/* ── RIGHT: Clean icon cluster ── */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Settings — opens modal with all options */}
+            <motion.button
+              whileHover={{ scale: 1.08, rotate: 45 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              onClick={() => setShowSettings(true)}
+              className="topbar-btn group relative"
+              aria-label="Open settings"
+            >
+              {'\u2699\uFE0F'}
+              <span className="toolbar-tooltip">Settings</span>
+            </motion.button>
 
             {/* Help / Power Guide */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               onClick={() => setShowPowerGuide(true)}
               className="topbar-btn group relative bg-amber-900/30 border-amber-600/40 text-amber-400 hover:bg-amber-900/50"
               aria-label="Power guide — view card power instructions"
             >
               ?
               <span className="toolbar-tooltip">Powers</span>
-            </button>
+            </motion.button>
 
             {/* Chat */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               onClick={chat.toggleChat}
               className="topbar-btn group relative bg-indigo-900/30 border-indigo-600/40 text-indigo-400 hover:bg-indigo-900/50"
               aria-label="Open chat"
             >
               {'\u{1F4AC}'}
               {chat.unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center"
+                >
                   {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
-                </span>
+                </motion.span>
               )}
               <span className="toolbar-tooltip">Chat</span>
-            </button>
+            </motion.button>
 
-            {/* End Game — only shown when applicable */}
-            {isMyTurn && game.status === 'active' && !hasDrawnCard && (
-              <button
-                onClick={handleCallEnd}
-                disabled={busy}
-                className="topbar-btn bg-red-900/40 hover:bg-red-900/60 border-red-700/50 text-red-300 text-[10px] font-bold disabled:opacity-50 px-2"
-                aria-label="Call end game"
-              >
-                End
-                <span className="toolbar-tooltip">End Game</span>
-              </button>
-            )}
+            {/* End Game button removed — game ends automatically when draw pile is exhausted */}
           </div>
         </div>
       </div>
@@ -923,6 +968,7 @@ export default function Game() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.5 }}
             className="px-3 md:px-5 pt-2"
           >
             <div className="py-2 px-4 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-xs font-semibold text-center">
@@ -937,13 +983,14 @@ export default function Game() {
       {/* ─── Main Content ─────────────────────────────────────── */}
       <div className={`flex-1 ${logPosition === 'left' ? 'flex' : 'flex flex-col p-3 md:p-4'}`}>
 
-        {/* Left sidebar log — full-height rail pinned to left edge */}
+        {/* Left sidebar log — matches table zone height, scrolls internally */}
         {logPosition === 'left' && (
           <aside
             className="shrink-0 w-56 min-h-0 sticky self-start overflow-y-auto border-r pt-1 px-2"
             style={{
-              top: 'var(--header-h, 56px)',
-              height: 'calc(100dvh - var(--header-h, 56px))',
+              top: 'var(--top-offset, 56px)',
+              height: 'calc(100dvh - var(--top-offset, 56px) - 2rem)',
+              maxHeight: 'min(800px, calc(100dvh - var(--top-offset, 56px) - 2rem))',
               borderColor: 'var(--border)',
             }}
           >
@@ -966,8 +1013,9 @@ export default function Game() {
         {/* Turn indicator */}
         <motion.div
           key={game.currentTurnPlayerId}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -8, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.6 }}
           className={`text-center py-1.5 px-4 rounded-xl mb-3 text-xs font-medium ${
             isMyTurn
               ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
@@ -991,7 +1039,7 @@ export default function Game() {
             return (
               <>
               <div
-                className="table-zone relative w-full mb-4"
+                className="table-zone relative w-full mb-4 pt-2"
                 style={{
                   /* Fill remaining viewport below header+banners, clamped for sanity */
                   minHeight: 'max(400px, calc(100dvh - var(--top-offset, 56px) - 6rem))',
@@ -1023,15 +1071,24 @@ export default function Game() {
                     />
                   </div>
                   {/* Staging slot — shows local choreo or remote staging */}
-                  <StagingSlot
-                    ref={stagingRef}
-                    card={choreo.phase === 'staging' ? choreo.staging.card : remoteStaging?.card ?? null}
-                    faceUp={choreo.phase === 'staging' ? choreo.staging.faceUp : remoteStaging?.faceUp ?? false}
-                    active={choreo.phase === 'staging' || !!remoteStaging}
-                    onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
-                      ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
-                      : undefined}
-                  />
+                  {(() => {
+                    // For local pile draws, show the actual drawn card face-up in staging
+                    const isLocalPileStaging = choreo.phase === 'staging' && choreo.staging.source === 'pile' && drawnCard
+                    const stagingCard = isLocalPileStaging ? drawnCard : (choreo.phase === 'staging' ? choreo.staging.card : remoteStaging?.card ?? null)
+                    const stagingFaceUp = isLocalPileStaging ? true : (choreo.phase === 'staging' ? choreo.staging.faceUp : remoteStaging?.faceUp ?? false)
+                    return (
+                      <StagingSlot
+                        ref={stagingRef}
+                        card={stagingCard}
+                        faceUp={stagingFaceUp}
+                        active={choreo.phase === 'staging' || !!remoteStaging}
+                        ownerColor={remoteStaging?.ownerColor}
+                        onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
+                          ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
+                          : undefined}
+                      />
+                    )
+                  })()}
                   <div className="text-center relative" ref={discardPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Discard</p>
                     {game.discardTop ? (
@@ -1069,6 +1126,7 @@ export default function Game() {
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
                         width: otherPlayers.length <= 4 ? '42%' : '36%',
+                        overflow: 'visible',
                       }}
                     >
                       <PlayerPanel
@@ -1077,6 +1135,7 @@ export default function Game() {
                         isCurrentTurn={game.currentTurnPlayerId === pid}
                         isLocalPlayer={false}
                         seatIndex={players[pid]?.seatIndex ?? 0}
+                        colorKey={players[pid]?.colorKey}
                         connected={players[pid]?.connected ?? false}
                         locks={players[pid]?.locks ?? [false, false, false]}
                         lockedBy={players[pid]?.lockedBy}
@@ -1108,6 +1167,7 @@ export default function Game() {
                       known: { ...myKnown, [String(peekReveal.slot)]: peekReveal.card },
                     } : privateState}
                     seatIndex={players[user.uid]?.seatIndex ?? 0}
+                    colorKey={players[user.uid]?.colorKey}
                     connected
                     locks={myLocks}
                     lockedBy={myPlayer?.lockedBy}
@@ -1197,15 +1257,22 @@ export default function Game() {
               </div>
 
               {/* Staging slot — shows local choreo or remote staging */}
-              <StagingSlot
-                ref={stagingRef}
-                card={choreo.phase === 'staging' ? choreo.staging.card : remoteStaging?.card ?? null}
-                faceUp={choreo.phase === 'staging' ? choreo.staging.faceUp : remoteStaging?.faceUp ?? false}
-                active={choreo.phase === 'staging' || !!remoteStaging}
-                onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
-                  ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
-                  : undefined}
-              />
+              {(() => {
+                const isLocalPileStaging = choreo.phase === 'staging' && choreo.staging.source === 'pile' && drawnCard
+                const stagingCard = isLocalPileStaging ? drawnCard : (choreo.phase === 'staging' ? choreo.staging.card : remoteStaging?.card ?? null)
+                const stagingFaceUp = isLocalPileStaging ? true : (choreo.phase === 'staging' ? choreo.staging.faceUp : remoteStaging?.faceUp ?? false)
+                return (
+                  <StagingSlot
+                    ref={stagingRef}
+                    card={stagingCard}
+                    faceUp={stagingFaceUp}
+                    active={choreo.phase === 'staging' || !!remoteStaging}
+                    onResolve={hasDrawnCard && isMyTurn && (drawnCardDismissed || modal.type !== 'none') && !isSelecting
+                      ? () => { setModal({ type: 'none' }); setDrawnCardDismissed(false) }
+                      : undefined}
+                  />
+                )
+              })()}
 
               <div className="text-center relative" ref={discardPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Discard</p>
@@ -1380,6 +1447,33 @@ export default function Game() {
         powerAssignments={powerAssignments}
       />
 
+      <SettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        layout={layout}
+        onToggleLayout={toggleLayout}
+        uiMode={uiMode}
+        onToggleUiMode={toggleUiMode}
+        logPosition={logPosition}
+        onToggleLogPosition={toggleLogPosition}
+        showLayoutToggle={!isMobile}
+        showUiModeToggle={!isMobile}
+        showLogToggle={canLogSidebar}
+        onLeaveGame={async () => {
+          if (!confirm('Are you sure you want to leave? You cannot rejoin this game.')) return
+          setShowSettings(false)
+          // Clean up any active selection/choreography state
+          if (isSelecting) cancelSelection()
+          resetChoreo()
+          try {
+            await leaveGame(gameId!)
+          } catch (e) {
+            console.error('Failed to leave game:', e)
+          }
+          navigate('/')
+        }}
+      />
+
       {/* Legacy flying card (remote player animations) */}
       {flyingCard.active && flyingCard.from && flyingCard.to && (
         <FlyingCard
@@ -1403,7 +1497,13 @@ export default function Game() {
           ownerColor={choreo.flyOwnerColor}
           onComplete={handleChoreoComplete}
           reduced={reduced}
-          duration={choreo.phase === 'flyToStaging' ? 1.1 : choreo.phase === 'flySwapToDiscard' ? 1.3 : 1.55}
+          duration={
+            choreo.phase === 'flyToStaging' ? 1.5
+              : choreo.phase === 'flyToPlayer' ? 1.4
+              : choreo.phase === 'flySwapToDiscard' ? 1.6
+              : choreo.phase === 'flyToSlot' ? 1.5
+              : 1.7
+          }
         />
       )}
 

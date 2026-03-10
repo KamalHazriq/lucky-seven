@@ -32,7 +32,7 @@ export default function DiscardFlip({ discardTop, reduced }: DiscardFlipProps) {
       setShowFlip(true)
       const timer = setTimeout(() => {
         setShowFlip(false)
-      }, reduced ? 350 : 1100)
+      }, reduced ? 350 : 1500)
       return () => clearTimeout(timer)
     }
 
@@ -70,20 +70,21 @@ export default function DiscardFlip({ discardTop, reduced }: DiscardFlipProps) {
     <AnimatePresence>
       {showFlip && flipCard && (
         <motion.div
-          initial={{ rotateY: 180, scale: 0.85 }}
-          animate={{ rotateY: 0, scale: [0.85, 1.06, 1.0] }}
-          exit={{ opacity: 0, scale: 0.95 }}
+          initial={{ rotateY: 180, scale: 0.78, opacity: 0.7 }}
+          animate={{ rotateY: 0, scale: 1, opacity: 1 }}
+          exit={{ opacity: 0, scale: 0.92 }}
           transition={{
-            rotateY: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-            scale: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+            rotateY: { type: 'spring', stiffness: 140, damping: 18, mass: 1.0 },
+            scale: { type: 'spring', stiffness: 200, damping: 16, mass: 0.8 },
+            opacity: { duration: 0.2 },
           }}
           className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
-          style={{ perspective: '600px', backfaceVisibility: 'hidden' }}
+          style={{ perspective: '800px', backfaceVisibility: 'hidden' }}
         >
           <div
             className="w-full h-full rounded-xl bg-white border border-slate-200 flex items-center justify-center"
             style={{
-              boxShadow: '0 8px 25px rgba(0,0,0,0.3), 0 3px 10px rgba(0,0,0,0.15)',
+              boxShadow: '0 12px 36px rgba(0,0,0,0.4), 0 6px 16px rgba(0,0,0,0.2)',
             }}
           >
             <span className="font-bold text-sm" style={{ color: suitColor(flipCard) }}>

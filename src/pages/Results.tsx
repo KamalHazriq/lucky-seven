@@ -33,6 +33,7 @@ export default function Results() {
   }, [gameId, game?.status])
 
   // Write game summary analytics once (host only, one write per game)
+  const localStatsWritten = useRef(false)
   useEffect(() => {
     if (!gameId || !game || !user || summaryWritten.current) return
     if (game.status !== 'finished') return
@@ -41,6 +42,29 @@ export default function Results() {
     summaryWritten.current = true
     writeGameSummary(gameId, scores, game)
   }, [gameId, game, user, scores])
+
+  // Track local game stats (wins, games played) for GameStats component
+  useEffect(() => {
+    if (!user || !game || localStatsWritten.current) return
+    if (game.status !== 'finished') return
+    if (scores.length < game.playerOrder.length) return
+    localStatsWritten.current = true
+
+    // Increment local games played
+    const prevGames = parseInt(localStorage.getItem('lucky7_local_games') ?? '0', 10)
+    localStorage.setItem('lucky7_local_games', String(prevGames + 1))
+
+    // Check if local user won
+    const minScore = scores.length > 0 ? scores[0].total : Infinity
+    const tiedPlayers = scores.filter((s) => s.total === minScore)
+    const maxSevens = Math.max(...tiedPlayers.map((s) => s.sevens), 0)
+    const winners = tiedPlayers.filter((s) => s.sevens === maxSevens)
+    const isWinner = winners.some((w) => w.playerId === user.uid)
+    if (isWinner) {
+      const prevWins = parseInt(localStorage.getItem('lucky7_wins') ?? '0', 10)
+      localStorage.setItem('lucky7_wins', String(prevWins + 1))
+    }
+  }, [user, game, scores])
 
   if (loading || !game) {
     return (
