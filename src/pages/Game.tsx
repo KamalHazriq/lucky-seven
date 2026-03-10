@@ -105,7 +105,7 @@ export default function Game() {
   const localPanelRef = useRef<HTMLDivElement>(null)
   const otherPanelRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const headerRef = useRef<HTMLDivElement>(null)
-  const [headerH, setHeaderH] = useState(0)
+  const [, setHeaderH] = useState(0)
 
   // Selection mode for actionbar power flows
   const {
