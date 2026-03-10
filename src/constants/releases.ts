@@ -37,7 +37,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Home Screen',
         items: [
-          'Game Statistics section: Games Played (global), Time Played, Total Visits',
+          'Game Statistics section: Games Played and Total Visits — universal across all devices via Firestore',
           'Strategy Tips placeholder section with 4 tips (Coming Soon)',
           'More floating background card suits with higher visibility',
         ],

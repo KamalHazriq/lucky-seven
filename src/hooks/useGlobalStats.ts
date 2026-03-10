@@ -1,47 +1,39 @@
 import { useState, useEffect } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, updateDoc, setDoc, increment } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
 export interface GlobalStats {
   gamesPlayed: number
+  totalVisits: number
   lastGameAt: number | null
 }
 
-const INITIAL: GlobalStats = { gamesPlayed: 0, lastGameAt: null }
+const INITIAL: GlobalStats = { gamesPlayed: 0, totalVisits: 0, lastGameAt: null }
 
 /**
  * Subscribe to global game statistics from Firestore.
- * Also tracks local visit count and time spent.
+ * All stats are universal (cross-device) via a single shared Firestore doc.
  */
 export function useGlobalStats() {
   const [stats, setStats] = useState<GlobalStats>(INITIAL)
   const [loading, setLoading] = useState(true)
 
-  // Track total visits (local only — stored in localStorage)
-  const [totalVisits] = useState(() => {
-    const key = 'lucky7_visits'
-    const current = parseInt(localStorage.getItem(key) ?? '0', 10)
-    const next = current + 1
-    localStorage.setItem(key, String(next))
-    return next
+  // Increment total visits once per page load (Firestore — universal)
+  const [visitCounted] = useState(() => {
+    // Use a session flag so we only count once per tab/session
+    if (sessionStorage.getItem('lucky7_visit_counted')) return false
+    sessionStorage.setItem('lucky7_visit_counted', '1')
+    return true
   })
 
-  // Track time spent (local only — accumulated in localStorage)
-  const [timePlayed, setTimePlayed] = useState(() => {
-    return parseInt(localStorage.getItem('lucky7_time_played') ?? '0', 10)
-  })
-
-  // Accumulate time played every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimePlayed((prev) => {
-        const next = prev + 30
-        localStorage.setItem('lucky7_time_played', String(next))
-        return next
-      })
-    }, 30_000)
-    return () => clearInterval(interval)
-  }, [])
+    if (!visitCounted) return
+    const ref = doc(db, 'stats', 'global')
+    updateDoc(ref, { totalVisits: increment(1) }).catch(async () => {
+      // Doc may not exist yet — create it
+      await setDoc(ref, { gamesPlayed: 0, totalVisits: 1, lastGameAt: null }).catch(() => {})
+    })
+  }, [visitCounted])
 
   // Subscribe to Firestore global stats
   useEffect(() => {
@@ -52,6 +44,7 @@ export function useGlobalStats() {
           const data = snap.data()
           setStats({
             gamesPlayed: data.gamesPlayed ?? 0,
+            totalVisits: data.totalVisits ?? 0,
             lastGameAt: data.lastGameAt ?? null,
           })
         }
@@ -65,14 +58,5 @@ export function useGlobalStats() {
     return unsub
   }, [])
 
-  return { stats, loading, totalVisits, timePlayed }
-}
-
-/** Format seconds into human-readable string */
-export function formatTimePlayed(seconds: number): string {
-  if (seconds < 60) return '< 1m'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  return m > 0 ? `${h}h ${m}m` : `${h}h`
+  return { stats, loading }
 }

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useGlobalStats, formatTimePlayed } from '../hooks/useGlobalStats'
+import { useGlobalStats } from '../hooks/useGlobalStats'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
 
@@ -38,12 +38,11 @@ function StatCard({ emoji, label, value, color }: StatCardProps) {
 }
 
 /**
- * GameStats — premium statistics section for the Home page.
- * Reads from Firestore global stats + local storage.
- * Design: section cards with emojis, grid layout, matching rulebook style.
+ * GameStats — universal statistics section for the Home page.
+ * All stats come from Firestore (shared across all devices).
  */
 export default function GameStats() {
-  const { stats, loading, totalVisits, timePlayed } = useGlobalStats()
+  const { stats, loading } = useGlobalStats()
 
   if (loading) return null
 
@@ -63,7 +62,7 @@ export default function GameStats() {
         variants={staggerContainer}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-3 gap-2"
+        className="grid grid-cols-2 gap-2"
       >
         <StatCard
           emoji={'\u{1F3AE}'}
@@ -72,15 +71,9 @@ export default function GameStats() {
           color="bg-slate-900/40 border-slate-700/40 hover:border-emerald-600/40"
         />
         <StatCard
-          emoji={'\u{23F1}\uFE0F'}
-          label="Time Played"
-          value={formatTimePlayed(timePlayed)}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-indigo-600/40"
-        />
-        <StatCard
           emoji={'\u{1F440}'}
           label="Total Visits"
-          value={totalVisits}
+          value={stats.totalVisits}
           color="bg-slate-900/40 border-slate-700/40 hover:border-amber-600/40"
         />
       </motion.div>
