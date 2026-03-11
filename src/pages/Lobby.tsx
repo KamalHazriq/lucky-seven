@@ -5,7 +5,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
 import { startGame, updatePlayerProfile, leaveLobby, updateGameSettings } from '../lib/gameService'
-import type { TurnSeconds } from '../lib/types'
+import type { TurnSeconds, PowerRankKey, PowerEffectType } from '../lib/types'
+import { ALL_EFFECT_TYPES } from '../lib/types'
 import VersionLabel from '../components/VersionLabel'
 import FeedbackModal from '../components/FeedbackModal'
 import PatchNotesModal from '../components/PatchNotesModal'
@@ -17,6 +18,14 @@ import type { PlayerDoc } from '../lib/types'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
 const springBounce = { type: 'spring' as const, stiffness: 400, damping: 20 }
+
+const RANK_ROWS: { key: PowerRankKey; label: string; color: string }[] = [
+  { key: '10',    label: '10',    color: 'text-cyan-300' },
+  { key: 'J',     label: 'Jack',  color: 'text-amber-300' },
+  { key: 'Q',     label: 'Queen', color: 'text-purple-300' },
+  { key: 'K',     label: 'King',  color: 'text-red-300' },
+  { key: 'JOKER', label: 'Joker', color: 'text-fuchsia-300' },
+]
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -37,6 +46,7 @@ export default function Lobby() {
   const navigate = useNavigate()
   const [showFeedback, setShowFeedback] = useState(false)
   const [showPatchNotes, setShowPatchNotes] = useState(false)
+  const [showPowerSettings, setShowPowerSettings] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
@@ -141,6 +151,17 @@ export default function Lobby() {
     if (!gameId) return
     try {
       await updateGameSettings(gameId, { jokerCount: count })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const handleSetPowerAssignment = async (key: PowerRankKey, value: PowerEffectType) => {
+    if (!gameId || !game?.settings) return
+    try {
+      await updateGameSettings(gameId, {
+        powerAssignments: { ...game.settings.powerAssignments, [key]: value },
+      })
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -456,69 +477,146 @@ export default function Lobby() {
             >
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Game Settings</p>
               <div className="space-y-3">
-                {/* Turn Timer */}
-                <div>
-                  <p className="text-xs text-slate-500 mb-1.5">Turn Timer</p>
-                  <div className="grid grid-cols-5 gap-1">
-                    {([0, 30, 60, 90, 120] as TurnSeconds[]).map((s) => (
-                      <motion.button
-                        key={s}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSetTurnSeconds(s)}
-                        className={`py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
-                          game.settings.turnSeconds === s
-                            ? 'bg-indigo-600/80 border-indigo-500/60 text-white'
-                            : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
-                        }`}
-                      >
-                        {s === 0 ? '∞' : `${s}s`}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
+
                 {/* Deck Size */}
                 <div>
                   <p className="text-xs text-slate-500 mb-1.5">Deck Size</p>
-                  <div className="grid grid-cols-3 gap-1">
+                  <div className="flex gap-2">
                     {([1, 1.5, 2] as (1 | 1.5 | 2)[]).map((d) => (
                       <motion.button
                         key={d}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleSetDeckSize(d)}
-                        className={`py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                           game.settings.deckSize === d
-                            ? 'bg-amber-600/80 border-amber-500/60 text-white'
-                            : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
                       >
-                        {d === 1 ? '1× deck' : d === 1.5 ? '1.5× deck' : '2× deck'}
+                        {d === 1 ? '1×' : d === 1.5 ? '1.5×' : '2×'}
                       </motion.button>
                     ))}
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {game.settings.deckSize === 1
+                      ? '54 cards (standard)'
+                      : game.settings.deckSize === 1.5
+                        ? '~81 cards (1 full + 27 extra)'
+                        : '~108 cards (double deck)'}
+                  </p>
                 </div>
-                {/* Joker Count */}
+
+                {/* Turn Timer */}
                 <div>
-                  <p className="text-xs text-slate-500 mb-1.5">Jokers</p>
-                  <div className="grid grid-cols-4 gap-1">
-                    {[1, 2, 3, 4].map((j) => (
+                  <p className="text-xs text-slate-500 mb-1.5">Turn Timer</p>
+                  <div className="flex gap-1.5">
+                    {([0, 30, 60, 90, 120] as TurnSeconds[]).map((s) => (
                       <motion.button
-                        key={j}
+                        key={s}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSetJokerCount(j)}
-                        className={`py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
-                          game.settings.jokerCount === j
-                            ? 'bg-rose-600/80 border-rose-500/60 text-white'
-                            : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
+                        onClick={() => handleSetTurnSeconds(s)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                          game.settings.turnSeconds === s
+                            ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
                       >
-                        {j}🃏
+                        {s === 0 ? 'Off' : `${s}s`}
                       </motion.button>
                     ))}
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {game.settings.turnSeconds === 0
+                      ? 'No time limit per turn'
+                      : `${game.settings.turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
+                  </p>
                 </div>
+
+                {/* Power Settings accordion */}
+                <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+                  <motion.button
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setShowPowerSettings(!showPowerSettings)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-900/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                  >
+                    <span className="text-xs font-medium text-slate-300">Power Settings</span>
+                    <motion.span
+                      animate={{ rotate: showPowerSettings ? 180 : 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                      className="text-slate-500 text-xs"
+                    >
+                      ▼
+                    </motion.span>
+                  </motion.button>
+
+                  <AnimatePresence initial={false}>
+                    {showPowerSettings && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 28, mass: 0.6 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-3 space-y-3 border-t border-slate-700/50">
+                          {/* Per-rank power selects */}
+                          {RANK_ROWS.map((row) => (
+                            <div key={row.key}>
+                              <label className={`block text-xs font-medium ${row.color} mb-1`}>
+                                {row.label} Power
+                              </label>
+                              <select
+                                value={game.settings.powerAssignments[row.key]}
+                                onChange={(e) =>
+                                  handleSetPowerAssignment(row.key, e.target.value as PowerEffectType)
+                                }
+                                className="w-full px-3 py-1.5 bg-slate-900/80 border border-slate-600 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                              >
+                                {ALL_EFFECT_TYPES.map((o) => (
+                                  <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          ))}
+
+                          {/* Jokers in deck */}
+                          <div>
+                            <label className="block text-xs font-medium text-fuchsia-300 mb-1">
+                              Jokers in Deck
+                            </label>
+                            <div className="flex gap-2">
+                              {[1, 2, 3, 4].map((n) => (
+                                <motion.button
+                                  key={n}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleSetJokerCount(n)}
+                                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                                    game.settings.jokerCount === n
+                                      ? 'bg-fuchsia-600 text-white'
+                                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                  }`}
+                                >
+                                  {n}
+                                </motion.button>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-1">Default: 2 (standard deck)</p>
+                          </div>
+
+                          <div className="bg-slate-900/40 rounded-lg p-2">
+                            <p className="text-[10px] text-amber-400/80 font-medium">
+                              Powers trigger every time you draw that card rank. Any rank can have any effect!
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
               </div>
             </motion.div>
           )}
