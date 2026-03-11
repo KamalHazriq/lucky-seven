@@ -45,7 +45,8 @@ export function useTurnTimer(
 
     const tick = () => {
       const elapsed = (Date.now() - turnStartAt) / 1000
-      const left = Math.max(0, turnSeconds - elapsed)
+      // Clamp to [0, turnSeconds] to handle clock-skew between devices
+      const left = Math.min(turnSeconds, Math.max(0, turnSeconds - elapsed))
       setRemaining(Math.ceil(left))
     }
 
@@ -57,6 +58,10 @@ export function useTurnTimer(
   // Auto-skip trigger when timer expires
   const handleExpiry = useCallback(async () => {
     if (!gameId || skipFiredRef.current) return
+    // Elapsed guard: prevent stale re-fires after a turn change resets turnStartAt.
+    // If the new turn just started (elapsed << turnSeconds) this is a double-fire artifact.
+    const elapsed = turnStartAt ? (Date.now() - turnStartAt) / 1000 : 0
+    if (elapsed < turnSeconds * 0.9) return
     skipFiredRef.current = true
     try {
       await skipTurn(gameId, actionVersion)
@@ -64,7 +69,7 @@ export function useTurnTimer(
       // Expected: another client may have already skipped
       console.debug('Auto-skip contention (expected):', e)
     }
-  }, [gameId, actionVersion])
+  }, [gameId, actionVersion, turnStartAt, turnSeconds])
 
   useEffect(() => {
     if (remaining !== null && remaining <= 0 && turnSeconds > 0 && isActive && currentTurnPlayerId) {

@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { startGame, updatePlayerProfile, leaveLobby } from '../lib/gameService'
+import { startGame, updatePlayerProfile, leaveLobby, updateGameSettings } from '../lib/gameService'
+import type { TurnSeconds } from '../lib/types'
 import VersionLabel from '../components/VersionLabel'
 import FeedbackModal from '../components/FeedbackModal'
 import PatchNotesModal from '../components/PatchNotesModal'
@@ -113,6 +114,33 @@ export default function Lobby() {
     if (!gameId) return
     try {
       await updatePlayerProfile(gameId, { colorKey: colorIdx })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const handleSetTurnSeconds = async (secs: TurnSeconds) => {
+    if (!gameId) return
+    try {
+      await updateGameSettings(gameId, { turnSeconds: secs })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const handleSetDeckSize = async (size: 1 | 1.5 | 2) => {
+    if (!gameId) return
+    try {
+      await updateGameSettings(gameId, { deckSize: size })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const handleSetJokerCount = async (count: number) => {
+    if (!gameId) return
+    try {
+      await updateGameSettings(gameId, { jokerCount: count })
     } catch (e) {
       toast.error((e as Error).message)
     }
@@ -417,6 +445,83 @@ export default function Lobby() {
               ))}
             </motion.div>
           </div>
+
+          {/* ─── Game Settings (host only) ─── */}
+          {isHost && game.settings && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, ...springEntry }}
+              className="border-t border-slate-700/50 pt-4 mb-4"
+            >
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Game Settings</p>
+              <div className="space-y-3">
+                {/* Turn Timer */}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1.5">Turn Timer</p>
+                  <div className="grid grid-cols-5 gap-1">
+                    {([0, 30, 60, 90, 120] as TurnSeconds[]).map((s) => (
+                      <motion.button
+                        key={s}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleSetTurnSeconds(s)}
+                        className={`py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
+                          game.settings.turnSeconds === s
+                            ? 'bg-indigo-600/80 border-indigo-500/60 text-white'
+                            : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
+                        }`}
+                      >
+                        {s === 0 ? '∞' : `${s}s`}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+                {/* Deck Size */}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1.5">Deck Size</p>
+                  <div className="grid grid-cols-3 gap-1">
+                    {([1, 1.5, 2] as (1 | 1.5 | 2)[]).map((d) => (
+                      <motion.button
+                        key={d}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleSetDeckSize(d)}
+                        className={`py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
+                          game.settings.deckSize === d
+                            ? 'bg-amber-600/80 border-amber-500/60 text-white'
+                            : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
+                        }`}
+                      >
+                        {d === 1 ? '1× deck' : d === 1.5 ? '1.5× deck' : '2× deck'}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+                {/* Joker Count */}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1.5">Jokers</p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {[1, 2, 3, 4].map((j) => (
+                      <motion.button
+                        key={j}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleSetJokerCount(j)}
+                        className={`py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border ${
+                          game.settings.jokerCount === j
+                            ? 'bg-rose-600/80 border-rose-500/60 text-white'
+                            : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
+                        }`}
+                      >
+                        {j}🃏
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {isHost && (
             <motion.button

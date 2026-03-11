@@ -366,6 +366,12 @@ export default function Game() {
         }
       })
     } else if (msg.includes('took from discard')) {
+      // Guard: if turnPhase already reverted to 'draw', the player called cancelDraw —
+      // don't set staging (the RAF fires after the turnPhase-clear effect).
+      if (game?.turnPhase !== 'action') {
+        setRemoteStaging(null)
+        return
+      }
       const takenCard = prevDiscardTopRef.current
       // Set remote staging FIRST so StagingSlot renders as active
       setRemoteStaging({ card: takenCard, faceUp: true, ownerColor: actorColor })
