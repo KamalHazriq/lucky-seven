@@ -29,6 +29,9 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
           style={{ background: 'rgba(0,0,0,0.5)' }}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Vote to kick player"
             initial={{ scale: 0.85, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 20 }}
@@ -54,10 +57,11 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
               </div>
               <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-red-500 rounded-full"
+                  className="h-full w-full bg-red-500 rounded-full origin-left"
                   initial={false}
-                  animate={{ width: `${(voteKick.votes.length / voteKick.requiredVotes) * 100}%` }}
+                  animate={{ scaleX: voteKick.votes.length / voteKick.requiredVotes }}
                   transition={{ duration: 0.3 }}
+                  style={{ willChange: 'transform' }}
                 />
               </div>
             </div>

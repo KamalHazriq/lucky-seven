@@ -105,6 +105,7 @@ export default function Game() {
   const navigate = useNavigate()
 
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
   const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
@@ -194,7 +195,8 @@ export default function Game() {
   const chatBubbles = useChatBubbles(chat.messages, user?.uid ?? '')
 
   // Queue number map: playerId → queue position (1 = current turn)
-  const queueNumbers = (() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const queueNumbers = useMemo(() => {
     const map: Record<string, number> = {}
     if (!game?.currentTurnPlayerId || !game?.playerOrder) return map
     const order = game.playerOrder
@@ -205,7 +207,7 @@ export default function Game() {
       map[order[idx]] = i + 1
     }
     return map
-  })()
+  }, [game?.currentTurnPlayerId, game?.playerOrder])
 
   // Derived state
   const drawnCard = privateState?.drawnCard ?? null
@@ -259,7 +261,7 @@ export default function Game() {
   const prevActionVersion = useRef(game?.actionVersion ?? 0)
   useEffect(() => {
     const av = game?.actionVersion ?? 0
-    if (av === prevActionVersion.current || reduced) {
+    if (av === prevActionVersion.current || reduced || document.hidden) {
       prevActionVersion.current = av
       return
     }
@@ -433,16 +435,18 @@ export default function Game() {
   ] : []
 
   const withBusy = useCallback(async (fn: () => Promise<void>) => {
-    if (busy) return
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     try {
       await fn()
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
-  }, [busy])
+  }, []) // stable — uses ref for guard, not state
 
   const handleDrawPile = () => {
     if (!canDraw) return
@@ -863,7 +867,10 @@ export default function Game() {
     )
   }
 
-  const otherPlayers = game.playerOrder.filter((pid) => pid !== user.uid)
+  const otherPlayers = useMemo(
+    () => game.playerOrder.filter((pid) => pid !== user.uid),
+    [game.playerOrder, user.uid],
+  )
   const currentTurnName = game.currentTurnPlayerId
     ? players[game.currentTurnPlayerId]?.displayName ?? 'Unknown'
     : null
@@ -1002,7 +1009,11 @@ export default function Game() {
             transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.5 }}
             className="px-3 md:px-5 pt-2"
           >
-            <div className="py-2 px-4 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-xs font-semibold text-center">
+            <div
+              role="status"
+              aria-live="assertive"
+              className="py-2 px-4 bg-amber-900/30 border border-amber-600/40 rounded-xl text-amber-300 text-xs font-semibold text-center"
+            >
               {selection.phase === 'choosingTarget' && selection.constraint?.prompt}
               {selection.phase === 'choosingSecondTarget' && selection.constraint?.secondPrompt}
               {selection.phase === 'confirming' && 'Ready to confirm — check the Action Bar below'}
@@ -1042,25 +1053,38 @@ export default function Game() {
         </div>
 
         {/* Turn indicator */}
-        <motion.div
-          key={game.currentTurnPlayerId}
-          initial={{ opacity: 0, y: -8, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.6 }}
-          className={`text-center py-1.5 px-4 rounded-xl mb-3 text-xs font-medium ${
-            isMyTurn
-              ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
-              : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
-          }`}
-        >
-          {isMyTurn ? (
-            isDrawPhase
-              ? 'Your turn — draw from the pile or discard'
-              : 'Swap, discard, or use a power'
-          ) : (
-            `Waiting for ${currentTurnName}...`
-          )}
-        </motion.div>
+        {(() => {
+          const curPid = game.currentTurnPlayerId
+          const curColor = curPid
+            ? getPlayerColor(players[curPid]?.seatIndex ?? 0, players[curPid]?.colorKey)
+            : null
+          return (
+            <motion.div
+              key={curPid}
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.6 }}
+              aria-live="polite"
+              aria-atomic="true"
+              className={`flex items-center justify-center gap-1.5 py-1.5 px-4 rounded-xl mb-3 text-xs font-medium ${
+                isMyTurn
+                  ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
+                  : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
+              }`}
+            >
+              {!isMyTurn && curColor && (
+                <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: curColor.solid }} />
+              )}
+              {isMyTurn ? (
+                isDrawPhase
+                  ? 'Your turn — draw from the pile or discard'
+                  : 'Swap, discard, or use a power'
+              ) : (
+                `Waiting for ${currentTurnName}...`
+              )}
+            </motion.div>
+          )
+        })()}
 
         {/* Turn Timer Bar */}
         {turnTimer.remaining !== null && (
@@ -1253,7 +1277,11 @@ export default function Game() {
           <>
             {/* Other players */}
             {otherPlayers.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+              <div className={`grid gap-3 mb-4 ${
+                otherPlayers.length === 1 ? 'grid-cols-1' :
+                otherPlayers.length <= 4 ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3' :
+                'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3'
+              }`}>
                 {otherPlayers.map((pid) => (
                   <div
                     key={pid}
@@ -1331,7 +1359,7 @@ export default function Game() {
                     <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                   </div>
                 ) : (
-                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
+                  <div className="w-24 h-[8.75rem] rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
                     <span className="text-slate-600 text-xs">Empty</span>
                   </div>
                 )}

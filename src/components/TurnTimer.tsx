@@ -9,7 +9,7 @@ interface Props {
 export default function TurnTimer({ remaining, total, isMyTurn }: Props) {
   if (remaining === null || total === 0) return null
 
-  const pct = total > 0 ? remaining / total : 0
+  const pct = total > 0 ? Math.max(0, remaining / total) : 0
   const urgent = remaining <= 10
   const critical = remaining <= 5
 
@@ -28,13 +28,14 @@ export default function TurnTimer({ remaining, total, isMyTurn }: Props) {
 
   return (
     <div className="flex items-center gap-2 w-full">
-      {/* Progress bar */}
+      {/* Progress bar — scaleX instead of width to stay on GPU compositor layer */}
       <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
         <motion.div
-          className={`h-full rounded-full ${barColor}`}
+          className={`h-full w-full rounded-full origin-left ${barColor}`}
           initial={false}
-          animate={{ width: `${pct * 100}%` }}
-          transition={{ duration: 0.3, ease: 'linear' }}
+          animate={{ scaleX: pct }}
+          transition={{ duration: 0.28, ease: 'linear' }}
+          style={{ willChange: 'transform' }}
         />
       </div>
 

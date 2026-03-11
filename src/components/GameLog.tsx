@@ -29,7 +29,8 @@ export default function GameLog({ log, players, position = 'bottom', onOpenHisto
   )
 
   const isLeft = position === 'left'
-  const entries = log.slice(-30)
+  // Sidebar shows more entries; bottom panel stays compact
+  const entries = isLeft ? log.slice(-50) : log.slice(-30)
   const totalEntries = entries.length
 
   return (
@@ -58,16 +59,20 @@ export default function GameLog({ log, players, position = 'bottom', onOpenHisto
       <div className="flex flex-col">
         <AnimatePresence initial={false}>
           {entries.map((entry, i) => {
-            // Dim older entries for visual hierarchy
+            // Stable key: ts + message prefix. Avoids re-keying when slice window shifts.
+            const key = `${entry.ts}-${entry.msg.slice(0, 24)}`
+            // Dim older entries — use style+CSS transition instead of framer animate
+            // so opacity changes don't trigger a new framer animation per entry.
             const recency = totalEntries - i
             const opacity = recency <= 3 ? 1 : recency <= 8 ? 0.7 : 0.5
 
             return (
               <motion.div
-                key={`${entry.ts}-${i}`}
+                key={key}
                 initial={{ opacity: 0, x: -8, scale: 0.97 }}
-                animate={{ opacity, x: 0, scale: 1 }}
+                animate={{ x: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.5 }}
+                style={{ opacity, transition: 'opacity 0.4s ease' }}
                 className={`flex items-center gap-1 min-h-[26px] px-1 rounded-md ${
                   recency <= 1 ? 'bg-slate-800/30' : ''
                 }`}

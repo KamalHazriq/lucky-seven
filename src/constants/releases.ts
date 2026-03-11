@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.7.1'
+export const CURRENT_VERSION = 'v1.7.2'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,34 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.7.2',
+    title: 'Rematch, AFK & Color Fixes',
+    date: '11 March 2026',
+    sections: [
+      {
+        heading: 'Play Again',
+        items: [
+          'All players are now auto-redirected to the new lobby when anyone clicks Play Again',
+          'No more having to independently click Play Again — the whole group stays together',
+        ],
+      },
+      {
+        heading: 'AFK System',
+        items: [
+          'Fixed a bug where the AFK timer could fire twice in one turn, causing premature kicks',
+          'Skip-fired flag now resets only on actual turn change, not on every mid-turn action',
+        ],
+      },
+      {
+        heading: 'Lobby Color Picker',
+        items: [
+          'Taken colors now show a clear ✕ overlay instead of just dimming',
+          'Makes unavailable colors immediately obvious at a glance',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.7.1',
     title: 'Turn Timer & Moderation',

@@ -32,10 +32,19 @@ export function useActionHighlight(
   const [swapLabels, setSwapLabels] = useState<SwapLabelMap>({})
   const prevVersion = useRef(actionVersion)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Keep stable refs so the effect only re-runs on actionVersion change
+  const logRef = useRef(log)
+  const playersRef = useRef(players)
+  logRef.current = log
+  playersRef.current = players
 
   useEffect(() => {
     if (actionVersion === prevVersion.current) return
     prevVersion.current = actionVersion
+    if (document.hidden) return // skip visual overlays when tab is backgrounded
+
+    const log = logRef.current
+    const players = playersRef.current
 
     const lastEntry = log[log.length - 1]
     if (!lastEntry) return
@@ -152,7 +161,7 @@ export function useActionHighlight(
     const rearrangeMatch = msg.match(/as rearrange on (.+?)'s cards/)
     if (rearrangeMatch) {
       const targetName = rearrangeMatch[1]
-      for (const [pid, pd] of Object.entries(players)) {
+      for (const [pid, pd] of Object.entries(playersRef.current)) {
         if (pd.displayName === targetName) {
           // Highlight all 3 slots
           newSlotOverlays[pid] = { 0: color.solid, 1: color.solid, 2: color.solid }
@@ -174,7 +183,7 @@ export function useActionHighlight(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [actionVersion, log, players])
+  }, [actionVersion])
 
   return { highlights, slotOverlays, swapLabels }
 }
