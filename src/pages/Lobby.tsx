@@ -49,8 +49,13 @@ export default function Lobby() {
   const [showPowerSettings, setShowPowerSettings] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  // Optimistic color key: updates instantly on pick, cleared once Firestore confirms.
+  // Needed because runTransaction doesn't give a local-first onSnapshot update.
+  const [pendingColorKey, setPendingColorKey] = useState<number | null>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const myPlayer = user ? players[user.uid] : null
+  // Prefer Firestore truth once it arrives; fall back to pending optimistic value
+  const displayedColorKey = myPlayer?.colorKey ?? pendingColorKey
   const chat = useChat(
     gameId,
     myPlayer?.displayName ?? 'Player',
@@ -67,13 +72,21 @@ export default function Lobby() {
     }
   }, [game?.status, gameId, navigate])
 
+  // Clear optimistic pending key once Firestore confirms the color
+  useEffect(() => {
+    if (myPlayer?.colorKey != null) setPendingColorKey(null)
+  }, [myPlayer?.colorKey])
+
   // Auto-assign the first available color when player has none
   useEffect(() => {
     if (!gameId || !myPlayer || myPlayer.colorKey != null) return
     const taken = new Set(Object.values(players).map((p: PlayerDoc) => p.colorKey).filter((k) => k != null))
     const available = LOBBY_COLORS.findIndex((_, idx) => !taken.has(idx))
     if (available >= 0) {
-      updatePlayerProfile(gameId, { colorKey: available }).catch(() => { /* silent */ })
+      setPendingColorKey(available) // immediate visual feedback
+      updatePlayerProfile(gameId, { colorKey: available }).catch(() => {
+        setPendingColorKey(null) // revert if transaction fails (race condition)
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, myPlayer?.colorKey])
@@ -133,9 +146,11 @@ export default function Lobby() {
 
   const handlePickColor = async (colorIdx: number) => {
     if (!gameId) return
+    setPendingColorKey(colorIdx) // immediate ring highlight before server round-trip
     try {
       await updatePlayerProfile(gameId, { colorKey: colorIdx })
     } catch (e) {
+      setPendingColorKey(null) // revert ring on conflict
       toast.error((e as Error).message)
     }
   }
@@ -360,7 +375,7 @@ export default function Lobby() {
               </div>
               <div className="grid grid-cols-8 gap-1.5">
                 {LOBBY_COLORS.map((lc, idx) => {
-                  const isMine = myPlayer.colorKey === idx
+                  const isMine = displayedColorKey === idx
                   const takenBy = !isMine
                     ? Object.values(players).find((p: PlayerDoc) => p.colorKey === idx)
                     : null
@@ -417,9 +432,13 @@ export default function Lobby() {
                     transition={{ type: 'spring', stiffness: 500, damping: 25, delay: 0.1 }}
                     className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md"
                     style={{
-                      backgroundColor: p.colorKey != null && p.colorKey >= 0 && p.colorKey < LOBBY_COLORS.length
-                        ? LOBBY_COLORS[p.colorKey].hex
-                        : '#6366f1',
+                      // Use optimistic color for own avatar while Firestore confirms
+                      backgroundColor: (() => {
+                        const ck = p.id === user?.uid ? (displayedColorKey ?? p.colorKey) : p.colorKey
+                        return ck != null && ck >= 0 && ck < LOBBY_COLORS.length
+                          ? LOBBY_COLORS[ck].hex
+                          : '#6366f1'
+                      })(),
                     }}
                   >
                     {p.displayName?.[0]?.toUpperCase() ?? '?'}
