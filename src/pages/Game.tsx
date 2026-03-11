@@ -839,6 +839,16 @@ export default function Game() {
     }
   }, [])
 
+  // Must be before any conditional early returns to satisfy Rules of Hooks
+  const otherPlayers = useMemo(
+    () => (game?.playerOrder ?? []).filter((pid) => pid !== user?.uid),
+    [game?.playerOrder, user?.uid],
+  )
+  const currentTurnName = useMemo(
+    () => game?.currentTurnPlayerId ? (players[game.currentTurnPlayerId]?.displayName ?? 'Unknown') : null,
+    [game?.currentTurnPlayerId, players],
+  )
+
   if (loading || !game || !user) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
@@ -865,15 +875,6 @@ export default function Game() {
       </div>
     )
   }
-
-  const otherPlayers = useMemo(
-    () => game.playerOrder.filter((pid) => pid !== user.uid),
-    [game.playerOrder, user.uid],
-  )
-  const currentTurnName = useMemo(
-    () => game.currentTurnPlayerId ? (players[game.currentTurnPlayerId]?.displayName ?? 'Unknown') : null,
-    [game.currentTurnPlayerId, players],
-  )
 
   // Selection mode props — passed to all PlayerPanels
   const selectionProps = isSelecting ? {
