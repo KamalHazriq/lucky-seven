@@ -6,11 +6,13 @@ interface Props {
   localPlayerId: string
   onVoteYes: () => void
   onVoteNo: () => void
+  onCancel?: () => void
+  isInitiatorOrHost?: boolean
 }
 
 const springBounce = { type: 'spring' as const, stiffness: 400, damping: 22, mass: 0.7 }
 
-export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVoteNo }: Props) {
+export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVoteNo, onCancel, isInitiatorOrHost }: Props) {
   if (!voteKick?.active) return null
 
   const isTarget = localPlayerId === voteKick.targetId
@@ -101,6 +103,18 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
                 </motion.button>
               </div>
             ) : null}
+
+            {/* Cancel vote — only initiator or host, only when not the target */}
+            {isInitiatorOrHost && !isTarget && onCancel && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={onCancel}
+                className="w-full mt-3 py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer rounded-lg hover:bg-slate-700/40"
+              >
+                Cancel vote
+              </motion.button>
+            )}
           </motion.div>
         </motion.div>
       )}

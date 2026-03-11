@@ -20,6 +20,7 @@ import {
   leaveGame,
   initiateVoteKick,
   castVoteKick,
+  cancelVoteKick,
 } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
@@ -1595,6 +1596,12 @@ export default function Game() {
         onVoteNo={() => {
           castVoteKick(gameId!, false).catch((e) => toast.error((e as Error).message))
         }}
+        onCancel={() => {
+          cancelVoteKick(gameId!).catch((e) => toast.error((e as Error).message))
+        }}
+        isInitiatorOrHost={
+          user.uid === game.voteKick?.startedBy || user.uid === game.hostId
+        }
       />
 
       <ChatPanel
