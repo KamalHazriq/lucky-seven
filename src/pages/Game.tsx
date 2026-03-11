@@ -52,8 +52,6 @@ import { useLogPosition } from '../hooks/useLogPosition'
 import { useTurnTimer } from '../hooks/useTurnTimer'
 import TurnTimer from '../components/TurnTimer'
 import VoteKickModal from '../components/VoteKickModal'
-import HistoryModal from '../components/HistoryModal'
-import { useGameHistory } from '../hooks/useGameHistory'
 import { getSeatPositions } from '../lib/seatPositions'
 import ActionBar from '../components/ActionBar'
 import { useSelectionMode } from '../hooks/useSelectionMode'
@@ -111,8 +109,6 @@ export default function Game() {
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const history = useGameHistory(gameId)
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
@@ -882,6 +878,37 @@ export default function Game() {
     )
   }
 
+  // Kicked player screen — shown when player is removed from playerOrder mid-game
+  if (!game.playerOrder.includes(user.uid) && (game.status === 'active' || game.status === 'ending')) {
+    return (
+      <div
+        className="min-h-dvh flex items-center justify-center p-4"
+        style={{ background: 'radial-gradient(ellipse at center, rgba(220,38,38,0.12) 0%, transparent 70%)' }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          className="text-center max-w-sm p-8 rounded-2xl border backdrop-blur-sm"
+          style={{ background: 'var(--surface-solid)', borderColor: 'rgba(220,38,38,0.3)' }}
+        >
+          <div className="text-7xl mb-4">😂</div>
+          <h2 className="text-2xl font-bold text-red-400 mb-2">You've been kicked!</h2>
+          <p className="text-sm mb-6 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Welp... who knows what you did to deserve that 🤷<br />
+            The game goes on without you!
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl transition-colors"
+          >
+            Go Home
+          </button>
+        </motion.div>
+      </div>
+    )
+  }
+
   // Selection mode props — passed to all PlayerPanels
   const selectionProps = isSelecting ? {
     selectionTargetType: currentTargetType,
@@ -1043,7 +1070,7 @@ export default function Game() {
               borderColor: 'var(--border)',
             }}
           >
-            <GameLog log={game.log} players={players} position="left" onOpenHistory={() => setHistoryOpen(true)} />
+            <GameLog log={game.log} players={players} position="left" />
           </aside>
         )}
 
@@ -1092,13 +1119,6 @@ export default function Game() {
             </motion.div>
           )
         })()}
-
-        {/* Turn Timer Bar */}
-        {turnTimer.remaining !== null && (
-          <div className="mb-3 px-1">
-            <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={isMyTurn} />
-          </div>
-        )}
 
         {layout === 'table' ? (
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
@@ -1217,6 +1237,11 @@ export default function Game() {
                         stampOverlay={stampOverlays[pid] ?? null}
                         {...selectionProps}
                       />
+                      {game.currentTurnPlayerId === pid && turnTimer.remaining !== null && (
+                        <div className="mt-1 px-1">
+                          <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={false} />
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -1250,6 +1275,11 @@ export default function Game() {
                     stampOverlay={stampOverlays[user.uid] ?? null}
                     {...selectionProps}
                   />
+                  {isMyTurn && turnTimer.remaining !== null && (
+                    <div className="mt-1 px-1">
+                      <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={true} />
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Action Bar for table layout — below table zone */}
@@ -1312,6 +1342,11 @@ export default function Game() {
                       stampOverlay={stampOverlays[pid] ?? null}
                       {...selectionProps}
                     />
+                    {game.currentTurnPlayerId === pid && turnTimer.remaining !== null && (
+                      <div className="mt-1 px-1">
+                        <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={false} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1398,6 +1433,11 @@ export default function Game() {
                 stampOverlay={stampOverlays[user.uid] ?? null}
                 {...selectionProps}
               />
+              {isMyTurn && turnTimer.remaining !== null && (
+                <div className="mt-1 px-1">
+                  <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={true} />
+                </div>
+              )}
               {/* Action Bar — inline alternative to drawn card modal */}
               {uiMode === 'actionbar' && (
                 <ActionBar
@@ -1426,7 +1466,7 @@ export default function Game() {
 
         {/* Game Log — bottom position (default) */}
         {logPosition === 'bottom' && (
-          <GameLog log={game.log} players={players} position="bottom" onOpenHistory={() => setHistoryOpen(true)} />
+          <GameLog log={game.log} players={players} position="bottom" />
         )}
 
         {/* Safe area padding for iOS home indicator */}
@@ -1618,14 +1658,6 @@ export default function Game() {
         onSend={chat.send}
         onClose={chat.closeChat}
         isDesktop={isDesktop}
-      />
-
-      <HistoryModal
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        gameId={gameId}
-        players={players}
-        history={history}
       />
 
       <VersionLabel />
