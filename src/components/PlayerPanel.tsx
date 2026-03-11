@@ -48,6 +48,8 @@ interface PlayerPanelProps {
   onPlayerSelect?: (playerId: string) => void
   /** The currently selected first target (highlighted with a badge) */
   selectedTarget?: SelectedTarget | null
+  /** The currently selected second target (highlighted with a badge) */
+  selectedSecondTarget?: SelectedTarget | null
   /** Stamp overlay for lock/unlock choreography */
   stampOverlay?: 'lock' | 'unlock' | null
   /** Lobby-chosen color key (index into LOBBY_COLORS) — overrides seat color */
@@ -83,6 +85,7 @@ function PlayerPanel({
   onSelectionClick,
   onPlayerSelect,
   selectedTarget,
+  selectedSecondTarget,
   stampOverlay,
   colorKey,
 }: PlayerPanelProps) {
@@ -242,8 +245,9 @@ function PlayerPanel({
             ? isSlotSelectable(selectionTargetType!, playerId, i, localPlayerId, players)
             : false
 
-          // Is this slot the currently selected target?
+          // Is this slot the currently selected first or second target?
           const isSelected = selectedTarget?.playerId === playerId && selectedTarget?.slotIndex === i
+          const isSecondSelected = selectedSecondTarget?.playerId === playerId && selectedSecondTarget?.slotIndex === i
 
           const handleSlotClick = () => {
             if (inSelectionMode && slotSelectable && onSelectionClick) {
@@ -291,7 +295,7 @@ function PlayerPanel({
               )}
 
               {/* Selection mode: selectable pulse ring — CSS animation, no JS frame scheduling */}
-              {inSelectionMode && slotSelectable && !isSelected && (
+              {inSelectionMode && slotSelectable && !isSelected && !isSecondSelected && (
                 <div
                   className="absolute inset-0 rounded-xl pointer-events-none z-10 animate-pulse"
                   style={{
@@ -300,30 +304,30 @@ function PlayerPanel({
                 />
               )}
 
-              {/* Selection mode: selected badge + label (Section 4 clarity) */}
-              {isSelected && (
+              {/* Selection mode: selected badge + label (first or second target) */}
+              {(isSelected || isSecondSelected) && (
                 <>
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center z-20 shadow-lg"
+                    className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center z-20 shadow-lg ${isSecondSelected && !isSelected ? 'bg-emerald-500' : 'bg-amber-500'}`}
                   >
-                    <span className="text-[10px] text-white font-bold">✓</span>
+                    <span className="text-[10px] text-white font-bold">{isSecondSelected && !isSelected ? '2' : '1'}</span>
                   </motion.div>
                   <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="absolute -bottom-5 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap"
                   >
-                    <span className="px-1.5 py-0.5 bg-amber-500/90 text-white text-[8px] font-bold rounded-md shadow-sm">
+                    <span className={`px-1.5 py-0.5 text-white text-[8px] font-bold rounded-md shadow-sm ${isSecondSelected && !isSelected ? 'bg-emerald-500/90' : 'bg-amber-500/90'}`}>
                       {displayName} #{i + 1}
                     </span>
                   </motion.div>
                 </>
               )}
 
-              {/* Selection mode: dim non-selectable slots */}
-              {inSelectionMode && !slotSelectable && selectionTargetType !== 'anyPlayer' && (
+              {/* Selection mode: dim non-selectable slots (don't dim selected targets) */}
+              {inSelectionMode && !slotSelectable && selectionTargetType !== 'anyPlayer' && !isSelected && !isSecondSelected && (
                 <div className="absolute inset-0 rounded-xl bg-black/40 pointer-events-none z-10" />
               )}
 
@@ -346,8 +350,8 @@ function PlayerPanel({
                 lockInfo={isLocked ? lockInfo : null}
                 size="md"
                 onClick={(slotClickable || (inSelectionMode && slotSelectable)) ? handleSlotClick : undefined}
-                highlight={(slotClickable && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable)}
-                disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable)}
+                highlight={(slotClickable && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable) || isSelected || isSecondSelected}
+                disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable && !isSelected && !isSecondSelected)}
                 label={`#${i + 1}`}
               />,
             )
@@ -362,8 +366,8 @@ function PlayerPanel({
               size={isLocalPlayer ? 'md' : 'sm'}
               onClick={(slotClickable && isLocalPlayer && !inSelectionMode) || (inSelectionMode && slotSelectable)
                 ? handleSlotClick : undefined}
-              highlight={(slotClickable && isLocalPlayer && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable)}
-              disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable)}
+              highlight={(slotClickable && isLocalPlayer && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable) || isSelected || isSecondSelected}
+              disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable && !isSelected && !isSecondSelected)}
               label={isLocalPlayer ? `#${i + 1}` : undefined}
               ownerColor={color.solid}
             />,

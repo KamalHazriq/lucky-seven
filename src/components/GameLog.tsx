@@ -59,7 +59,7 @@ export default function GameLog({ log, players, position = 'bottom' }: GameLogPr
             return (
               <motion.div
                 key={key}
-                initial={{ opacity: 0, x: -8, scale: 0.97 }}
+                initial={{ x: -8, scale: 0.97 }}
                 animate={{ x: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.5 }}
                 style={{ opacity, transition: 'opacity 0.4s ease' }}

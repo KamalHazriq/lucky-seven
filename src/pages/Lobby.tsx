@@ -67,6 +67,17 @@ export default function Lobby() {
     }
   }, [game?.status, gameId, navigate])
 
+  // Auto-assign the first available color when player has none
+  useEffect(() => {
+    if (!gameId || !myPlayer || myPlayer.colorKey != null) return
+    const taken = new Set(Object.values(players).map((p: PlayerDoc) => p.colorKey).filter((k) => k != null))
+    const available = LOBBY_COLORS.findIndex((_, idx) => !taken.has(idx))
+    if (available >= 0) {
+      updatePlayerProfile(gameId, { colorKey: available }).catch(() => { /* silent */ })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, myPlayer?.colorKey])
+
   const isHost = user?.uid === game?.hostId
   const playerList = game?.playerOrder.map((pid) => ({
     id: pid,
