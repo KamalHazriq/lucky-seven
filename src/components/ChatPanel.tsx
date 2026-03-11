@@ -81,6 +81,29 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
     if (p) saveChatPos(p.x, p.y)
   }, []) // posRef is always current — no stale closure
 
+  // ─── Clamp chat position on window resize ────────────────────
+  useEffect(() => {
+    if (!isDesktop) return
+    let rafId = 0
+    const onResize = () => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        setPos((p) => {
+          if (!p) return p
+          const clampedX = Math.max(0, Math.min(window.innerWidth - 320, p.x))
+          const clampedY = Math.max(0, Math.min(window.innerHeight - 100, p.y))
+          if (clampedX === p.x && clampedY === p.y) return p // stable ref if unchanged
+          return { x: clampedX, y: clampedY }
+        })
+      })
+    }
+    window.addEventListener('resize', onResize, { passive: true })
+    return () => {
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(rafId)
+    }
+  }, [isDesktop])
+
   // ─── Scroll position tracking ────────────────────────────────
   const checkNearBottom = useCallback(() => {
     const el = scrollRef.current

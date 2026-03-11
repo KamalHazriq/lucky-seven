@@ -271,3 +271,15 @@ select option {
   .staging-active { animation: none; }
   .seat-breathe { animation: none; }
 }
+
+/* Pause all CSS animations when the tab is hidden (set by visibilitychange listener in main.tsx) */
+html[data-page-hidden] .card-shimmer,
+html[data-page-hidden] .animate-pulse,
+html[data-page-hidden] .action-pulse-ring,
+html[data-page-hidden] .turn-glow,
+html[data-page-hidden] .slot-pulse-ring,
+html[data-page-hidden] .selection-pulse,
+html[data-page-hidden] .staging-active,
+html[data-page-hidden] .seat-breathe {
+  animation-play-state: paused;
+}

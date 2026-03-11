@@ -13,6 +13,18 @@ import './index.css'
   }
 }
 
+// Pause CSS animations while the tab is hidden — saves GPU/battery.
+// Framer-motion uses JS RAF which browsers already throttle; this targets CSS animations.
+function syncPageVisibility() {
+  if (document.hidden) {
+    document.documentElement.setAttribute('data-page-hidden', '')
+  } else {
+    document.documentElement.removeAttribute('data-page-hidden')
+  }
+}
+syncPageVisibility() // set immediately on load
+document.addEventListener('visibilitychange', syncPageVisibility)
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>

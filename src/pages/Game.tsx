@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -288,17 +288,15 @@ export default function Game() {
 
     const actorColor = getPlayerColor(players[actorId]?.seatIndex ?? 0, players[actorId]?.colorKey).solid
 
-    // Helper: calculate approximate slot position within a panel
-    const getSlotRect = (panelEl: HTMLDivElement, slot: number, isLocal: boolean): DOMRect => {
-      const panelRect = panelEl.getBoundingClientRect()
-      const cardW = isLocal ? 80 : 56
-      const cardH = isLocal ? 112 : 80
-      const gap = 14
-      const totalW = cardW * 3 + gap * 2
-      const startX = panelRect.left + (panelRect.width - totalW) / 2
-      const cardX = startX + slot * (cardW + gap)
-      const cardY = panelRect.top + (isLocal ? panelRect.height * 0.4 : panelRect.height * 0.35)
-      return new DOMRect(cardX, cardY, cardW, cardH)
+    // Helper: get actual slot rect from DOM — queries data-slot attribute set by PlayerPanel.
+    // No hardcoded card dimensions — works at any viewport width, gap size, or card size.
+    const getSlotRect = (panelEl: HTMLDivElement, slot: number): DOMRect => {
+      const slotEl = panelEl.querySelector<HTMLElement>(`[data-slot="${slot}"]`)
+      if (slotEl) return slotEl.getBoundingClientRect()
+      // Fallback: rough panel-center estimate (should not be reached after Iter 25)
+      const p = panelEl.getBoundingClientRect()
+      const segW = p.width / 3
+      return new DOMRect(p.left + segW * slot + segW * 0.1, p.top + p.height * 0.35, segW * 0.8, p.height * 0.6)
     }
 
     // Helper: get panel element for a player (local or remote)
@@ -329,8 +327,8 @@ export default function Game() {
         if (panelA && panelB) {
           const colorA = getPlayerColor(players[pidA]?.seatIndex ?? 0, players[pidA]?.colorKey).solid
           const colorB = getPlayerColor(players[pidB]?.seatIndex ?? 0, players[pidB]?.colorKey).solid
-          const rectA = getSlotRect(panelA, slotA, pidA === user?.uid)
-          const rectB = getSlotRect(panelB, slotB, pidB === user?.uid)
+          const rectA = getSlotRect(panelA, slotA)
+          const rectB = getSlotRect(panelB, slotB)
 
           // Fly card A → B (with A's color initially)
           triggerFly(rectA, rectB, false, null, colorA)
@@ -390,13 +388,13 @@ export default function Game() {
         const toEl = discardPileRef.current
 
         if (fromEl && actorPanel) {
-          const slotRect = getSlotRect(actorPanel, slotIdx, false)
+          const slotRect = getSlotRect(actorPanel, slotIdx)
           // First fly staging → specific slot
           triggerFly(fromEl.getBoundingClientRect(), slotRect, false, null, actorColor)
         }
         // Then fly swapped card → discard
         if (actorPanel && toEl) {
-          const slotRect = getSlotRect(actorPanel, slotIdx, false)
+          const slotRect = getSlotRect(actorPanel, slotIdx)
           queueFly(slotRect, toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
         }
       } else {
@@ -1219,7 +1217,7 @@ export default function Game() {
                 <div
                   className="absolute left-1/2 z-10"
                   ref={localPanelRef}
-                  style={{ bottom: '4px', transform: 'translateX(-50%)', maxWidth: '340px', width: '85%' }}
+                  style={{ bottom: 'max(4px, env(safe-area-inset-bottom, 4px))', transform: 'translateX(-50%)', maxWidth: '340px', width: '85%' }}
                 >
                   <PlayerPanel
                     playerId={user.uid}

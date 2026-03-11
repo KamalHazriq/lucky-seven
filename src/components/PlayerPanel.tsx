@@ -214,13 +214,9 @@ function PlayerPanel({
           </span>
         )}
         {isCurrentTurn && (
-          <motion.span
-            animate={{ opacity: [1, 0.5, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="ml-auto text-xs font-medium text-emerald-400"
-          >
+          <span className="ml-auto text-xs font-medium text-emerald-400 animate-pulse motion-reduce:animate-none">
             {isLocalPlayer ? 'Your turn' : 'Playing...'}
-          </motion.span>
+          </span>
         )}
         {/* Player-level selection indicator (rearrange) */}
         {isPlayerTarget && (
@@ -258,7 +254,7 @@ function PlayerPanel({
           }
 
           const slotWrapper = (child: React.ReactNode) => (
-            <div key={i} className="relative">
+            <div key={i} className="relative" data-slot={i}>
               {child}
 
               {/* Effect overlay (action highlights) */}

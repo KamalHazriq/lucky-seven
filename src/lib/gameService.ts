@@ -107,7 +107,7 @@ function buildEndTurnUpdates(
     actionVersion: game.actionVersion + 1,
     lastActionAt: now,
     turnStartAt: shouldFinish ? 0 : now,
-    log: arrayUnion(logEntry(logMsg)),
+    log: boundLog(game.log, logEntry(logMsg)),
   }
 
   if (shouldFinish) {
@@ -354,7 +354,7 @@ export async function drawFromPile(gameId: string): Promise<void> {
       turnPhase: 'action',
       actionVersion: game.actionVersion + 1,
       lastActionAt: Date.now(),
-      log: arrayUnion(logEntry(`${pName} drew from the pile`)),
+      log: boundLog(game.log, logEntry(`${pName} drew from the pile`)),
     })
   })
 }
@@ -383,7 +383,7 @@ export async function takeFromDiscard(gameId: string): Promise<void> {
       turnPhase: 'action',
       actionVersion: game.actionVersion + 1,
       lastActionAt: Date.now(),
-      log: arrayUnion(logEntry(`${pName} took from discard`)),
+      log: boundLog(game.log, logEntry(`${pName} took from discard`)),
     })
   })
 }
@@ -1060,7 +1060,7 @@ export async function skipTurn(gameId: string, expectedActionVersion: number): P
           actionVersion: game.actionVersion + 1,
           lastActionAt: now,
           turnStartAt: 0,
-          log: arrayUnion(logEntry(`${pd.displayName} was AFK-kicked. Not enough players — game over.`)),
+          log: boundLog(game.log, logEntry(`${pd.displayName} was AFK-kicked. Not enough players — game over.`)),
         })
       } else {
         const idx = game.playerOrder.indexOf(currentPid)
@@ -1075,7 +1075,7 @@ export async function skipTurn(gameId: string, expectedActionVersion: number): P
           actionVersion: game.actionVersion + 1,
           lastActionAt: now,
           turnStartAt: now,
-          log: arrayUnion(logEntry(`${pd.displayName} was AFK-kicked (2 timeouts).`)),
+          log: boundLog(game.log, logEntry(`${pd.displayName} was AFK-kicked (2 timeouts).`)),
           ...(game.hostId === currentPid ? { hostId: newOrder[0] } : {}),
         })
       }
@@ -1093,7 +1093,7 @@ export async function skipTurn(gameId: string, expectedActionVersion: number): P
         actionVersion: game.actionVersion + 1,
         lastActionAt: now,
         turnStartAt: shouldFinish ? 0 : now,
-        log: arrayUnion(logEntry(`${pd.displayName}'s turn was skipped (AFK).`)),
+        log: boundLog(game.log, logEntry(`${pd.displayName}'s turn was skipped (AFK).`)),
       }
       if (shouldFinish) {
         updates.status = 'finished'

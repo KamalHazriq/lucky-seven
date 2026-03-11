@@ -81,6 +81,10 @@ export default function DrawnCardModal({
           onClick={handleBackdropClick}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="drawn-card-modal-title"
+            aria-describedby="drawn-card-modal-desc"
             initial={{ scale: 0.85, y: 30, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.88, y: 20, opacity: 0 }}
@@ -88,6 +92,12 @@ export default function DrawnCardModal({
             className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Screen-reader card description — hidden visually, always up-to-date */}
+            {card && (
+              <p id="drawn-card-modal-desc" className="sr-only">
+                {`You drew the ${card.isJoker ? 'Joker' : `${card.rank} of ${card.suit}`}. Choose to swap it with one of your cards, discard it${effectInfo ? `, or use its ${effectInfo.label} power` : ''}.`}
+              </p>
+            )}
             {/* Close button — behavior differs by source */}
             {canCancel ? (
               <button
@@ -109,7 +119,7 @@ export default function DrawnCardModal({
               </button>
             )}
 
-            <h3 className="text-center text-lg font-semibold text-slate-200 mb-4">
+            <h3 id="drawn-card-modal-title" className="text-center text-lg font-semibold text-slate-200 mb-4">
               You drew:
             </h3>
 
