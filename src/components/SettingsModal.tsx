@@ -304,8 +304,8 @@ export default function SettingsModal({
                 </section>
               )}
 
-              {/* ─── Vote Kick ─── */}
-              {onVoteKick && otherPlayers && otherPlayers.length > 0 && (
+              {/* ─── Vote Kick — only available with 3+ players ─── */}
+              {onVoteKick && otherPlayers && otherPlayers.length >= 2 && (
                 <section>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Vote to Kick</h4>
                   <div className="space-y-1.5">

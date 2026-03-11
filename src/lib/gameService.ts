@@ -1067,6 +1067,8 @@ export async function skipTurn(gameId: string, expectedActionVersion: number): P
     if (game.actionVersion !== expectedActionVersion) return
     if (!game.currentTurnPlayerId) return
     if (game.status !== 'active' && game.status !== 'ending') return
+    // Don't skip during an active vote kick — timer is paused
+    if (game.voteKick?.active) return
 
     const currentPid = game.currentTurnPlayerId
     const playerSnap = await tx.get(playerRef(gameId, currentPid))
@@ -1154,6 +1156,7 @@ export async function initiateVoteKick(gameId: string, targetPlayerId: string): 
     const game = gameSnap.data() as GameDoc
 
     if (game.status !== 'active' && game.status !== 'ending') throw new Error('Game not active')
+    if (game.playerOrder.length < 3) throw new Error('Vote kick requires at least 3 players')
     if (!game.playerOrder.includes(user.uid)) throw new Error('You are not in this game')
     if (!game.playerOrder.includes(targetPlayerId)) throw new Error('Target is not in this game')
     if (user.uid === targetPlayerId) throw new Error('Cannot vote to kick yourself')
@@ -1162,62 +1165,11 @@ export async function initiateVoteKick(gameId: string, targetPlayerId: string): 
     const targetSnap = await tx.get(playerRef(gameId, targetPlayerId))
     const targetPd = targetSnap.data() as PlayerDoc
 
-    // Majority = more than half of remaining players (excluding the target)
+    // Majority = more than half of non-target players
     const voterCount = game.playerOrder.length - 1 // exclude target
     const requiredVotes = Math.ceil(voterCount / 2)
-    const initialVotes = [user.uid] // initiator auto-votes yes
 
-    // With 2 players (voterCount=1, requiredVotes=1) the threshold is immediately met —
-    // execute the kick in the same transaction rather than waiting for a castVoteKick
-    // call that can never come (the only other player is the target).
-    if (initialVotes.length >= requiredVotes) {
-      await tx.get(privateRef(gameId, targetPlayerId)) // read before write (Firestore rule)
-      const newOrder = game.playerOrder.filter((pid) => pid !== targetPlayerId)
-      const now = Date.now()
-
-      if (newOrder.length < 2) {
-        txHistory(tx, gameId, `${targetPd.displayName} was kicked by vote. Not enough players — game over.`)
-        tx.update(gameRef(gameId), {
-          status: 'finished',
-          currentTurnPlayerId: null,
-          turnPhase: null,
-          playerOrder: newOrder,
-          voteKick: null,
-          actionVersion: game.actionVersion + 1,
-          lastActionAt: now,
-          turnStartAt: 0,
-          log: boundLog(game.log, logEntry(`${targetPd.displayName} was kicked by vote. Not enough players — game over.`)),
-        })
-      } else {
-        txHistory(tx, gameId, `${targetPd.displayName} was kicked by vote.`)
-        const updates: Record<string, unknown> = {
-          playerOrder: newOrder,
-          voteKick: null,
-          actionVersion: game.actionVersion + 1,
-          lastActionAt: now,
-          log: boundLog(game.log, logEntry(`${targetPd.displayName} was kicked by vote.`)),
-        }
-        // If kicked player's turn, advance
-        if (game.currentTurnPlayerId === targetPlayerId) {
-          const idx = game.playerOrder.indexOf(targetPlayerId)
-          const nextIdx = idx % newOrder.length
-          updates.currentTurnPlayerId = newOrder[nextIdx]
-          updates.turnPhase = 'draw'
-          updates.turnStartAt = now
-        }
-        // If kicked player was host, transfer
-        if (game.hostId === targetPlayerId) {
-          updates.hostId = newOrder[0]
-        }
-        tx.update(gameRef(gameId), updates)
-      }
-
-      tx.update(playerRef(gameId, targetPlayerId), { connected: false, afkStrikes: 0 })
-      tx.update(privateRef(gameId, targetPlayerId), { drawnCard: null, drawnCardSource: null })
-      return
-    }
-
-    // More than 2 players — create the vote and wait for others to cast
+    const now = Date.now()
     txHistory(tx, gameId, `Vote to kick ${targetPd.displayName} started.`)
     tx.update(gameRef(gameId), {
       voteKick: {
@@ -1225,11 +1177,13 @@ export async function initiateVoteKick(gameId: string, targetPlayerId: string): 
         targetId: targetPlayerId,
         targetName: targetPd.displayName,
         startedBy: user.uid,
-        createdAt: Date.now(),
-        votes: initialVotes,
+        createdAt: now,
+        votes: [user.uid], // initiator auto-votes yes
         requiredVotes,
       },
-      log: arrayUnion(logEntry(`Vote to kick ${targetPd.displayName} started.`)),
+      // Increment actionVersion so the running turn timer is invalidated during the vote
+      actionVersion: game.actionVersion + 1,
+      log: boundLog(game.log, logEntry(`Vote to kick ${targetPd.displayName} started.`)),
     })
   })
 }
@@ -1251,11 +1205,16 @@ export async function castVoteKick(gameId: string, voteYes: boolean): Promise<vo
     const targetPid = game.voteKick.targetId
 
     if (!voteYes) {
-      // Vote no — cancel the entire vote
+      // Vote no — cancel the entire vote, restore turn timer
+      const now = Date.now()
+      const voteDuration = now - (game.voteKick.createdAt ?? now)
       txHistory(tx, gameId, `Vote to kick ${game.voteKick.targetName} failed.`)
       tx.update(gameRef(gameId), {
         voteKick: null,
-        log: arrayUnion(logEntry(`Vote to kick ${game.voteKick.targetName} failed.`)),
+        actionVersion: game.actionVersion + 1,
+        // Give the active player back the time lost while the vote was running
+        turnStartAt: (game.turnStartAt ?? 0) + voteDuration,
+        log: boundLog(game.log, logEntry(`Vote to kick ${game.voteKick.targetName} failed.`)),
       })
       return
     }
@@ -1337,10 +1296,14 @@ export async function cancelVoteKick(gameId: string): Promise<void> {
       throw new Error('Only the vote initiator or host can cancel')
     }
 
+    const now = Date.now()
+    const voteDuration = now - (game.voteKick.createdAt ?? now)
     txHistory(tx, gameId, `Vote to kick ${game.voteKick.targetName} was cancelled.`)
     tx.update(gameRef(gameId), {
       voteKick: null,
-      log: arrayUnion(logEntry(`Vote to kick ${game.voteKick.targetName} was cancelled.`)),
+      actionVersion: game.actionVersion + 1,
+      turnStartAt: (game.turnStartAt ?? 0) + voteDuration,
+      log: boundLog(game.log, logEntry(`Vote to kick ${game.voteKick.targetName} was cancelled.`)),
     })
   })
 }

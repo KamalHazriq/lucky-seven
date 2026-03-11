@@ -29,6 +29,7 @@ export function useTurnTimer(
   const currentTurnPlayerId = game?.currentTurnPlayerId ?? null
   const actionVersion = game?.actionVersion ?? 0
   const isActive = game?.status === 'active' || game?.status === 'ending'
+  const voteKickActive = game?.voteKick?.active ?? false
 
   // Reset skip-fired flag only on actual turn change (new player or new timer start)
   useEffect(() => {
@@ -44,6 +45,8 @@ export function useTurnTimer(
     }
 
     const tick = () => {
+      // Freeze display during vote kick — timer resumes when vote resolves
+      if (voteKickActive) return
       const elapsed = (Date.now() - turnStartAt) / 1000
       // Clamp to [0, turnSeconds] to handle clock-skew between devices
       const left = Math.min(turnSeconds, Math.max(0, turnSeconds - elapsed))
@@ -53,11 +56,13 @@ export function useTurnTimer(
     tick() // immediate first tick
     const id = setInterval(tick, 250) // update 4x/sec for smooth UI
     return () => clearInterval(id)
-  }, [turnSeconds, turnStartAt, currentTurnPlayerId, isActive])
+  }, [turnSeconds, turnStartAt, currentTurnPlayerId, isActive, voteKickActive])
 
   // Auto-skip trigger when timer expires
   const handleExpiry = useCallback(async () => {
     if (!gameId || skipFiredRef.current) return
+    // Don't auto-skip during an active vote kick
+    if (voteKickActive) return
     // Elapsed guard: prevent stale re-fires after a turn change resets turnStartAt.
     // If the new turn just started (elapsed << turnSeconds) this is a double-fire artifact.
     const elapsed = turnStartAt ? (Date.now() - turnStartAt) / 1000 : 0
@@ -69,13 +74,13 @@ export function useTurnTimer(
       // Expected: another client may have already skipped
       console.debug('Auto-skip contention (expected):', e)
     }
-  }, [gameId, actionVersion, turnStartAt, turnSeconds])
+  }, [gameId, actionVersion, turnStartAt, turnSeconds, voteKickActive])
 
   useEffect(() => {
-    if (remaining !== null && remaining <= 0 && turnSeconds > 0 && isActive && currentTurnPlayerId) {
+    if (remaining !== null && remaining <= 0 && turnSeconds > 0 && isActive && currentTurnPlayerId && !voteKickActive) {
       handleExpiry()
     }
-  }, [remaining, turnSeconds, isActive, currentTurnPlayerId, handleExpiry])
+  }, [remaining, turnSeconds, isActive, currentTurnPlayerId, voteKickActive, handleExpiry])
 
   return {
     remaining,
