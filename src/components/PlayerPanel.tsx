@@ -229,7 +229,7 @@ function PlayerPanel({
         )}
       </div>
 
-      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-3 sm:gap-4 px-2 sm:px-3'} justify-center`} style={!isLocalPlayer ? { minWidth: '190px' } : undefined}>
+      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-2 sm:gap-3'} justify-center overflow-hidden`}>
         {[0, 1, 2].map((i) => {
           const card = hand[i] as Card | undefined
           const knownCard = known[String(i)]

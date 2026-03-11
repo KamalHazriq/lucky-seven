@@ -1216,7 +1216,7 @@ export default function Game() {
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
                         width: otherPlayers.length <= 4 ? '42%' : otherPlayers.length <= 6 ? '38%' : '36%',
-                        minWidth: '185px',
+                        minWidth: otherPlayers.length <= 5 ? '185px' : '150px',
                         overflow: 'visible',
                       }}
                     >

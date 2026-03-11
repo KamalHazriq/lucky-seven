@@ -83,6 +83,16 @@ export const SFX = {
     setTimeout(() => beep(784, 0.2, 'sine', 0.06), 240)
   },
 
+  /** Victory celebration — longer ascending fanfare with harmonics */
+  celebrate: () => {
+    beep(523, 0.14, 'sine', 0.07)
+    setTimeout(() => beep(659, 0.14, 'sine', 0.07), 130)
+    setTimeout(() => beep(784, 0.14, 'sine', 0.07), 260)
+    setTimeout(() => beep(1047, 0.25, 'sine', 0.08), 400)
+    setTimeout(() => beep(1047, 0.12, 'triangle', 0.04), 420)
+    setTimeout(() => beep(1319, 0.3, 'sine', 0.06), 560)
+  },
+
   /** Error / invalid action */
   error:   () => { beep(200, 0.1, 'square', 0.05); setTimeout(() => beep(160, 0.15, 'square', 0.04), 100) },
 }
