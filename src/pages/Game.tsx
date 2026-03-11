@@ -917,6 +917,7 @@ export default function Game() {
     onSelectionClick: handleSelectionClick,
     onPlayerSelect: handlePlayerSelect,
     selectedTarget: selection.firstTarget,
+    selectedSecondTarget: selection.secondTarget,
   } : {}
 
   return (
