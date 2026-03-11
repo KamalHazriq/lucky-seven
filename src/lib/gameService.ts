@@ -234,10 +234,25 @@ export async function joinGame(
     )
     if (nameConflict) throw new Error('Name already taken in this lobby')
 
-    // Check color uniqueness
+    // Check color uniqueness if explicitly provided
     if (colorKey != null) {
       const colorConflict = existingPlayers.find((p) => p.colorKey === colorKey)
       if (colorConflict) throw new Error(`Color already taken by ${colorConflict.displayName}`)
+    }
+
+    // Auto-assign a random untaken color if none provided
+    let assignedColorKey = colorKey
+    if (assignedColorKey == null) {
+      const takenKeys = new Set(
+        existingPlayers.map((p) => p.colorKey).filter((k): k is number => k != null),
+      )
+      const available: number[] = []
+      for (let i = 0; i < 16; i++) {
+        if (!takenKeys.has(i)) available.push(i)
+      }
+      if (available.length > 0) {
+        assignedColorKey = available[Math.floor(Math.random() * available.length)]
+      }
     }
 
     tx.update(gameRef(gameId), {
@@ -251,7 +266,7 @@ export async function joinGame(
       connected: true,
       locks: [false, false, false],
       lockedBy: [...EMPTY_LOCKED_BY],
-      ...(colorKey != null ? { colorKey } : {}),
+      ...(assignedColorKey != null ? { colorKey: assignedColorKey } : {}),
     } satisfies PlayerDoc)
 
     tx.set(privateRef(gameId, user.uid), {
@@ -319,6 +334,27 @@ export async function startGame(gameId: string): Promise<void> {
       spentPowerCardIds: {},
       voteKick: null,
       log: boundLog(game.log, logEntry('Game started! Cards dealt.')),
+    })
+  })
+}
+
+// ─── Update Game Settings (host-only, lobby only) ──────────────
+export async function updateGameSettings(
+  gameId: string,
+  settings: Partial<GameSettings>,
+): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) throw new Error('Game not found')
+    const game = gameSnap.data() as GameDoc
+
+    if (game.hostId !== user.uid) throw new Error('Only the host can change settings')
+    if (game.status !== 'lobby') throw new Error('Settings can only be changed in the lobby')
+
+    tx.update(gameRef(gameId), {
+      settings: { ...game.settings, ...settings },
     })
   })
 }
@@ -397,6 +433,8 @@ export async function cancelDraw(gameId: string): Promise<void> {
     const game = gameSnap.data() as GameDoc
     const privSnap = await tx.get(privateRef(gameId, user.uid))
     const priv = privSnap.data() as PrivatePlayerDoc
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pd = playerSnap.data() as PlayerDoc
 
     if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
     if (game.turnPhase !== 'action') throw new Error('Not in action phase')
@@ -414,12 +452,15 @@ export async function cancelDraw(gameId: string): Promise<void> {
 
     if (source === 'discard') {
       // Put card back on discard pile
+      const cancelMsg = `${pd.displayName} returned the card to discard`
       tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
+      txHistory(tx, gameId, cancelMsg)
       tx.update(gameRef(gameId), {
         discardTop: cardToReturn,
         turnPhase: 'draw',
         actionVersion: game.actionVersion + 1,
         lastActionAt: Date.now(),
+        log: boundLog(game.log, logEntry(cancelMsg)),
       })
     }
   })
@@ -1124,7 +1165,59 @@ export async function initiateVoteKick(gameId: string, targetPlayerId: string): 
     // Majority = more than half of remaining players (excluding the target)
     const voterCount = game.playerOrder.length - 1 // exclude target
     const requiredVotes = Math.ceil(voterCount / 2)
+    const initialVotes = [user.uid] // initiator auto-votes yes
 
+    // With 2 players (voterCount=1, requiredVotes=1) the threshold is immediately met —
+    // execute the kick in the same transaction rather than waiting for a castVoteKick
+    // call that can never come (the only other player is the target).
+    if (initialVotes.length >= requiredVotes) {
+      await tx.get(privateRef(gameId, targetPlayerId)) // read before write (Firestore rule)
+      const newOrder = game.playerOrder.filter((pid) => pid !== targetPlayerId)
+      const now = Date.now()
+
+      if (newOrder.length < 2) {
+        txHistory(tx, gameId, `${targetPd.displayName} was kicked by vote. Not enough players — game over.`)
+        tx.update(gameRef(gameId), {
+          status: 'finished',
+          currentTurnPlayerId: null,
+          turnPhase: null,
+          playerOrder: newOrder,
+          voteKick: null,
+          actionVersion: game.actionVersion + 1,
+          lastActionAt: now,
+          turnStartAt: 0,
+          log: boundLog(game.log, logEntry(`${targetPd.displayName} was kicked by vote. Not enough players — game over.`)),
+        })
+      } else {
+        txHistory(tx, gameId, `${targetPd.displayName} was kicked by vote.`)
+        const updates: Record<string, unknown> = {
+          playerOrder: newOrder,
+          voteKick: null,
+          actionVersion: game.actionVersion + 1,
+          lastActionAt: now,
+          log: boundLog(game.log, logEntry(`${targetPd.displayName} was kicked by vote.`)),
+        }
+        // If kicked player's turn, advance
+        if (game.currentTurnPlayerId === targetPlayerId) {
+          const idx = game.playerOrder.indexOf(targetPlayerId)
+          const nextIdx = idx % newOrder.length
+          updates.currentTurnPlayerId = newOrder[nextIdx]
+          updates.turnPhase = 'draw'
+          updates.turnStartAt = now
+        }
+        // If kicked player was host, transfer
+        if (game.hostId === targetPlayerId) {
+          updates.hostId = newOrder[0]
+        }
+        tx.update(gameRef(gameId), updates)
+      }
+
+      tx.update(playerRef(gameId, targetPlayerId), { connected: false, afkStrikes: 0 })
+      tx.update(privateRef(gameId, targetPlayerId), { drawnCard: null, drawnCardSource: null })
+      return
+    }
+
+    // More than 2 players — create the vote and wait for others to cast
     txHistory(tx, gameId, `Vote to kick ${targetPd.displayName} started.`)
     tx.update(gameRef(gameId), {
       voteKick: {
@@ -1133,7 +1226,7 @@ export async function initiateVoteKick(gameId: string, targetPlayerId: string): 
         targetName: targetPd.displayName,
         startedBy: user.uid,
         createdAt: Date.now(),
-        votes: [user.uid], // initiator auto-votes yes
+        votes: initialVotes,
         requiredVotes,
       },
       log: arrayUnion(logEntry(`Vote to kick ${targetPd.displayName} started.`)),
