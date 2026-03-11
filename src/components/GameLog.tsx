@@ -14,10 +14,14 @@ interface GameLogProps {
 export default function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  // Track the actual last entry (not just length) — bounded log replaces entries
+  // at cap so length stays at 50 while content changes.
+  const lastLogKey = log.length > 0 ? `${log[log.length - 1].ts}-${log[log.length - 1].msg.slice(0, 24)}` : ''
+
   useEffect(() => {
     if (document.hidden) return
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [log.length])
+  }, [lastLogKey])
 
   // Build player info list for name matching
   const playerInfos = useMemo(() =>

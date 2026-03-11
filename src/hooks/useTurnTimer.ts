@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { skipTurn } from '../lib/gameService'
 import type { GameDoc } from '../lib/types'
 
+/** Grace buffer (seconds) added to the timer before auto-skip fires.
+ *  Accounts for client clock skew — `turnStartAt` is set by the acting
+ *  client's `Date.now()`, so a receiver whose clock is ahead sees a
+ *  shorter timer. 3s covers typical drift between mobile devices.       */
+const SKIP_GRACE_SECONDS = 3
+
 interface TurnTimerState {
   /** Seconds remaining (null if timer disabled or no active turn) */
   remaining: number | null
@@ -44,6 +50,11 @@ export function useTurnTimer(
       return
     }
 
+    // ─── Critical: immediately set remaining to a positive value ───
+    // This prevents stale `remaining = 0` from a previous turn from
+    // triggering the expiry effect before this interval has a chance to tick.
+    setRemaining(turnSeconds)
+
     const tick = () => {
       // Freeze display during vote kick — timer resumes when vote resolves
       if (voteKickActive) return
@@ -53,9 +64,14 @@ export function useTurnTimer(
       setRemaining(Math.ceil(left))
     }
 
-    tick() // immediate first tick
+    // First tick after a short delay so React has time to process the
+    // immediate `setRemaining(turnSeconds)` above — avoids a 0→full→actual flash
+    const firstTickId = setTimeout(tick, 60)
     const id = setInterval(tick, 250) // update 4x/sec for smooth UI
-    return () => clearInterval(id)
+    return () => {
+      clearTimeout(firstTickId)
+      clearInterval(id)
+    }
   }, [turnSeconds, turnStartAt, currentTurnPlayerId, isActive, voteKickActive])
 
   // Auto-skip trigger when timer expires
@@ -63,10 +79,12 @@ export function useTurnTimer(
     if (!gameId || skipFiredRef.current) return
     // Don't auto-skip during an active vote kick
     if (voteKickActive) return
-    // Elapsed guard: prevent stale re-fires after a turn change resets turnStartAt.
-    // If the new turn just started (elapsed << turnSeconds) this is a double-fire artifact.
+    // Elapsed guard with grace buffer:
+    // Only skip if *real* elapsed time exceeds the full turn duration.
+    // The grace buffer absorbs client clock-skew (turnStartAt is set by the
+    // acting client's Date.now(), not a server timestamp).
     const elapsed = turnStartAt ? (Date.now() - turnStartAt) / 1000 : 0
-    if (elapsed < turnSeconds * 0.9) return
+    if (elapsed < turnSeconds + SKIP_GRACE_SECONDS) return
     skipFiredRef.current = true
     try {
       await skipTurn(gameId, actionVersion)

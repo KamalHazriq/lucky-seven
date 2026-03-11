@@ -256,6 +256,8 @@ export default function Home() {
                   <label className="block text-sm font-medium text-slate-300 mb-1">Your Name</label>
                   <input
                     type="text"
+                    name="playerName"
+                    autoComplete="off"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter your name"
@@ -453,6 +455,8 @@ export default function Home() {
                   <label className="block text-sm font-medium text-slate-300 mb-1">Your Name</label>
                   <input
                     type="text"
+                    name="playerName"
+                    autoComplete="off"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter your name"

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -7,8 +7,94 @@ import { useGame } from '../hooks/useGame'
 import { subscribeReveals, revealHand, writeGameSummary, playAgain, joinGame } from '../lib/gameService'
 import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
+import { playSfx } from '../lib/sfx'
 import type { PlayerScore } from '../lib/types'
 
+// ─── Confetti (lightweight, no external deps) ──────────────────
+interface Particle {
+  x: number; y: number; vx: number; vy: number
+  color: string; size: number; rotation: number; rv: number
+  opacity: number
+}
+
+function useConfetti(trigger: boolean) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  const fire = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const colors = ['#fbbf24', '#f59e0b', '#ef4444', '#10b981', '#6366f1', '#ec4899', '#8b5cf6', '#14b8a6']
+    const particles: Particle[] = []
+
+    // Spawn two bursts from left and right
+    for (let burst = 0; burst < 2; burst++) {
+      const originX = burst === 0 ? canvas.width * 0.25 : canvas.width * 0.75
+      const originY = canvas.height * 0.35
+      for (let i = 0; i < 80; i++) {
+        const angle = (Math.random() - 0.5) * Math.PI * 1.2 - Math.PI / 2
+        const speed = 4 + Math.random() * 8
+        particles.push({
+          x: originX,
+          y: originY,
+          vx: Math.cos(angle) * speed * (burst === 0 ? 1 : -1) * (0.3 + Math.random()),
+          vy: Math.sin(angle) * speed - 2,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          size: 3 + Math.random() * 5,
+          rotation: Math.random() * 360,
+          rv: (Math.random() - 0.5) * 12,
+          opacity: 1,
+        })
+      }
+    }
+
+    let animId: number
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      let alive = false
+      for (const p of particles) {
+        p.vy += 0.15 // gravity
+        p.x += p.vx
+        p.y += p.vy
+        p.vx *= 0.99
+        p.rotation += p.rv
+        p.opacity -= 0.006
+        if (p.opacity <= 0) continue
+        alive = true
+        ctx.save()
+        ctx.globalAlpha = p.opacity
+        ctx.translate(p.x, p.y)
+        ctx.rotate((p.rotation * Math.PI) / 180)
+        ctx.fillStyle = p.color
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6)
+        ctx.restore()
+      }
+      if (alive) {
+        animId = requestAnimationFrame(animate)
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+      }
+    }
+    animId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(animId)
+  }, [])
+
+  useEffect(() => {
+    if (trigger) {
+      const cleanup = fire()
+      return cleanup
+    }
+  }, [trigger, fire])
+
+  return canvasRef
+}
+
+// ─── Component ──────────────────────────────────────────────────
 export default function Results() {
   const { gameId } = useParams<{ gameId: string }>()
   const { user } = useAuth()
@@ -18,6 +104,7 @@ export default function Results() {
   const [playAgainBusy, setPlayAgainBusy] = useState(false)
   const summaryWritten = useRef(false)
   const autoJoinedRef = useRef(false)
+  const celebratedRef = useRef(false)
 
   // Subscribe to reveals in real-time (players reveal asynchronously)
   useEffect(() => {
@@ -91,12 +178,37 @@ export default function Results() {
   }
   const isSharedWin = winnerIds.size > 1
 
+  // Play celebration sound once when all reveals are in
+  if (allRevealed && !celebratedRef.current) {
+    celebratedRef.current = true
+    // Small delay so the UI renders first
+    setTimeout(() => playSfx('celebrate'), 400)
+  }
+
+  // Confetti canvas — fires when all scores are revealed
+  const confettiRef = useConfetti(allRevealed)
+
+  // Winner names for display
+  const winnerNames = allRevealed
+    ? Array.from(winnerIds).map((id) => {
+        const s = scores.find((sc) => sc.playerId === id)
+        return s?.displayName ?? 'Unknown'
+      })
+    : []
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      {/* Confetti canvas — full viewport overlay */}
+      <canvas
+        ref={confettiRef}
+        className="fixed inset-0 pointer-events-none z-50"
+        style={{ width: '100vw', height: '100vh' }}
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-2xl"
+        className="w-full max-w-2xl relative z-10"
       >
         <div className="text-center mb-6">
           <motion.h1
@@ -115,16 +227,25 @@ export default function Results() {
               Waiting for all players to reveal... ({scores.length}/{totalPlayers})
             </motion.p>
           )}
-          {allRevealed && isSharedWin && (
-            <p className="text-amber-400 text-sm font-medium">
-              Shared win! {Array.from(winnerIds).map((id) => {
-                const s = scores.find((sc) => sc.playerId === id)
-                return s?.displayName ?? 'Unknown'
-              }).join(' & ')} tied!
-            </p>
+          {allRevealed && winnerNames.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {isSharedWin ? (
+                <p className="text-amber-400 text-base font-semibold">
+                  🏆 Shared Win! {winnerNames.join(' & ')} are the champions! 🏆
+                </p>
+              ) : (
+                <p className="text-amber-400 text-base font-semibold">
+                  🏆 {winnerNames[0]} wins! 🏆
+                </p>
+              )}
+            </motion.div>
           )}
           {allRevealed && game.endCalledBy && (
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-400 text-sm mt-1">
               Game ended by {players[game.endCalledBy]?.displayName ?? 'a player'}
             </p>
           )}

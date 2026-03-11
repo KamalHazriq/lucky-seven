@@ -328,6 +328,8 @@ export default function Lobby() {
                       <input
                         ref={nameRef}
                         type="text"
+                        name="playerName"
+                        autoComplete="off"
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value.slice(0, 12))}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false) }}
