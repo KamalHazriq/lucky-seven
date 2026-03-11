@@ -58,8 +58,9 @@ export function useChat(
     if (!gameId || !subscribed) return
     const unsub = subscribeChat(gameId, (msgs) => {
       setMessages(msgs)
-      // Track unread when chat is closed
-      if (!isOpenRef.current && msgs.length > prevMsgCountRef.current) {
+      // Track unread only when chat is closed AND tab is visible
+      // (document.hidden prevents inflated badge from background Firestore snapshots)
+      if (!isOpenRef.current && !document.hidden && msgs.length > prevMsgCountRef.current) {
         setUnreadCount((c) => c + (msgs.length - prevMsgCountRef.current))
       }
       prevMsgCountRef.current = msgs.length

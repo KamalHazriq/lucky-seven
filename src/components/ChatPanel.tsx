@@ -30,9 +30,10 @@ interface ChatPanelProps {
   localUserId: string
   onSend: (text: string) => void
   onClose: () => void
+  isDesktop?: boolean
 }
 
-export default function ChatPanel({ open, messages, localUserId, onSend, onClose }: ChatPanelProps) {
+export default function ChatPanel({ open, messages, localUserId, onSend, onClose, isDesktop: isDesktopProp }: ChatPanelProps) {
   const [text, setText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -44,9 +45,12 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
   const [showNewPill, setShowNewPill] = useState(false)
   const prevMsgCountRef = useRef(messages.length)
 
-  // Draggable position state (desktop only)
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768
+  // Draggable position state (desktop only) — use prop if provided, else snapshot fallback
+  const isDesktop = isDesktopProp ?? (typeof window !== 'undefined' && window.innerWidth >= 768)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(() => isDesktop ? loadChatPos() : null)
+  // Keep a ref in sync so handlePointerUp can read the latest pos without being in deps
+  const posRef = useRef(pos)
+  posRef.current = pos
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -73,8 +77,9 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
   const handlePointerUp = useCallback(() => {
     if (!dragRef.current) return
     dragRef.current = null
-    if (pos) saveChatPos(pos.x, pos.y)
-  }, [pos])
+    const p = posRef.current
+    if (p) saveChatPos(p.x, p.y)
+  }, []) // posRef is always current — no stale closure
 
   // ─── Scroll position tracking ────────────────────────────────
   const checkNearBottom = useCallback(() => {

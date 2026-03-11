@@ -125,7 +125,7 @@ function PlayerPanel({
   `, [isLocalPlayer, isCurrentTurn, panelDimmed, isPlayerTarget, perfMode])
 
   return (
-    <motion.div
+    <div
       className={panelClassName}
       style={panelStyle}
       onClick={isPlayerTarget ? () => onPlayerSelect?.(playerId) : undefined}
@@ -294,12 +294,10 @@ function PlayerPanel({
                 </motion.div>
               )}
 
-              {/* Selection mode: selectable pulse ring */}
+              {/* Selection mode: selectable pulse ring — CSS animation, no JS frame scheduling */}
               {inSelectionMode && slotSelectable && !isSelected && (
-                <motion.div
-                  animate={{ opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="absolute inset-0 rounded-xl pointer-events-none z-10"
+                <div
+                  className="absolute inset-0 rounded-xl pointer-events-none z-10 animate-pulse"
                   style={{
                     boxShadow: 'inset 0 0 0 2px rgba(251,191,36,0.6), 0 0 12px rgba(251,191,36,0.3)',
                   }}
@@ -376,7 +374,7 @@ function PlayerPanel({
           )
         })}
       </div>
-    </motion.div>
+    </div>
   )
 }
 

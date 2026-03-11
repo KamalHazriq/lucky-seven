@@ -871,9 +871,10 @@ export default function Game() {
     () => game.playerOrder.filter((pid) => pid !== user.uid),
     [game.playerOrder, user.uid],
   )
-  const currentTurnName = game.currentTurnPlayerId
-    ? players[game.currentTurnPlayerId]?.displayName ?? 'Unknown'
-    : null
+  const currentTurnName = useMemo(
+    () => game.currentTurnPlayerId ? (players[game.currentTurnPlayerId]?.displayName ?? 'Unknown') : null,
+    [game.currentTurnPlayerId, players],
+  )
 
   // Selection mode props — passed to all PlayerPanels
   const selectionProps = isSelecting ? {
@@ -1278,8 +1279,8 @@ export default function Game() {
             {/* Other players */}
             {otherPlayers.length > 0 && (
               <div className={`grid gap-3 mb-4 ${
-                otherPlayers.length === 1 ? 'grid-cols-1' :
-                otherPlayers.length <= 4 ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3' :
+                otherPlayers.length <= 2 ? 'grid-cols-1 sm:grid-cols-2' :
+                otherPlayers.length <= 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
                 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3'
               }`}>
                 {otherPlayers.map((pid) => (
@@ -1311,7 +1312,7 @@ export default function Game() {
             )}
 
             {/* Table area: Draw + Staging + Discard */}
-            <div className="flex items-center justify-center gap-6 mb-4 py-3">
+            <div className="flex items-center justify-center gap-6 mb-4 py-3" aria-busy={busy} aria-label="Card piles">
               <div className="text-center" ref={drawPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
                 <CardView
@@ -1421,6 +1422,9 @@ export default function Game() {
         {logPosition === 'bottom' && (
           <GameLog log={game.log} players={players} position="bottom" onOpenHistory={() => setHistoryOpen(true)} />
         )}
+
+        {/* Safe area padding for iOS home indicator */}
+        <div style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
 
         </div>{/* end of content wrapper for left-log layout */}
       </div>
@@ -1601,6 +1605,7 @@ export default function Game() {
         localUserId={user.uid}
         onSend={chat.send}
         onClose={chat.closeChat}
+        isDesktop={isDesktop}
       />
 
       <HistoryModal

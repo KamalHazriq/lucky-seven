@@ -51,6 +51,10 @@ const StagingSlot = memo(forwardRef<HTMLDivElement, StagingSlotProps>(
         <p className="text-[10px] text-slate-500 mb-1">In play</p>
         <AnimatePresence mode="wait">
           {active ? (
+            /* Shadow wrapper is static — keeps filter off the animated element */
+            <div style={perfMode ? undefined : {
+              filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.35)) drop-shadow(0 3px 8px rgba(0,0,0,0.2)) drop-shadow(0 0 12px rgba(251,191,36,0.12))',
+            }}>
             <motion.div
               key={`staged-${faceUp ? 'up' : 'down'}`}
               ref={scope}
@@ -64,9 +68,7 @@ const StagingSlot = memo(forwardRef<HTMLDivElement, StagingSlotProps>(
                 ? { opacity: SPRING_ENTRY, scale: SPRING_ENTRY, default: SPRING_EXIT }
                 : { opacity: SPRING_ENTRY, scale: SPRING_ENTRY, y: FLOAT_CONFIG, default: SPRING_EXIT }
               }
-              style={perfMode ? undefined : {
-                filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.35)) drop-shadow(0 3px 8px rgba(0,0,0,0.2)) drop-shadow(0 0 12px rgba(251,191,36,0.12))',
-              }}
+              style={{ willChange: 'transform, opacity' }}
             >
               <CardView
                 card={faceUp ? card : undefined}
@@ -75,6 +77,7 @@ const StagingSlot = memo(forwardRef<HTMLDivElement, StagingSlotProps>(
                 ownerColor={!faceUp ? ownerColor : undefined}
               />
             </motion.div>
+            </div>
           ) : (
             <motion.div
               key="empty-slot"

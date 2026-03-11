@@ -16,6 +16,7 @@ export default function GameLog({ log, players, position = 'bottom', onOpenHisto
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (document.hidden) return
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [log.length])
 

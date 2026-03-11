@@ -53,7 +53,14 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
             <div className="bg-slate-900/50 rounded-xl p-3 mb-4">
               <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
                 <span>Votes</span>
-                <span className="font-mono">{voteKick.votes.length}/{voteKick.requiredVotes}</span>
+                <span
+                  className="font-mono"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  aria-label={`${voteKick.votes.length} of ${voteKick.requiredVotes} votes`}
+                >
+                  {voteKick.votes.length}/{voteKick.requiredVotes}
+                </span>
               </div>
               <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
                 <motion.div
