@@ -64,6 +64,14 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ─── Developer Access (per-UID, written by Cloud Functions) ──
+      match /devAccess/{uid} {
+        // Only the dev user can read their own access doc
+        allow read: if request.auth != null && request.auth.uid == uid;
+        // Writes are admin-only (Cloud Functions use Admin SDK)
+        allow write: if false;
+      }
+
       // ─── Reveals (each player writes their own hand at game end) ──
       match /reveals/{playerId} {
         allow read: if request.auth != null;

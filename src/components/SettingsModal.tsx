@@ -30,6 +30,12 @@ interface SettingsModalProps {
   otherPlayers?: { id: string; name: string }[]
   /** Whether a vote is already in progress */
   voteKickActive?: boolean
+  /** Developer mode state */
+  isDevMode?: boolean
+  /** Callback to open dev mode activation modal */
+  onDevModeActivate?: () => void
+  /** Callback to deactivate dev mode */
+  onDevModeDeactivate?: () => void
 }
 
 const THEMES: { value: Theme; label: string; icon: string; desc: string }[] = [
@@ -54,6 +60,9 @@ export default function SettingsModal({
   onVoteKick,
   otherPlayers,
   voteKickActive = false,
+  isDevMode = false,
+  onDevModeActivate,
+  onDevModeDeactivate,
 }: SettingsModalProps) {
   const { theme, setTheme } = useTheme()
   const { reduced, pref, cycle } = useReducedMotion()
@@ -331,6 +340,47 @@ export default function SettingsModal({
                   </div>
                 </section>
               )}
+
+              {/* ─── Developer Mode ─── */}
+              <section className="pt-2 border-t border-slate-700/40">
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Developer</h4>
+                {isDevMode ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-900/20 border border-amber-600/30">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-xs font-semibold text-amber-300">Developer Mode Active</span>
+                    </div>
+                    {onDevModeDeactivate && (
+                      <motion.button
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={onDevModeDeactivate}
+                        className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-red-900/20 hover:border-red-700/30 transition-colors cursor-pointer"
+                      >
+                        <span className="text-xs">🔒</span>
+                        <span className="text-xs font-medium text-slate-400">Deactivate Dev Mode</span>
+                      </motion.button>
+                    )}
+                  </div>
+                ) : (
+                  onDevModeActivate && (
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={onDevModeActivate}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-amber-900/10 hover:border-amber-700/30 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">{"\u{1F6E0}\uFE0F"}</span>
+                        <span className="text-sm font-medium text-slate-400">Activate Developer Mode</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-800 px-2 py-1 rounded-lg">
+                        Code Required
+                      </span>
+                    </motion.button>
+                  )
+                )}
+              </section>
 
               {/* ─── Leave Game ─── */}
               {onLeaveGame && (

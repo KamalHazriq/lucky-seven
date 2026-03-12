@@ -54,6 +54,8 @@ interface PlayerPanelProps {
   stampOverlay?: 'lock' | 'unlock' | null
   /** Lobby-chosen color key (index into LOBBY_COLORS) — overrides seat color */
   colorKey?: number | null
+  /** Dev mode: all players' private data (when dev can see all cards) */
+  devAllHands?: Record<string, import('../lib/types').PrivatePlayerDoc> | null
 }
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
@@ -88,12 +90,17 @@ function PlayerPanel({
   selectedSecondTarget,
   stampOverlay,
   colorKey,
+  devAllHands,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
   const color = useMemo(() => getPlayerColor(seatIndex, colorKey), [seatIndex, colorKey])
   const perfMode = usePerformanceMode()
+
+  // Dev mode: if we have all hands data, use it for non-local players
+  const devHand = devAllHands?.[playerId]?.hand
+  const devDrawnCard = devAllHands?.[playerId]?.drawnCard
 
   const inSelectionMode = selectionTargetType != null
 
@@ -353,6 +360,21 @@ function PlayerPanel({
                 highlight={(slotClickable && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable) || isSelected || isSecondSelected}
                 disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable && !isSelected && !isSecondSelected)}
                 label={`#${i + 1}`}
+              />,
+            )
+          }
+
+          // Dev mode: show all cards face-up for non-local players
+          if (!isLocalPlayer && devHand && devHand[i]) {
+            return slotWrapper(
+              <CardView
+                card={devHand[i]}
+                faceUp
+                locked={isLocked}
+                lockInfo={isLocked ? lockInfo : null}
+                size="sm"
+                label={`#${i + 1}`}
+                ownerColor={color.solid}
               />,
             )
           }

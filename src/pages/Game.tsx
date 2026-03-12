@@ -62,6 +62,9 @@ import { useRemoteSfx } from '../hooks/useRemoteSfx'
 import { copyToClipboard } from '../lib/share'
 import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
+import { useDevMode } from '../hooks/useDevMode'
+import DevModeModal from '../components/DevModeModal'
+import DevPanel from '../components/DevPanel'
 
 type ModalState =
   | { type: 'none' }
@@ -109,12 +112,14 @@ export default function Game() {
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showDevModal, setShowDevModal] = useState(false)
   const revealedRef = useRef(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
   const { uiMode, toggleMode: toggleUiMode, isDesktop } = useUiMode()
   const { position: logPosition, toggle: toggleLogPosition, canSidebar: canLogSidebar } = useLogPosition()
   const turnTimer = useTurnTimer(game, gameId, user?.uid)
+  const devMode = useDevMode(gameId, user?.uid)
   const { flyingCard, triggerFly, queueFly, flushQueue, clearFly } = useFlyingCard()
   const {
     choreo,
@@ -1237,6 +1242,7 @@ export default function Game() {
                         swapLabels={swapLabels[pid] ?? null}
                         stampOverlay={stampOverlays[pid] ?? null}
                         {...selectionProps}
+                        devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                       />
                       {game.currentTurnPlayerId === pid && turnTimer.remaining !== null && (
                         <div className="mt-1 px-1">
@@ -1342,6 +1348,7 @@ export default function Game() {
                       swapLabels={swapLabels[pid] ?? null}
                       stampOverlay={stampOverlays[pid] ?? null}
                       {...selectionProps}
+                      devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                     />
                     {game.currentTurnPlayerId === pid && turnTimer.remaining !== null && (
                       <div className="mt-1 px-1">
@@ -1586,6 +1593,9 @@ export default function Game() {
         }}
         otherPlayers={otherPlayers.map((pid) => ({ id: pid, name: players[pid]?.displayName ?? 'Unknown' }))}
         voteKickActive={!!game.voteKick?.active}
+        isDevMode={devMode.isDevMode}
+        onDevModeActivate={() => { setShowSettings(false); setShowDevModal(true) }}
+        onDevModeDeactivate={() => { devMode.deactivate(); setShowSettings(false) }}
         onLeaveGame={async () => {
           if (!confirm('Are you sure you want to leave? You cannot rejoin this game.')) return
           setShowSettings(false)
@@ -1660,6 +1670,26 @@ export default function Game() {
         onClose={chat.closeChat}
         isDesktop={isDesktop}
       />
+
+      {/* Dev Mode Components */}
+      <DevModeModal
+        open={showDevModal}
+        onClose={() => setShowDevModal(false)}
+        onActivate={devMode.activate}
+        loading={devMode.loading}
+        error={devMode.error}
+      />
+
+      {devMode.isDevMode && devMode.privileges && (
+        <DevPanel
+          privileges={devMode.privileges}
+          allPlayerHands={devMode.allPlayerHands}
+          drawPileCards={devMode.drawPileCards}
+          players={players}
+          game={game}
+          onDeactivate={devMode.deactivate}
+        />
+      )}
 
       <VersionLabel />
 
