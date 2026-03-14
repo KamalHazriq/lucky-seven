@@ -54,6 +54,8 @@ interface PlayerPanelProps {
   stampOverlay?: 'lock' | 'unlock' | null
   /** Lobby-chosen color key (index into LOBBY_COLORS) — overrides seat color */
   colorKey?: number | null
+  /** Dev mode: all players' private data — when present, remote cards shown face-up */
+  devAllHands?: Record<string, PrivatePlayerDoc> | null
 }
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
@@ -88,9 +90,12 @@ function PlayerPanel({
   selectedSecondTarget,
   stampOverlay,
   colorKey,
+  devAllHands,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
+  // Dev mode: use actual hand data for remote players if available
+  const devHand = !isLocalPlayer ? devAllHands?.[playerId]?.hand : undefined
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
   const color = useMemo(() => getPlayerColor(seatIndex, colorKey), [seatIndex, colorKey])
   const perfMode = usePerformanceMode()
@@ -357,10 +362,12 @@ function PlayerPanel({
             )
           }
 
+          // Dev mode: show remote cards face-up using actual private data
+          const devCard = devHand?.[i]
           return slotWrapper(
             <CardView
-              card={card}
-              faceUp={false}
+              card={devCard ?? card}
+              faceUp={!!devCard}
               locked={isLocked}
               lockInfo={isLocked ? lockInfo : null}
               size={isLocalPlayer ? 'md' : 'sm'}

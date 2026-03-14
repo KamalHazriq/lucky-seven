@@ -79,6 +79,12 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ─── Developer Access (per-UID, written by Cloud Functions) ──
+      match /devAccess/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false; // Only Cloud Functions (admin SDK) can write
+      }
+
       // ─── Game Summary (analytics, written once at game end) ────
       match /summary/{docId} {
         allow read: if request.auth != null;

@@ -30,6 +30,10 @@ interface SettingsModalProps {
   otherPlayers?: { id: string; name: string }[]
   /** Whether a vote is already in progress */
   voteKickActive?: boolean
+  /** Developer mode integration */
+  isDevMode?: boolean
+  onDevModeActivate?: () => void
+  onDevModeDeactivate?: () => void
 }
 
 const THEMES: { value: Theme; label: string; icon: string; desc: string }[] = [
@@ -54,6 +58,9 @@ export default function SettingsModal({
   onVoteKick,
   otherPlayers,
   voteKickActive = false,
+  isDevMode = false,
+  onDevModeActivate,
+  onDevModeDeactivate,
 }: SettingsModalProps) {
   const { theme, setTheme } = useTheme()
   const { reduced, pref, cycle } = useReducedMotion()
@@ -329,6 +336,44 @@ export default function SettingsModal({
                       </motion.button>
                     ))}
                   </div>
+                </section>
+              )}
+
+              {/* ─── Developer Mode ─── */}
+              {(onDevModeActivate || onDevModeDeactivate) && (
+                <section>
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Developer</h4>
+                  {isDevMode ? (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-amber-900/20 border border-amber-600/30">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-sm font-medium text-amber-300">Dev Mode Active</span>
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={onDevModeDeactivate}
+                        className="px-3 py-1.5 rounded-lg bg-red-900/40 border border-red-700/30 hover:bg-red-900/60 text-red-400 text-xs font-semibold transition-colors cursor-pointer"
+                      >
+                        Deactivate
+                      </motion.button>
+                    </div>
+                  ) : (
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => { onClose(); onDevModeActivate?.() }}
+                      className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-amber-900/15 hover:border-amber-700/30 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">🛠️</span>
+                        <span className="text-sm font-medium text-slate-200">Activate Developer Mode</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-900/30 px-2 py-0.5 rounded-lg">
+                        Code Required
+                      </span>
+                    </motion.button>
+                  )}
                 </section>
               )}
 

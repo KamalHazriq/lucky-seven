@@ -166,6 +166,27 @@ export interface ChatMessage {
   ts: number
 }
 
+// ─── Developer Mode ─────────────────────────────────────────
+export interface DevPrivileges {
+  canSeeAllCards: boolean
+  canPeekDrawPile: boolean
+  canInspectGameState: boolean
+  canUseCheatActions: boolean
+}
+
+export const DEFAULT_DEV_PRIVILEGES: DevPrivileges = {
+  canSeeAllCards: true,
+  canPeekDrawPile: true,
+  canInspectGameState: true,
+  canUseCheatActions: true,
+}
+
+export interface DevAccessDoc {
+  activatedAt: number
+  uid: string
+  privileges: DevPrivileges
+}
+
 /** Returns the PowerRankKey for a card, or null if it has no power */
 export function getCardRankKey(card: Card): PowerRankKey | null {
   if (card.isJoker) return 'JOKER'
