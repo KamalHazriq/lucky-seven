@@ -195,7 +195,8 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ...springEntry }}
-          className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-2xl shadow-black/20"
+          className="backdrop-blur-sm border rounded-2xl p-6 shadow-2xl shadow-black/20"
+          style={{ background: 'var(--panel-elevated)', borderColor: 'var(--border)' }}
         >
           <AnimatePresence mode="wait">
             {mode === 'menu' && (

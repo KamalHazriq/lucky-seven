@@ -70,7 +70,8 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.88, y: 20, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
-            className="bg-slate-800 border border-slate-600 rounded-2xl p-5 max-w-md w-full shadow-2xl max-h-[80vh] flex flex-col"
+            className="border rounded-2xl p-5 max-w-md w-full shadow-2xl max-h-[80vh] flex flex-col"
+            style={{ background: 'var(--surface-solid)', borderColor: 'var(--border-solid)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
