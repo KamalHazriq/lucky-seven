@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { LogEntry, PlayerDoc } from '../lib/types'
 import { renderLogMessage } from '../lib/logRenderer'
@@ -11,7 +11,7 @@ interface GameLogProps {
   position?: LogPosition
 }
 
-export default function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
+function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   // Track the actual last entry (not just length) — bounded log replaces entries
@@ -68,10 +68,12 @@ export default function GameLog({ log, players, position = 'bottom' }: GameLogPr
                 initial={{ x: -6, scale: 0.98 }}
                 animate={{ x: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.4 }}
-                style={{ opacity, transition: 'opacity 0.4s ease' }}
-                className={`flex items-center gap-1 min-h-[24px] px-1.5 py-0.5 rounded-md ${
-                  recency <= 1 ? 'bg-slate-800/20' : ''
-                }`}
+                style={{
+                  opacity,
+                  transition: 'opacity 0.4s ease',
+                  ...(recency <= 1 ? { background: 'var(--surface, rgba(30,41,59,0.2))' } : {}),
+                }}
+                className="flex items-center gap-1 min-h-[24px] px-1.5 py-0.5 rounded-md"
               >
                 <div className="flex-1 min-w-0 text-[11px] leading-snug flex flex-wrap items-center gap-0.5" style={{ color: 'var(--text-muted)' }}>
                   {renderLogMessage(entry.msg, playerInfos)}
@@ -85,3 +87,5 @@ export default function GameLog({ log, players, position = 'bottom' }: GameLogPr
     </div>
   )
 }
+
+export default memo(GameLog)

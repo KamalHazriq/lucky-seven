@@ -119,7 +119,7 @@ function PlayerPanel({
   }), [color.solid, isCurrentTurn, perfMode])
 
   const panelClassName = useMemo(() => `
-    relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'p-3 pb-3.5'} backdrop-blur-sm transition-opacity
+    relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'px-2.5 py-2.5 pb-3'} backdrop-blur-sm transition-opacity
     ${panelDimmed ? 'opacity-40' : ''}
     ${isLocalPlayer && isCurrentTurn
       ? `bg-emerald-900/30 border border-amber-500/40 ring-1 ring-emerald-500/20${perfMode ? '' : ' turn-glow'}`
@@ -233,7 +233,7 @@ function PlayerPanel({
         )}
       </div>
 
-      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-2 sm:gap-3'} justify-center overflow-hidden`}>
+      <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-1.5 sm:gap-2'} justify-center overflow-visible`}>
         {[0, 1, 2].map((i) => {
           const card = hand[i] as Card | undefined
           const knownCard = known[String(i)]
@@ -287,7 +287,7 @@ function PlayerPanel({
                   className="absolute -top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none whitespace-nowrap"
                 >
                   <span
-                    className="px-1.5 py-0.5 rounded-md text-[8px] font-bold shadow-lg"
+                    className="px-2 py-0.5 rounded-md text-[9px] font-bold shadow-lg"
                     style={{
                       backgroundColor: slotColor ? slotColor : color.solid,
                       color: '#fff',
@@ -301,10 +301,7 @@ function PlayerPanel({
               {/* Selection mode: selectable pulse ring — CSS animation, no JS frame scheduling */}
               {inSelectionMode && slotSelectable && !isSelected && !isSecondSelected && (
                 <div
-                  className="absolute inset-0 rounded-xl pointer-events-none z-10 animate-pulse"
-                  style={{
-                    boxShadow: 'inset 0 0 0 2px rgba(251,191,36,0.6), 0 0 12px rgba(251,191,36,0.3)',
-                  }}
+                  className="absolute inset-0 rounded-xl pointer-events-none z-10 selection-pulse"
                 />
               )}
 

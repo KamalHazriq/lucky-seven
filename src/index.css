@@ -292,19 +292,19 @@ select option {
 /* ─── Responsive layout fixes ───────────────────────────── */
 @media (min-width: 1024px) {
   .table-zone {
-    min-height: max(450px, calc(100dvh - var(--top-offset, 56px) - 5rem)) !important;
+    min-height: max(430px, calc(100dvh - var(--top-offset, 56px) - 6rem)) !important;
   }
 }
 
 @media (min-width: 1280px) {
   .table-zone {
-    min-height: max(500px, calc(100dvh - var(--top-offset, 56px) - 4rem)) !important;
+    min-height: max(480px, calc(100dvh - var(--top-offset, 56px) - 5rem)) !important;
   }
 }
 
 @media (min-width: 1440px) {
   .table-zone {
-    min-height: max(550px, calc(100dvh - var(--top-offset, 56px) - 3rem)) !important;
+    min-height: max(520px, calc(100dvh - var(--top-offset, 56px) - 4rem)) !important;
   }
 }
 

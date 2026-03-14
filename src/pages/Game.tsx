@@ -1147,15 +1147,15 @@ export default function Game() {
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            const panelW = otherPlayers.length <= 3 ? '220px' : otherPlayers.length <= 5 ? '200px' : '185px'
+            const panelW = otherPlayers.length <= 3 ? '220px' : otherPlayers.length <= 5 ? '205px' : '190px'
             return (
               <>
               <div
                 className="table-zone relative w-full mb-4 pt-2"
                 style={{
                   /* Fill remaining viewport below header+banners, clamped for sanity */
-                  minHeight: 'max(400px, calc(100dvh - var(--top-offset, 56px) - 6rem))',
-                  maxHeight: 'min(800px, calc(100dvh - var(--top-offset, 56px) - 2rem))',
+                  minHeight: 'max(400px, calc(100dvh - var(--top-offset, 56px) - 7rem))',
+                  maxHeight: 'min(780px, calc(100dvh - var(--top-offset, 56px) - 3rem))',
                 }}
               >
                 {/* Table surface — oval felt gradient (themed via CSS vars) */}
@@ -1234,8 +1234,8 @@ export default function Game() {
                         top: `${pos.top}%`,
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
-                        width: otherPlayers.length <= 4 ? '42%' : otherPlayers.length <= 6 ? '38%' : '36%',
-                        minWidth: otherPlayers.length <= 5 ? '185px' : '150px',
+                        width: otherPlayers.length <= 4 ? '42%' : otherPlayers.length <= 6 ? '38%' : '35%',
+                        minWidth: otherPlayers.length <= 5 ? '190px' : '175px',
                         overflow: 'visible',
                       }}
                     >
@@ -1271,7 +1271,7 @@ export default function Game() {
                 <div
                   className="absolute left-1/2 z-10"
                   ref={localPanelRef}
-                  style={{ bottom: 'max(4px, env(safe-area-inset-bottom, 4px))', transform: 'translateX(-50%)', maxWidth: '340px', width: '85%' }}
+                  style={{ bottom: 'max(8px, env(safe-area-inset-bottom, 8px))', transform: 'translateX(-50%)', maxWidth: '340px', width: '82%' }}
                 >
                   <PlayerPanel
                     playerId={user.uid}
@@ -1303,9 +1303,9 @@ export default function Game() {
                   )}
                 </div>
               </div>
-              {/* Action Bar for table layout — below table zone */}
+              {/* Action Bar for table layout — below table zone, clear gap */}
               {uiMode === 'actionbar' && (
-                <div className="mx-auto mb-4" style={{ maxWidth: '380px', width: '90%' }}>
+                <div className="mx-auto mb-4 mt-2" style={{ maxWidth: '380px', width: '90%' }}>
                   <ActionBar
                     card={isMyTurn && hasDrawnCard ? drawnCard : null}
                     visible={modal.type === 'none' && !drawnCardDismissed}
@@ -1423,7 +1423,7 @@ export default function Game() {
                     <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                   </div>
                 ) : (
-                  <div className="w-24 h-[8.75rem] rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
+                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
                     <span className="text-slate-600 text-xs">Empty</span>
                   </div>
                 )}
