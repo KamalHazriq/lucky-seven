@@ -19,11 +19,13 @@
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 
 initializeApp();
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const DEV_ACCESS_CODE = defineSecret("DEV_ACCESS_CODE");
 const NOTIFY_EMAIL = "kamalhazriq@gmail.com";
 const THROTTLE_SECONDS = 300; // 5 minutes
 
@@ -140,3 +142,76 @@ function escapeHtml(str: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+// ─── Developer Mode ─────────────────────────────────────────────
+// Callable function: validates a dev access code against a Firebase secret.
+// If valid, writes a per-UID devAccess doc under the game's subcollection.
+
+export const activateDevMode = onCall(
+  {
+    secrets: [DEV_ACCESS_CODE],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Must be signed in");
+    }
+
+    const { gameId, code } = request.data as { gameId?: string; code?: string };
+    if (!gameId || typeof gameId !== "string") {
+      throw new HttpsError("invalid-argument", "Missing gameId");
+    }
+    if (!code || typeof code !== "string") {
+      throw new HttpsError("invalid-argument", "Missing code");
+    }
+
+    // Validate code against server-side secret
+    if (code !== DEV_ACCESS_CODE.value()) {
+      throw new HttpsError("permission-denied", "Invalid developer code");
+    }
+
+    // Verify the game exists
+    const db = getFirestore();
+    const gameSnap = await db.doc(`games/${gameId}`).get();
+    if (!gameSnap.exists) {
+      throw new HttpsError("not-found", "Game not found");
+    }
+
+    // Write dev access document for this UID
+    await db.doc(`games/${gameId}/devAccess/${request.auth.uid}`).set({
+      activatedAt: Date.now(),
+      uid: request.auth.uid,
+      privileges: {
+        canSeeAllCards: true,
+        canPeekDrawPile: true,
+        canInspectGameState: true,
+        canUseCheatActions: true,
+      },
+    });
+
+    console.log(
+      `Dev mode activated: uid=${request.auth.uid}, game=${gameId}`
+    );
+
+    return { success: true };
+  }
+);
+
+export const deactivateDevMode = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Must be signed in");
+  }
+
+  const { gameId } = request.data as { gameId?: string };
+  if (!gameId || typeof gameId !== "string") {
+    throw new HttpsError("invalid-argument", "Missing gameId");
+  }
+
+  const db = getFirestore();
+  await db.doc(`games/${gameId}/devAccess/${request.auth.uid}`).delete();
+
+  console.log(
+    `Dev mode deactivated: uid=${request.auth.uid}, game=${gameId}`
+  );
+
+  return { success: true };
+});
