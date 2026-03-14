@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.7.2'
+export const CURRENT_VERSION = 'v1.8.0'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,129 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.8.0',
+    title: 'Developer Mode',
+    date: '15 March 2026',
+    sections: [
+      {
+        heading: 'Developer Mode',
+        items: [
+          'Secure developer activation via Cloud Function — code verified server-side, never exposed in frontend',
+          'Per-UID privilege grant: only the authenticated player who enters the correct code gets access',
+          'Floating Dev Panel with three tabs: All Cards (see every player\'s hand), Draw Pile (top 10 cards), Game State (raw JSON)',
+          'Remote player cards shown face-up inline when dev mode is active',
+          'Activate/deactivate via Settings menu — "Developer" section with code entry modal',
+          'Firestore rules: devAccess docs readable only by the owning UID, writes restricted to Cloud Functions',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.7.7',
+    title: 'Card Overflow, Timer & Celebration',
+    date: '15 March 2026',
+    sections: [
+      {
+        heading: 'Bug Fixes',
+        items: [
+          'Fixed 7-player card overflow: reduced gaps, removed forced minWidth, cards now shrink-to-fit in narrow panels',
+          'Fixed game log not auto-scrolling: tracks last entry content instead of log.length (bounded log replaces entries without changing length)',
+          'Fixed timer randomly skipping/kicking players: immediately resets remaining time on turn change to prevent stale-zero expiry; added 3-second grace buffer for client clock-skew',
+          'Fixed name input showing bank card autocomplete: added autoComplete="off" to all name inputs in Home and Lobby',
+        ],
+      },
+      {
+        heading: 'Results Celebration',
+        items: [
+          'Canvas confetti burst when all players reveal — two bursts from left/right with 160 particles',
+          'New celebrate SFX: ascending 5-tone fanfare with harmonics',
+          'Improved winner display: "Shared Win! X & Y are the champions!" for ties, "X wins!" for solo winner',
+          'Tiebreaker: most sevens wins among tied players; if still tied, shared win',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.7.6',
+    title: 'Lobby Color Instant Feedback',
+    date: '14 March 2026',
+    sections: [
+      {
+        heading: 'Lobby',
+        items: [
+          'Color picker now shows ring highlight and avatar color instantly on pick — no waiting for Firestore round-trip',
+          'Optimistic pendingColorKey state: updates UI immediately, cleared when server confirms, reverted on conflict',
+          'Auto-assign first available color on lobby entry with instant visual feedback',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.7.5',
+    title: 'Log, Swap Highlight & Lock Blur',
+    date: '13 March 2026',
+    sections: [
+      {
+        heading: 'Bug Fixes',
+        items: [
+          'Fixed game log entries being invisible: removed framer-motion opacity conflict that overrode CSS style',
+          'Fixed lobby color not auto-assigning on entry: added useEffect to pick first available color',
+          'Fixed locked face-up cards being unreadable: known locked cards now show small corner lock badge instead of full blur overlay',
+        ],
+      },
+      {
+        heading: 'Swap Selection',
+        items: [
+          'Both swap targets now highlighted: first pick shows amber "1" badge, second pick shows emerald "2" badge',
+          'Opponent cards pulse and highlight on hover during swap selection',
+          'Non-selectable slots dimmed during selection mode for clarity',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.7.4',
+    title: 'Vote Kick Rework & Per-Player Timer',
+    date: '12 March 2026',
+    sections: [
+      {
+        heading: 'Vote Kick',
+        items: [
+          'Vote kick now requires 3+ players (hidden for 2-player games)',
+          'Timer pauses during active vote kick — resumes with remaining time when vote resolves',
+          'actionVersion increments on vote start/resolve to prevent timer race conditions',
+          'Kicked player sees a dedicated "You\'ve been kicked!" screen',
+        ],
+      },
+      {
+        heading: 'Timer',
+        items: [
+          'Timer now shown per-player under each panel instead of a single global bar',
+          'Skip guard prevents auto-skip during active vote kick',
+          'turnStartAt restored with vote duration when vote resolves',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.7.3',
+    title: 'Vote Kick, Staging & Settings Fixes',
+    date: '12 March 2026',
+    sections: [
+      {
+        heading: 'Bug Fixes',
+        items: [
+          'Fixed vote kick auto-kicking in 2-player games',
+          'Fixed staging animation inconsistency with double rAF before getBoundingClientRect',
+          'Fixed lobby settings not syncing between host and players',
+          'Fixed player color not showing in classic layout',
+          'Fixed timer not resetting on turn change in some edge cases',
+          'Fixed AFK system firing during lobby phase',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.7.2',
     title: 'Rematch, AFK & Color Fixes',
