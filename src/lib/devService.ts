@@ -1,38 +1,63 @@
 import {
   doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
   collection,
   onSnapshot,
   type Unsubscribe,
 } from 'firebase/firestore'
-import { getFunctions, httpsCallable } from 'firebase/functions'
-import { app, db, ensureAuth } from './firebase'
-import type { DevAccessDoc, PrivatePlayerDoc, Card } from './types'
+import { db, ensureAuth } from './firebase'
+import type { DevAccessDoc, DevPrivileges, PrivatePlayerDoc, Card } from './types'
 
-// ─── Cloud Function calls ───────────────────────────────────────
+// ─── Client-side dev mode (no Cloud Functions needed) ────────────
 
-const functions = getFunctions(app)
-
+/**
+ * Activate dev mode by verifying the code against `config/dev` doc in Firestore.
+ * The code is stored as a plain field — security relies on dev mode being hidden (Ctrl+Shift+D).
+ */
 export async function activateDevMode(
   gameId: string,
   code: string,
 ): Promise<{ success: boolean }> {
-  await ensureAuth()
-  const fn = httpsCallable<{ gameId: string; code: string }, { success: boolean }>(
-    functions,
-    'activateDevMode',
-  )
-  const result = await fn({ gameId, code })
-  return result.data
+  const user = await ensureAuth()
+
+  // Read the dev config doc
+  const configSnap = await getDoc(doc(db, 'config', 'dev'))
+  if (!configSnap.exists()) {
+    throw new Error('Dev mode is not configured. Set up the config/dev document in Firestore.')
+  }
+
+  const storedCode = configSnap.data()?.code as string | undefined
+  if (!storedCode || code !== storedCode) {
+    throw new Error('Invalid access code')
+  }
+
+  // Write the devAccess doc for this user
+  const privileges: DevPrivileges = {
+    canSeeAllCards: true,
+    canPeekDrawPile: true,
+    canInspectGameState: true,
+    canUseCheatActions: true,
+  }
+
+  const accessDoc: DevAccessDoc = {
+    activatedAt: Date.now(),
+    uid: user.uid,
+    privileges,
+  }
+
+  await setDoc(doc(db, 'games', gameId, 'devAccess', user.uid), accessDoc)
+  return { success: true }
 }
 
+/**
+ * Deactivate dev mode by deleting the devAccess doc.
+ */
 export async function deactivateDevMode(gameId: string): Promise<{ success: boolean }> {
-  await ensureAuth()
-  const fn = httpsCallable<{ gameId: string }, { success: boolean }>(
-    functions,
-    'deactivateDevMode',
-  )
-  const result = await fn({ gameId })
-  return result.data
+  const user = await ensureAuth()
+  await deleteDoc(doc(db, 'games', gameId, 'devAccess', user.uid))
+  return { success: true }
 }
 
 // ─── Subscriptions ──────────────────────────────────────────────

@@ -79,10 +79,11 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // ─── Developer Access (per-UID, written by Cloud Functions) ──
+      // ─── Developer Access (per-UID, client-side verified) ──
       match /devAccess/{uid} {
         allow read: if request.auth != null && request.auth.uid == uid;
-        allow write: if false; // Only Cloud Functions (admin SDK) can write
+        allow create, update: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null && request.auth.uid == uid;
       }
 
       // ─── Game Summary (analytics, written once at game end) ────
@@ -111,6 +112,12 @@ service cloud.firestore {
           && request.resource.data.msg is string;
         allow update, delete: if false;
       }
+    }
+
+    // ─── Dev Config (stores access code, read-only for clients) ──
+    match /config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Set manually via Firebase Console
     }
 
     // ─── Global Stats ─────────────────────────────────────────
