@@ -186,6 +186,22 @@ export default function Game() {
     return () => { ro.disconnect(); document.documentElement.style.removeProperty('--header-h'); document.documentElement.style.removeProperty('--top-offset') }
   }, [])
 
+  // Hidden dev mode shortcut (Ctrl+Shift+D)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault()
+        if (devMode.isDevMode) {
+          devMode.deactivate()
+        } else {
+          setShowDevModal(true)
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [devMode.isDevMode])
+
   // Chat (lazy subscribe — only on first open)
   const chat = useChat(
     gameId,
@@ -1593,9 +1609,6 @@ export default function Game() {
         }}
         otherPlayers={otherPlayers.map((pid) => ({ id: pid, name: players[pid]?.displayName ?? 'Unknown' }))}
         voteKickActive={!!game.voteKick?.active}
-        isDevMode={devMode.isDevMode}
-        onDevModeActivate={() => setShowDevModal(true)}
-        onDevModeDeactivate={() => devMode.deactivate()}
         onLeaveGame={async () => {
           if (!confirm('Are you sure you want to leave? You cannot rejoin this game.')) return
           setShowSettings(false)

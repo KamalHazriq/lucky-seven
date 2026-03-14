@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.8.0'
+export const CURRENT_VERSION = 'v1.7.7'
 
 export interface ReleaseNote {
   version: string
@@ -8,24 +8,6 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
-  {
-    version: 'v1.8.0',
-    title: 'Developer Mode',
-    date: '15 March 2026',
-    sections: [
-      {
-        heading: 'Developer Mode',
-        items: [
-          'Secure developer activation via Cloud Function — code verified server-side, never exposed in frontend',
-          'Per-UID privilege grant: only the authenticated player who enters the correct code gets access',
-          'Floating Dev Panel with three tabs: All Cards (see every player\'s hand), Draw Pile (top 10 cards), Game State (raw JSON)',
-          'Remote player cards shown face-up inline when dev mode is active',
-          'Activate/deactivate via Settings menu — "Developer" section with code entry modal',
-          'Firestore rules: devAccess docs readable only by the owning UID, writes restricted to Cloud Functions',
-        ],
-      },
-    ],
-  },
   {
     version: 'v1.7.7',
     title: 'Card Overflow, Timer & Celebration',

@@ -111,62 +111,47 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
             {/* Content */}
             <div className="overflow-y-auto flex-1 min-h-0">
               {currentGroup && (
-                <div>
-                  {/* Sub-version accordions — shown ABOVE the primary */}
-                  {currentGroup.subs.length > 0 && (
-                    <div className="mb-4 flex flex-col gap-1.5">
-                      {currentGroup.subs.map((sub) => {
-                        const isExpanded = !!expandedSubs[sub.version]
-                        return (
-                          <div key={sub.version} className="rounded-lg border border-slate-700/50 overflow-hidden">
-                            <button
-                              onClick={() => toggleSub(sub.version)}
-                              className="w-full flex items-center justify-between px-3 py-2 bg-slate-700/30 hover:bg-slate-700/50 transition-colors cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-amber-300">{sub.version}</span>
-                                <span className="text-[10px] text-slate-400">{sub.title}</span>
-                              </div>
-                              <motion.span
-                                animate={{ rotate: isExpanded ? 180 : 0 }}
-                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                                className="text-slate-500 text-xs"
-                              >
-                                {'\u25BC'}
-                              </motion.span>
-                            </button>
-                            <AnimatePresence initial={false}>
-                              {isExpanded && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.5 }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="px-3 py-2 border-t border-slate-700/30">
-                                    <p className="text-[10px] text-slate-500 mb-2">{sub.date}</p>
-                                    {renderSections(sub.sections)}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
+                <div className="flex flex-col gap-1.5">
+                  {/* All versions as accordions — subs first, then primary */}
+                  {[...currentGroup.subs, currentGroup.primary].map((release) => {
+                    const isExpanded = !!expandedSubs[release.version]
+                    return (
+                      <div key={release.version} className="rounded-lg border border-slate-700/50 overflow-hidden">
+                        <button
+                          onClick={() => toggleSub(release.version)}
+                          className="w-full flex items-center justify-between px-3 py-2 bg-slate-700/30 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-amber-300">{release.version}</span>
+                            <span className="text-[10px] text-slate-400">{release.title}</span>
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Primary version content — always visible */}
-                  <div className="mb-3">
-                    <h4 className="text-sm font-bold text-slate-200">
-                      {currentGroup.primary.version} — {currentGroup.primary.title}
-                    </h4>
-                    <p className="text-[10px] text-slate-500">
-                      {currentGroup.primary.date}
-                    </p>
-                  </div>
-                  {renderSections(currentGroup.primary.sections)}
+                          <motion.span
+                            animate={{ rotate: isExpanded ? 180 : 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                            className="text-slate-500 text-xs"
+                          >
+                            {'\u25BC'}
+                          </motion.span>
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.5 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-3 py-2 border-t border-slate-700/30">
+                                <p className="text-[10px] text-slate-500 mb-2">{release.date}</p>
+                                {renderSections(release.sections)}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
