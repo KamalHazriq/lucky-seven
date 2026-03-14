@@ -267,26 +267,26 @@ select option {
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* ─── In-play staging pulse ─────────────────────────────── */
+/* ─── In-play staging pulse — subtle golden glow ─────────── */
 @keyframes staging-pulse {
-  0% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); }
-  50% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), 0 0 40px rgba(251, 191, 36, 0.1); }
-  100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); }
+  0% { box-shadow: 0 0 6px rgba(251, 191, 36, 0.10); }
+  50% { box-shadow: 0 0 14px rgba(251, 191, 36, 0.22), 0 0 28px rgba(251, 191, 36, 0.06); }
+  100% { box-shadow: 0 0 6px rgba(251, 191, 36, 0.10); }
 }
 
 .staging-active {
-  animation: staging-pulse 2.5s ease-in-out infinite;
+  animation: staging-pulse 3s ease-in-out infinite;
 }
 
-/* ─── Seat glow breathing for current turn ──────────────── */
+/* ─── Seat glow breathing — gentle, low visual noise ──────── */
 @keyframes seat-breathe {
-  0% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.3)); }
-  50% { box-shadow: 0 0 20px 4px var(--seat-color, rgba(16, 185, 129, 0.2)); }
-  100% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.3)); }
+  0% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.2)); }
+  50% { box-shadow: 0 0 14px 2px var(--seat-color, rgba(16, 185, 129, 0.15)); }
+  100% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.2)); }
 }
 
 .seat-breathe {
-  animation: seat-breathe 3s ease-in-out infinite;
+  animation: seat-breathe 3.5s ease-in-out infinite;
 }
 
 /* ─── Responsive layout fixes ───────────────────────────── */

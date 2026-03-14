@@ -93,30 +93,30 @@ export default function FlyingCard({
     return { x: xs, y: ys }
   }, [sx, sy, mx, my, ex, ey, reduced])
 
-  // Scale keyframes — premium floaty lift to ~1.08 mid-flight, gentle overshoot landing
+  // Scale keyframes — subtle lift to ~1.05 mid-flight, clean landing (less distracting)
   const scaleFrames = reduced
     ? [1, 1]
     : [
-        1, 1.015, 1.035, 1.055, 1.07, 1.08, 1.08, 1.075, 1.065,
-        1.05, 1.035, 1.02, 1.01, 1.0, 0.99, 0.98, 0.975,
-        0.98, 0.99, 0.997, 1.0,
+        1, 1.01, 1.025, 1.038, 1.045, 1.05, 1.05, 1.048, 1.04,
+        1.03, 1.02, 1.01, 1.005, 1.0, 0.995, 0.99, 0.988,
+        0.99, 0.995, 0.998, 1.0,
       ]
 
-  // Opacity — fully visible throughout, very soft settle on landing
+  // Opacity — fully visible, clean settle
   const opacityFrames = reduced
     ? [0.5, 1]
     : [
-        0.9, 1, 1, 1, 1, 1, 1, 1, 1,
+        0.92, 1, 1, 1, 1, 1, 1, 1, 1,
         1, 1, 1, 1, 1, 1, 1, 1,
-        0.99, 0.97, 0.95, 0.92,
+        0.98, 0.95, 0.92, 0.88,
       ]
 
-  // Rotation keyframes — organic tilt that follows the arc direction
+  // Rotation keyframes — gentler tilt for organic feel
   const rotateFrames = reduced
     ? [0, 0]
     : [
-        0, -1.0, -2.0, -2.5, -2.2, -1.5, -0.6, 0, 0.5,
-        0.8, 0.8, 0.6, 0.3, 0.1, 0, -0.1, -0.05,
+        0, -0.8, -1.5, -2.0, -1.8, -1.2, -0.5, 0, 0.4,
+        0.6, 0.6, 0.5, 0.3, 0.1, 0, -0.05, 0,
         0, 0, 0, 0,
       ]
 
@@ -158,7 +158,7 @@ export default function FlyingCard({
         width,
         height,
         zIndex: 9999,
-        filter: 'drop-shadow(0 14px 32px rgba(0,0,0,0.55)) drop-shadow(0 6px 14px rgba(0,0,0,0.35))',
+        filter: 'drop-shadow(0 10px 24px rgba(0,0,0,0.45)) drop-shadow(0 4px 10px rgba(0,0,0,0.25))',
         willChange: 'transform, opacity',
       }}
     >
