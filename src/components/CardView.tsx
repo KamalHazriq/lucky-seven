@@ -6,7 +6,7 @@ import { motion, type Transition } from 'framer-motion'
 const SPRING_HOVER: Transition = { type: 'spring', stiffness: 350, damping: 22, mass: 0.6 }
 const SPRING_FLIP: Transition  = { type: 'spring', stiffness: 160, damping: 20, mass: 0.9 }
 import type { Card, LockInfo } from '../lib/types'
-import { cardDisplay, suitColor } from '../lib/deck'
+import { suitColor } from '../lib/deck'
 
 /** Convert a hex color or rgba() string to rgba with custom alpha */
 function hexToRgba(color: string, alpha: number): string {
@@ -109,9 +109,9 @@ function CardView({
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
-          ? 'bg-white border border-slate-200 shadow-lg'
+          ? 'bg-gradient-to-b from-white to-slate-50 border border-slate-200/80 shadow-lg'
           : ownerColor
-            ? 'border border-white/[0.08] hover:border-white/30 transition-[border-color] duration-200 shadow-md hover:shadow-lg'
+            ? 'border border-white/[0.08] hover:border-white/25 transition-[border-color] duration-200 shadow-md hover:shadow-lg'
             : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700/50 shadow-md'
         }
       `}
@@ -125,20 +125,40 @@ function CardView({
           initial={{ rotateY: 90, scale: 0.92 }}
           animate={{ rotateY: 0, scale: 1 }}
           transition={SPRING_FLIP}
-          className="flex flex-col items-center justify-center"
+          className="flex flex-col items-center justify-center w-full h-full px-1"
           style={{ backfaceVisibility: 'hidden' }}
         >
+          {/* Rank + suit display — large clear text */}
           <span
-            className="font-bold leading-tight"
-            style={{ color: suitColor(card) }}
+            className="font-extrabold leading-none"
+            style={{ color: suitColor(card), fontSize: size === 'lg' ? '1.15rem' : size === 'md' ? '0.95rem' : '0.75rem' }}
           >
-            {cardDisplay(card)}
+            {card.isJoker ? 'J' : card.rank}
+          </span>
+          <span
+            className="leading-none"
+            style={{ color: suitColor(card), fontSize: size === 'lg' ? '1rem' : size === 'md' ? '0.8rem' : '0.65rem', marginTop: '1px' }}
+          >
+            {card.isJoker ? '\u2605' : { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }[card.suit]}
           </span>
           {card.rank === '7' && !card.isJoker && (
-            <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-900 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-900 text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
               0
             </span>
           )}
+          {/* Corner rank indicator */}
+          <span
+            className="absolute font-bold"
+            style={{
+              color: suitColor(card),
+              fontSize: size === 'lg' ? '8px' : '7px',
+              top: size === 'lg' ? '4px' : '3px',
+              left: size === 'lg' ? '5px' : '3px',
+              lineHeight: 1,
+            }}
+          >
+            {card.isJoker ? '\u2605' : card.rank}
+          </span>
         </motion.div>
       ) : (
         <div
@@ -149,15 +169,15 @@ function CardView({
         >
           <div className="flex items-center justify-center h-full">
             <div
-              className="w-8 h-8 rounded-full border flex items-center justify-center"
+              className="w-7 h-7 rounded-full border flex items-center justify-center"
               style={{
-                borderColor: ownerColor ? 'rgba(255,255,255,0.2)' : 'rgba(96,165,250,0.25)',
-                background: ownerColor ? 'rgba(255,255,255,0.06)' : 'rgba(96,165,250,0.08)',
+                borderColor: ownerColor ? 'rgba(255,255,255,0.15)' : 'rgba(96,165,250,0.20)',
+                background: ownerColor ? 'rgba(255,255,255,0.04)' : 'rgba(96,165,250,0.06)',
               }}
             >
               <span
-                className="font-bold text-lg"
-                style={{ color: ownerColor ? 'rgba(255,255,255,0.5)' : 'rgba(96,165,250,0.45)' }}
+                className="font-bold text-base"
+                style={{ color: ownerColor ? 'rgba(255,255,255,0.4)' : 'rgba(96,165,250,0.40)' }}
               >
                 7
               </span>

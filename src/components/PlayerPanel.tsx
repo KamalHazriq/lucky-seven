@@ -119,15 +119,15 @@ function PlayerPanel({
   }), [color.solid, isCurrentTurn, perfMode])
 
   const panelClassName = useMemo(() => `
-    relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'p-3.5 pb-4'} backdrop-blur-sm transition-opacity
+    relative rounded-2xl ${isLocalPlayer ? 'p-4' : 'p-3 pb-3.5'} backdrop-blur-sm transition-opacity
     ${panelDimmed ? 'opacity-40' : ''}
     ${isLocalPlayer && isCurrentTurn
-      ? `bg-emerald-900/40 border-2 border-amber-500/50 ring-1 ring-emerald-500/30${perfMode ? '' : ' turn-glow'}`
+      ? `bg-emerald-900/30 border border-amber-500/40 ring-1 ring-emerald-500/20${perfMode ? '' : ' turn-glow'}`
       : isCurrentTurn
-        ? `bg-emerald-900/40 border-2 border-emerald-500/50${perfMode ? '' : ' turn-glow'}`
+        ? `bg-emerald-900/30 border border-emerald-500/40${perfMode ? '' : ' turn-glow'}`
         : isLocalPlayer
-          ? 'bg-amber-900/15 border-2 border-amber-500/30'
-          : 'bg-slate-800/40 border border-slate-700/50'
+          ? 'bg-amber-900/10 border border-amber-500/25'
+          : 'bg-slate-800/30 border border-slate-700/40'
     }
     ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/50 hover:ring-amber-400' : ''}
   `, [isLocalPlayer, isCurrentTurn, panelDimmed, isPlayerTarget, perfMode])
@@ -197,38 +197,37 @@ function PlayerPanel({
         )}
       </AnimatePresence>
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-1.5 mb-2.5">
         <div
-          className="w-2.5 h-2.5 rounded-full ring-1 ring-white/20"
+          className="w-2 h-2 rounded-full shrink-0"
           style={{ backgroundColor: connected ? color.solid : '#64748b' }}
         />
         <span
-          className="font-semibold text-sm"
+          className="font-semibold text-sm truncate"
           style={{ color: isLocalPlayer ? '#fcd34d' : color.text }}
         >
           {displayName}
         </span>
         {queueNumber != null && (
           <span
-            className="px-1.5 py-0.5 rounded-md text-[10px] font-bold"
+            className="px-1 py-0.5 rounded text-[9px] font-bold shrink-0"
             style={{ backgroundColor: color.bg, color: color.text }}
           >
             #{queueNumber}
           </span>
         )}
         {isLocalPlayer && (
-          <span className="px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold rounded-md">
+          <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-300 text-[9px] font-bold rounded shrink-0">
             YOU
           </span>
         )}
         {isCurrentTurn && (
-          <span className="ml-auto text-xs font-medium text-emerald-400 animate-pulse motion-reduce:animate-none">
+          <span className="ml-auto text-[10px] font-semibold text-emerald-400 animate-pulse motion-reduce:animate-none shrink-0">
             {isLocalPlayer ? 'Your turn' : 'Playing...'}
           </span>
         )}
-        {/* Player-level selection indicator (rearrange) */}
         {isPlayerTarget && (
-          <span className="ml-auto px-1.5 py-0.5 bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[9px] font-bold rounded-md animate-pulse">
+          <span className="ml-auto px-1.5 py-0.5 bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[9px] font-bold rounded animate-pulse shrink-0">
             Select
           </span>
         )}

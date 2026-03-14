@@ -946,26 +946,27 @@ export default function Game() {
       {/* ─── Sticky Top Bar (v1.5 — 3-zone layout) ──────────── */}
       <div
         ref={headerRef}
-        className="sticky top-0 z-50 w-full backdrop-blur-md border-b"
+        className="sticky top-0 z-50 w-full backdrop-blur-lg border-b"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          background: 'color-mix(in srgb, var(--surface-solid) 85%, transparent)',
-          borderColor: 'var(--border-solid)',
+          background: 'color-mix(in srgb, var(--surface-solid) 90%, transparent)',
+          borderColor: 'var(--border)',
         }}
       >
-        <div className="flex items-center px-3 md:px-5 py-1.5 min-h-[48px] max-w-5xl mx-auto gap-2">
+        <div className="flex items-center px-3 md:px-5 py-2 min-h-[52px] max-w-5xl mx-auto gap-3">
           {/* ── LEFT: Title + Room Code + Pile ── */}
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             <h1 className="text-base font-bold text-amber-300 leading-none whitespace-nowrap hidden sm:block">Lucky Seven™</h1>
             <h1 className="text-base font-bold text-amber-300 leading-none whitespace-nowrap sm:hidden">L7</h1>
             <button
               onClick={() => { copyToClipboard(game.joinCode); toast.success('Room code copied!') }}
-              className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-800/60 border border-slate-700/40 hover:bg-slate-700/60 transition-colors cursor-pointer"
+              className="group relative flex items-center gap-1.5 px-2 py-1 rounded-lg border hover:border-emerald-500/40 transition-colors cursor-pointer"
+              style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
               aria-label={`Copy room code ${game.joinCode}`}
               title="Click to copy room code"
             >
-              <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-400">{game.joinCode}</span>
-              <svg className="w-3 h-3 text-slate-500 group-hover:text-slate-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <span className="text-[11px] font-mono font-bold tracking-widest text-emerald-400">{game.joinCode}</span>
+              <svg className="w-3 h-3 text-slate-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               <span className="toolbar-tooltip">Copy Code</span>
@@ -1122,10 +1123,10 @@ export default function Game() {
               transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.6 }}
               aria-live="polite"
               aria-atomic="true"
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-4 rounded-xl mb-3 text-xs font-medium ${
+              className={`flex items-center justify-center gap-2 py-2 px-5 rounded-xl mb-3 text-xs font-semibold tracking-wide ${
                 isMyTurn
-                  ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
-                  : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
+                  ? 'bg-emerald-900/30 border border-emerald-500/30 text-emerald-300 shadow-sm shadow-emerald-500/10'
+                  : 'bg-slate-800/30 border border-slate-700/40 text-slate-400'
               }`}
             >
               {!isMyTurn && curColor && (
@@ -1157,19 +1158,16 @@ export default function Game() {
                   maxHeight: 'min(800px, calc(100dvh - var(--top-offset, 56px) - 2rem))',
                 }}
               >
-                {/* Table surface — oval felt gradient */}
+                {/* Table surface — oval felt gradient (themed via CSS vars) */}
                 <div
-                  className="absolute rounded-[50%] pointer-events-none"
+                  className="absolute rounded-[50%] pointer-events-none table-felt"
                   style={{
                     left: '5%', right: '5%', top: '3%', bottom: '6%',
-                    background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.35) 0%, rgba(15,76,46,0.18) 40%, rgba(15,76,46,0.05) 70%, transparent 100%)',
-                    border: '2px solid rgba(15,76,46,0.22)',
-                    boxShadow: 'inset 0 0 80px rgba(15,76,46,0.12), inset 0 0 20px rgba(15,76,46,0.08)',
                   }}
                 />
 
                 {/* Center: Draw + Staging + Discard piles */}
-                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 z-10">
+                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
                   <div className="text-center" ref={drawPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Draw</p>
                     <CardView
@@ -1377,7 +1375,7 @@ export default function Game() {
             )}
 
             {/* Table area: Draw + Staging + Discard */}
-            <div className="flex items-center justify-center gap-6 mb-4 py-3" aria-busy={busy} aria-label="Card piles">
+            <div className="flex items-center justify-center gap-5 sm:gap-6 mb-4 py-4" aria-busy={busy} aria-label="Card piles">
               <div className="text-center" ref={drawPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
                 <CardView
