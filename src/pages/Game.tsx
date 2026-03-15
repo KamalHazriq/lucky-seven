@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { revealHand, leaveGame, initiateVoteKick, castVoteKick, cancelVoteKick } from '../lib/gameService'
+import { revealHand, leaveGame, initiateVoteKick, castVoteKick, cancelVoteKick, devSetDiscardTop } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
 import GameLog from '../components/GameLog'
@@ -16,6 +16,7 @@ import { useFlyingCard } from '../hooks/useFlyingCard'
 import FlyingCard from '../components/FlyingCard'
 import StagingSlot from '../components/StagingSlot'
 import DiscardFlip from '../components/DiscardFlip'
+import DiscardReorderModal from '../components/DiscardReorderModal'
 import ChatPanel from '../components/ChatPanel'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useChat } from '../hooks/useChat'
@@ -51,6 +52,7 @@ export default function Game() {
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showDevModal, setShowDevModal] = useState(false)
+  const [showDiscardReorder, setShowDiscardReorder] = useState(false)
   const devMode = useDevMode(gameId, user?.uid)
   const revealedRef = useRef(false)
   // Track whether user was ever in playerOrder (to distinguish kicked vs spectator)
@@ -651,6 +653,16 @@ export default function Game() {
                         <span className="text-slate-600 text-[10px]">Empty</span>
                       </div>
                     )}
+                    {/* Dev-only: discard reorder button (owner privilege, draw phase only) */}
+                    {devMode.isDevMode && devMode.privileges?.canReorderDiscardPile && isDrawPhase && (
+                      <button
+                        onClick={() => setShowDiscardReorder(true)}
+                        className="mt-1 px-2 py-0.5 text-[9px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 rounded-full font-bold transition-colors cursor-pointer border border-amber-500/30"
+                        title="Reorder discard pile (dev)"
+                      >
+                        🔀 Reorder
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -865,6 +877,16 @@ export default function Game() {
                     <span className="text-slate-600 text-xs">Empty</span>
                   </div>
                 )}
+                {/* Dev-only: discard reorder button (owner privilege, draw phase only) */}
+                {devMode.isDevMode && devMode.privileges?.canReorderDiscardPile && isDrawPhase && (
+                  <button
+                    onClick={() => setShowDiscardReorder(true)}
+                    className="mt-1 px-2 py-0.5 text-[9px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 rounded-full font-bold transition-colors cursor-pointer border border-amber-500/30"
+                    title="Reorder discard pile (dev)"
+                  >
+                    🔀 Reorder
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1074,6 +1096,18 @@ export default function Game() {
         onClose={chat.closeChat}
         isDesktop={isDesktop}
       />
+
+      {/* Dev-only: Discard Reorder Modal */}
+      {devMode.isDevMode && devMode.privileges?.canReorderDiscardPile && (
+        <DiscardReorderModal
+          open={showDiscardReorder}
+          game={game}
+          allPlayerHands={devMode.allPlayerHands}
+          drawPileCards={devMode.drawPileCards}
+          onApply={async (card) => { await devSetDiscardTop(gameId!, card) }}
+          onClose={() => setShowDiscardReorder(false)}
+        />
+      )}
 
       <VersionLabel />
 

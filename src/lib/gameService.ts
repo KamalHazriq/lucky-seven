@@ -32,6 +32,7 @@ import type {
   PowerEffectType,
   PowerRankKey,
   ChatMessage,
+  DevAccessDoc,
 } from './types'
 import { DEFAULT_GAME_SETTINGS, EMPTY_LOCK_INFO, getCardRankKey } from './types'
 import { nanoid } from 'nanoid'
@@ -1547,6 +1548,30 @@ export async function playAgain(
   }
 
   return result
+}
+
+// ─── Dev: Set Discard Top (owner-only reorder) ─────────────────
+export async function devSetDiscardTop(gameId: string, card: Card): Promise<void> {
+  const user = await ensureAuth()
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    if (!gameSnap.exists()) throw new Error('Game not found')
+    const game = gameSnap.data() as GameDoc
+
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'draw') throw new Error('Can only reorder during draw phase')
+    if (game.status !== 'active' && game.status !== 'ending') throw new Error('Game not active')
+
+    // Verify dev privilege
+    const devSnap = await tx.get(doc(db, 'games', gameId, 'devAccess', user.uid))
+    if (!devSnap.exists()) throw new Error('No dev access')
+    const devDoc = devSnap.data() as DevAccessDoc
+    if (!devDoc.privileges?.canReorderDiscardPile) throw new Error('No reorder privilege')
+
+    // Set the chosen card as discardTop (the old discardTop returns to the virtual discard pool)
+    tx.update(gameRef(gameId), { discardTop: card })
+  })
 }
 
 // ─── History (paginated, desc) ──────────────────────────────────

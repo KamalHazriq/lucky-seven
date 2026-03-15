@@ -33,12 +33,17 @@ export async function activateDevMode(
     throw new Error('Invalid access code')
   }
 
+  // Check if this user is the owner (personal privilege)
+  const ownerUid = configSnap.data()?.ownerUid as string | undefined
+  const isOwner = !!ownerUid && user.uid === ownerUid
+
   // Write the devAccess doc for this user
   const privileges: DevPrivileges = {
     canSeeAllCards: true,
     canPeekDrawPile: true,
     canInspectGameState: true,
     canUseCheatActions: true,
+    canReorderDiscardPile: isOwner, // only owner gets this
   }
 
   const accessDoc: DevAccessDoc = {

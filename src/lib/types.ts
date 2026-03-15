@@ -174,6 +174,8 @@ export interface DevPrivileges {
   canPeekDrawPile: boolean
   canInspectGameState: boolean
   canUseCheatActions: boolean
+  /** Personal-only privilege: reorder the discard pile (owner UID only) */
+  canReorderDiscardPile: boolean
 }
 
 export const DEFAULT_DEV_PRIVILEGES: DevPrivileges = {
@@ -181,6 +183,7 @@ export const DEFAULT_DEV_PRIVILEGES: DevPrivileges = {
   canPeekDrawPile: true,
   canInspectGameState: true,
   canUseCheatActions: true,
+  canReorderDiscardPile: false, // granted only to owner UID via config/dev.ownerUid
 }
 
 export interface DevAccessDoc {
