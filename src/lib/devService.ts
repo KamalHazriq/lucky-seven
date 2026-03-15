@@ -28,14 +28,18 @@ export async function activateDevMode(
     throw new Error('Dev mode is not configured. Set up the config/dev document in Firestore.')
   }
 
-  const storedCode = configSnap.data()?.code as string | undefined
-  if (!storedCode || code !== storedCode) {
+  // Two access levels:
+  //   1. Shared dev code (`code` field) — standard dev privileges for you + friend
+  //   2. Owner-only code (`ownerCode` field) — grants all privileges including canReorderDiscardPile
+  const sharedCode = configSnap.data()?.code as string | undefined
+  const ownerCode = configSnap.data()?.ownerCode as string | undefined
+
+  const isOwnerCode = !!ownerCode && code === ownerCode
+  const isSharedCode = !!sharedCode && code === sharedCode
+
+  if (!isOwnerCode && !isSharedCode) {
     throw new Error('Invalid access code')
   }
-
-  // Check if this user is the owner (personal privilege)
-  const ownerUid = configSnap.data()?.ownerUid as string | undefined
-  const isOwner = !!ownerUid && user.uid === ownerUid
 
   // Write the devAccess doc for this user
   const privileges: DevPrivileges = {
@@ -43,7 +47,7 @@ export async function activateDevMode(
     canPeekDrawPile: true,
     canInspectGameState: true,
     canUseCheatActions: true,
-    canReorderDiscardPile: isOwner, // only owner gets this
+    canReorderDiscardPile: isOwnerCode, // only granted with the owner code
   }
 
   const accessDoc: DevAccessDoc = {
