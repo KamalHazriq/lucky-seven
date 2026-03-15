@@ -10,17 +10,23 @@ import { suitColor } from '../lib/deck'
 
 /** Convert a hex color or rgba() string to rgba with custom alpha */
 function hexToRgba(color: string, alpha: number): string {
-  // If already rgba, parse and replace alpha
   const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
   if (rgbaMatch) {
     return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${alpha})`
   }
-  // Hex color
   const hex = color.replace('#', '')
   const r = parseInt(hex.substring(0, 2), 16)
   const g = parseInt(hex.substring(2, 4), 16)
   const b = parseInt(hex.substring(4, 6), 16)
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** Suit symbol lookup */
+const SUIT_SYMBOL: Record<string, string> = {
+  hearts: '\u2665',
+  diamonds: '\u2666',
+  clubs: '\u2663',
+  spades: '\u2660',
 }
 
 interface CardViewProps {
@@ -72,7 +78,6 @@ function CardView({
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
 
-  // Mobile: long-press to show tooltip
   const handleTouchStart = useCallback(() => {
     if (!lockerName) return
     longPressRef.current = setTimeout(() => setShowTooltip(true), 400)
@@ -82,7 +87,6 @@ function CardView({
     if (longPressRef.current) clearTimeout(longPressRef.current)
   }, [])
 
-  // Close tooltip on outside tap
   useEffect(() => {
     if (!showTooltip) return
     const handler = (e: TouchEvent) => {
@@ -93,6 +97,13 @@ function CardView({
     document.addEventListener('touchstart', handler, { passive: true })
     return () => document.removeEventListener('touchstart', handler)
   }, [showTooltip])
+
+  // ─── Font sizes per card size ───
+  const suitFontSize = size === 'lg' ? '1.6rem' : size === 'md' ? '1.25rem' : '0.95rem'
+  const rankFontSize = size === 'lg' ? '0.7rem' : size === 'md' ? '0.6rem' : '0.45rem'
+  const cornerSuitSize = size === 'lg' ? '0.55rem' : size === 'md' ? '0.45rem' : '0.35rem'
+  const cornerTop = size === 'lg' ? '3px' : '2px'
+  const cornerLeft = size === 'lg' ? '4px' : '3px'
 
   return (
     <motion.div
@@ -109,7 +120,7 @@ function CardView({
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${highlight ? 'ring-2 ring-gold ring-offset-2 ring-offset-transparent shadow-gold/30 shadow-xl' : ''}
         ${showFace
-          ? 'bg-gradient-to-b from-white to-slate-50 border border-slate-200/80 shadow-lg'
+          ? 'bg-white border border-slate-200/80 shadow-lg'
           : ownerColor
             ? 'border border-white/[0.08] hover:border-white/25 transition-[border-color] duration-200 shadow-md hover:shadow-lg'
             : 'bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 border border-blue-700/50 shadow-md'
@@ -125,61 +136,107 @@ function CardView({
           initial={{ rotateY: 90, scale: 0.92 }}
           animate={{ rotateY: 0, scale: 1 }}
           transition={SPRING_FLIP}
-          className="flex flex-col items-center justify-center w-full h-full px-1"
+          className="flex flex-col items-center justify-center w-full h-full"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          {/* Rank + suit display — large clear text */}
           {card.isJoker ? (
+            /* ─── Joker card ─── */
             <>
+              {/* Top-left corner */}
               <span
-                className="leading-none"
-                style={{ color: suitColor(card), fontSize: size === 'lg' ? '1.3rem' : size === 'md' ? '1.1rem' : '0.85rem' }}
+                className="absolute font-bold leading-none"
+                style={{
+                  fontSize: rankFontSize,
+                  top: cornerTop,
+                  left: cornerLeft,
+                  color: '#a855f7',
+                }}
               >
+                <span style={{ fontSize: cornerSuitSize }}>🃏</span>
+              </span>
+              {/* Center */}
+              <span style={{ color: '#a855f7', fontSize: suitFontSize }} className="leading-none">
                 🃏
               </span>
               <span
                 className="font-bold leading-none tracking-tight"
-                style={{ color: suitColor(card), fontSize: size === 'lg' ? '0.55rem' : size === 'md' ? '0.5rem' : '0.4rem', marginTop: '1px' }}
+                style={{ color: '#a855f7', fontSize: size === 'lg' ? '0.55rem' : size === 'md' ? '0.5rem' : '0.4rem', marginTop: '2px' }}
               >
                 JOKER
               </span>
             </>
           ) : (
+            /* ─── Normal card — tabletop style ─── */
             <>
+              {/* Top-left corner: rank + suit */}
+              <div
+                className="absolute flex flex-col items-center leading-none"
+                style={{
+                  top: cornerTop,
+                  left: cornerLeft,
+                  color: suitColor(card),
+                }}
+              >
+                <span className="font-bold" style={{ fontSize: rankFontSize, lineHeight: 1 }}>
+                  {card.rank}
+                </span>
+                <span style={{ fontSize: cornerSuitSize, lineHeight: 1, marginTop: '0px' }}>
+                  {SUIT_SYMBOL[card.suit]}
+                </span>
+              </div>
+
+              {/* Bottom-right corner: mirrored rank + suit */}
+              <div
+                className="absolute flex flex-col items-center leading-none"
+                style={{
+                  bottom: cornerTop,
+                  right: cornerLeft,
+                  color: suitColor(card),
+                  transform: 'rotate(180deg)',
+                }}
+              >
+                <span className="font-bold" style={{ fontSize: rankFontSize, lineHeight: 1 }}>
+                  {card.rank}
+                </span>
+                <span style={{ fontSize: cornerSuitSize, lineHeight: 1, marginTop: '0px' }}>
+                  {SUIT_SYMBOL[card.suit]}
+                </span>
+              </div>
+
+              {/* Center: large suit icon */}
+              <span
+                className="leading-none"
+                style={{
+                  color: suitColor(card),
+                  fontSize: suitFontSize,
+                }}
+              >
+                {SUIT_SYMBOL[card.suit]}
+              </span>
+
+              {/* Rank below suit */}
               <span
                 className="font-extrabold leading-none"
-                style={{ color: suitColor(card), fontSize: size === 'lg' ? '1.15rem' : size === 'md' ? '0.95rem' : '0.75rem' }}
+                style={{
+                  color: suitColor(card),
+                  fontSize: size === 'lg' ? '0.75rem' : size === 'md' ? '0.6rem' : '0.5rem',
+                  marginTop: '1px',
+                }}
               >
                 {card.rank}
               </span>
-              <span
-                className="leading-none"
-                style={{ color: suitColor(card), fontSize: size === 'lg' ? '1rem' : size === 'md' ? '0.8rem' : '0.65rem', marginTop: '1px' }}
-              >
-                {{ hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }[card.suit]}
-              </span>
             </>
           )}
+
+          {/* Seven = 0 badge */}
           {card.rank === '7' && !card.isJoker && (
             <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-900 text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
               0
             </span>
           )}
-          {/* Corner rank indicator */}
-          <span
-            className="absolute font-bold"
-            style={{
-              color: suitColor(card),
-              fontSize: size === 'lg' ? '8px' : '7px',
-              top: size === 'lg' ? '4px' : '3px',
-              left: size === 'lg' ? '5px' : '3px',
-              lineHeight: 1,
-            }}
-          >
-            {card.isJoker ? '🃏' : card.rank}
-          </span>
         </motion.div>
       ) : (
+        /* ─── Face-down card back ─── */
         <div
           className={perfMode ? 'absolute inset-0 rounded-xl' : 'card-shimmer absolute inset-0 rounded-xl'}
           style={ownerColor && !perfMode ? {
@@ -208,12 +265,10 @@ function CardView({
       {/* King lock overlay — visible on locked cards */}
       {locked && (
         showFace ? (
-          /* Face-up known card: small badge in corner so the card value stays readable */
           <div className="absolute top-0.5 right-0.5 z-10 pointer-events-none flex items-center justify-center w-5 h-5 bg-red-900/80 rounded-full shadow-md">
             <span className="text-[10px] leading-none">🔒</span>
           </div>
         ) : (
-          /* Face-down card: full overlay with light blur is fine */
           <div className="absolute inset-0 rounded-xl bg-red-900/25 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none">
             <div className="flex flex-col items-center">
               <span className="text-2xl drop-shadow-lg">K</span>

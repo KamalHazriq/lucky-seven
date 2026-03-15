@@ -495,7 +495,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
       case 'anyPlayer':
         withBusy(async () => {
           await rearrangeCards(gameId!, first.playerId)
-          playSfx('chaos'); vibrate(80)
+          playSfx('shuffle'); vibrate(80)
         })
         break
     }
@@ -539,7 +539,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
 
   const handleRearrangeSelect = (targetPlayerId: string) => {
     setModal({ type: 'none' })
-    withBusy(async () => { await rearrangeCards(gameId!, targetPlayerId); playSfx('chaos'); vibrate(80) })
+    withBusy(async () => { await rearrangeCards(gameId!, targetPlayerId); playSfx('shuffle'); vibrate(80) })
   }
 
   const handlePeekOpponentSelect = (targetPlayerId: string, slotIndex: number) => {

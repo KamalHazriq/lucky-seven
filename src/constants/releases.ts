@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.8.0'
+export const CURRENT_VERSION = 'v1.8.1'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,39 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.8.1',
+    title: 'Card Polish & Chaos Animation',
+    date: '15 March 2026',
+    sections: [
+      {
+        heading: 'Card Redesign',
+        items: [
+          'Premium tabletop card style: large centered suit icon with rank below',
+          'Top-left and bottom-right mirrored corner indicators (rank + suit)',
+          'Clean white background for face-up cards with subtle border',
+          'Joker cards display centered emoji with JOKER label',
+        ],
+      },
+      {
+        heading: 'Chaos Animation',
+        items: [
+          'Chaos/rearrange power now triggers a shuffle animation on the target player\'s cards',
+          'Cards lift, rotate, and shuffle before settling back (~900ms)',
+          'Staggered animation delay per card slot for organic feel',
+          'New shuffle sound effect: rapid card-riffle with settle tone',
+        ],
+      },
+      {
+        heading: 'Bug Fixes',
+        items: [
+          'Fixed patch notes showing v1.8.0 in all version categories (grouping logic)',
+          'Peek opponent setting now enabled by default',
+          'Chaos highlight now highlights the entire player panel instead of individual cards',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.8.0',
     title: 'Premium UI Redesign',

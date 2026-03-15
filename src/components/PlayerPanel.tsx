@@ -56,6 +56,8 @@ interface PlayerPanelProps {
   colorKey?: number | null
   /** Dev mode: all players' private data — when present, remote cards shown face-up */
   devAllHands?: Record<string, PrivatePlayerDoc> | null
+  /** Chaos shuffle animation — when true, cards do a lift-rotate-shuffle-settle animation */
+  chaosAnimation?: boolean
 }
 
 const EMPTY_LOCKED_BY: [LockInfo, LockInfo, LockInfo] = [
@@ -91,6 +93,7 @@ function PlayerPanel({
   stampOverlay,
   colorKey,
   devAllHands,
+  chaosAnimation = false,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
@@ -266,7 +269,7 @@ function PlayerPanel({
           }
 
           const slotWrapper = (child: React.ReactNode) => (
-            <div key={i} className="relative" data-slot={i}>
+            <div key={i} className={`relative${chaosAnimation ? ' chaos-shuffle' : ''}`} data-slot={i} style={chaosAnimation ? { animationDelay: `${i * 80}ms` } as React.CSSProperties : undefined}>
               {child}
 
               {/* Effect overlay (action highlights) */}

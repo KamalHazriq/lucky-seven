@@ -73,6 +73,18 @@ export const SFX = {
     setTimeout(() => beep(330, 0.07, 'square', 0.03), 165)
   },
 
+  /** Shuffle — rapid card-riffle effect for chaos animation */
+  shuffle: () => {
+    const steps = 8
+    for (let i = 0; i < steps; i++) {
+      const freq = 300 + Math.random() * 400
+      const delay = i * 90 + Math.random() * 30
+      setTimeout(() => beep(freq, 0.03, 'triangle', 0.03), delay)
+    }
+    // Settle tone
+    setTimeout(() => beep(440, 0.1, 'sine', 0.04), steps * 90 + 40)
+  },
+
   /** Player kicked or left the game */
   kick:    () => { beep(440, 0.1, 'triangle', 0.05); setTimeout(() => beep(330, 0.14, 'triangle', 0.04), 110) },
 

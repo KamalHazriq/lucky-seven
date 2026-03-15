@@ -34,6 +34,7 @@ import { useDevMode } from '../hooks/useDevMode'
 import { useChoreography } from '../hooks/useChoreography'
 import { useRemoteSfx } from '../hooks/useRemoteSfx'
 import { useRemotePowerToast } from '../hooks/useRemotePowerToast'
+import { useChaosAnimation } from '../hooks/useChaosAnimation'
 import { useRemoteAnimations } from '../hooks/useRemoteAnimations'
 import { useGameActions } from '../hooks/useGameActions'
 import { copyToClipboard } from '../lib/share'
@@ -212,6 +213,9 @@ export default function Game() {
 
   // Remote power toast — subtle notification when another player uses a power card
   useRemotePowerToast(game?.actionVersion ?? 0, game?.log ?? [], players, user?.uid)
+
+  // Chaos shuffle animation — detects rearrange power and returns animated player IDs
+  const chaosAnimations = useChaosAnimation(game?.actionVersion ?? 0, game?.log ?? [], players)
 
 
   // Track if user was ever in playerOrder (distinguishes kicked from spectator)
@@ -684,6 +688,7 @@ export default function Game() {
                         slotOverlays={slotOverlays[pid] ?? null}
                         swapLabels={swapLabels[pid] ?? null}
                         stampOverlay={stampOverlays[pid] ?? null}
+                        chaosAnimation={!!chaosAnimations[pid]}
                         devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                         {...selectionProps}
                       />
@@ -724,6 +729,7 @@ export default function Game() {
                     slotOverlays={slotOverlays[user.uid] ?? null}
                     swapLabels={swapLabels[user.uid] ?? null}
                     stampOverlay={stampOverlays[user.uid] ?? null}
+                    chaosAnimation={!!chaosAnimations[user.uid]}
                     {...selectionProps}
                   />
                   {isMyTurn && turnTimer.remaining !== null && (
@@ -792,6 +798,7 @@ export default function Game() {
                       slotOverlays={slotOverlays[pid] ?? null}
                       swapLabels={swapLabels[pid] ?? null}
                       stampOverlay={stampOverlays[pid] ?? null}
+                      chaosAnimation={!!chaosAnimations[pid]}
                       devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                       {...selectionProps}
                     />
@@ -885,6 +892,7 @@ export default function Game() {
                 slotOverlays={slotOverlays[user.uid] ?? null}
                 swapLabels={swapLabels[user.uid] ?? null}
                 stampOverlay={stampOverlays[user.uid] ?? null}
+                chaosAnimation={!!chaosAnimations[user.uid]}
                 {...selectionProps}
               />
               {isMyTurn && turnTimer.remaining !== null && (

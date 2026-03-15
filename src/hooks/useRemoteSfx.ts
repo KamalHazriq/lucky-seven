@@ -75,6 +75,6 @@ export function useRemoteSfx(
     else if (msg.includes('as peek_all'))         SFX.peekAll()
     else if (msg.includes('as lock'))             SFX.lock()
     else if (msg.includes('as unlock'))           SFX.unlock()
-    else if (msg.includes('as rearrange'))        SFX.chaos()
+    else if (msg.includes('as rearrange'))        SFX.shuffle()
   }, [actionVersion, log, players, localUserId])
 }

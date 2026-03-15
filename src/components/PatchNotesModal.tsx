@@ -39,10 +39,10 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
 
     const result: VersionGroup[] = []
     for (const [key, releases] of groupMap) {
-      // Primary = the base version (shortest version string, e.g. "v1.4")
+      // Primary = the base version (exact key match like "v1.4"), or fallback to last in group
       const primary = releases.find((r) => r.version === key) ?? releases[releases.length - 1]
-      // Subs = anything that's not the primary, ordered newest first
-      const subs = releases.filter((r) => r.version !== key)
+      // Subs = anything that's not the primary (compare by reference to avoid key mismatch)
+      const subs = releases.filter((r) => r !== primary)
       result.push({ key, primary, subs })
     }
 
