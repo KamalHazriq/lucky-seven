@@ -27,135 +27,159 @@ export default function HowToPlay() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[85vh] overflow-y-auto"
+              className="bg-slate-800 border border-slate-600 rounded-2xl max-w-2xl w-full shadow-2xl max-h-[85vh] overflow-y-auto"
             >
-              <h2 className="text-2xl font-bold text-amber-300 mb-4 text-center">
-                How to Play Lucky Seven
-              </h2>
+              {/* Header */}
+              <div className="sticky top-0 z-10 bg-slate-800 border-b border-slate-700/50 rounded-t-2xl px-6 py-4 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-amber-300">
+                  📖 Lucky Seven Rulebook
+                </h2>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-slate-700/50"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
 
-              <div className="space-y-4 text-sm text-slate-300">
-                {/* Goal */}
+              <div className="p-6 space-y-5 text-sm text-slate-300">
+                {/* Game Overview */}
                 <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Goal</h3>
-                  <p>
-                    Have the <span className="text-amber-300 font-medium">lowest total score</span> when the game ends.
-                    Each player has 3 face-down cards. You can peek, swap, and use powers to improve your hand.
-                  </p>
+                  <h3 className="font-bold text-emerald-400 text-base mb-2">🎯 Game Overview</h3>
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 space-y-2 text-slate-400">
+                    <p>Lucky Seven is a strategic card game where players aim for the <span className="text-amber-300 font-medium">lowest score</span>.</p>
+                    <ul className="space-y-1">
+                      <li><span className="text-slate-300 font-medium">Players:</span> 2–6 players</li>
+                      <li><span className="text-slate-300 font-medium">Objective:</span> Have the lowest total score when the game ends</li>
+                      <li><span className="text-slate-300 font-medium">Starting Hand:</span> 3 face-down cards per player</li>
+                      <li><span className="text-slate-300 font-medium">Win Condition:</span> Lowest total when draw pile runs out</li>
+                    </ul>
+                  </div>
                 </section>
 
-                {/* Card values */}
+                {/* Basic Gameplay */}
                 <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Card Values</h3>
-                  <ul className="list-disc list-inside space-y-0.5 text-slate-400">
-                    <li><span className="text-amber-300 font-medium">7 = 0 points</span> (the best!)</li>
-                    <li>Ace = 1 point</li>
-                    <li>2-6, 8-9 = face value</li>
-                    <li>10, J, Q, K, Joker = 10 points (but they have powers!)</li>
-                  </ul>
-                </section>
-
-                {/* Turns */}
-                <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">On Your Turn</h3>
-                  <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                    <li><span className="text-slate-200">Draw</span> from the draw pile or take the top discard.</li>
-                    <li><span className="text-slate-200">Then choose one:</span></li>
-                  </ol>
-                  <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5 text-slate-400">
-                    <li><span className="text-slate-200">Swap</span> the drawn card with one of your 3 cards (the old card goes to discard).</li>
-                    <li><span className="text-slate-200">Discard</span> the drawn card.</li>
-                    <li><span className="text-slate-200">Use its power</span> (if it has one), then discard it.</li>
-                  </ul>
-                </section>
-
-                {/* Powers */}
-                <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Power Cards</h3>
-                  <p className="text-xs text-slate-400 mb-2">
-                    Cards 10, J, Q, K, and Joker have special powers. By default:
-                  </p>
-                  <div className="space-y-2">
-                    <div className="bg-slate-900/50 rounded-lg p-2.5">
-                      <span className="font-medium text-amber-400">Jack &mdash; Peek All</span>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Peek at all 3 of your face-down cards (locked slots cannot be peeked).
-                      </p>
+                  <h3 className="font-bold text-emerald-400 text-base mb-2">🎮 Basic Gameplay</h3>
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 space-y-3 text-slate-400">
+                    <div>
+                      <p className="text-slate-300 font-medium mb-1.5">Turn Structure:</p>
+                      <ol className="list-decimal list-inside space-y-1 ml-1">
+                        <li>Draw from the pile <span className="text-slate-500">OR</span> take the top discard card</li>
+                        <li>Choose: <span className="text-slate-300">Swap</span>, <span className="text-slate-300">Discard</span>, or <span className="text-slate-300">Use Power</span></li>
+                        <li>If you swap, your old card goes to discard</li>
+                        <li>Turn passes to the next player</li>
+                      </ol>
                     </div>
-                    <div className="bg-slate-900/50 rounded-lg p-2.5">
-                      <span className="font-medium text-purple-400">Queen &mdash; Swap</span>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Swap any two unlocked cards between any players (including your own).
-                      </p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-2.5">
-                      <span className="font-medium text-red-400">King &mdash; Lock</span>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Lock any unlocked card (any player). Shows who locked it on hover.
-                      </p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-2.5">
-                      <span className="font-medium text-cyan-400">10 &mdash; Unlock</span>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Unlock a locked card (any player). If no cards are locked, power fizzles.
-                      </p>
-                    </div>
-                    <div className="bg-slate-900/50 rounded-lg p-2.5">
-                      <span className="font-medium text-fuchsia-400">Joker &mdash; Rearrange</span>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Randomly shuffle another player's unlocked cards.
-                      </p>
+                    <div className="border-t border-slate-700/50 pt-3">
+                      <p className="text-slate-300 font-medium mb-1.5">Key Rules:</p>
+                      <ul className="space-y-1 ml-1">
+                        <li><span className="text-amber-300 font-medium">7 = 0 points</span> (the best card!)</li>
+                        <li>Ace = 1 point, 2–6 and 8–9 = face value</li>
+                        <li>10, J, Q, K, Joker = 10 points (but they have powers!)</li>
+                        <li>You can peek, swap, lock, and rearrange cards with powers</li>
+                      </ul>
                     </div>
                   </div>
                 </section>
 
-                {/* Ending */}
+                {/* Power Cards */}
                 <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Ending the Game</h3>
-                  <p className="text-slate-400">
-                    The game ends when the <span className="text-amber-300 font-medium">pile of cards reaches 0</span> or
-                    when the pile is fully finished. Once this happens, all players reveal their cards and the scores are
-                    calculated. The player with the <span className="text-emerald-300">lowest total score wins</span>.
-                  </p>
+                  <h3 className="font-bold text-emerald-400 text-base mb-2">✨ Power Cards</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Jack */}
+                    <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3.5 border-l-[3px] border-l-amber-400">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">👁️</span>
+                        <span className="font-bold text-amber-400">Jack</span>
+                        <span className="text-slate-500 text-xs">— Peek All</span>
+                      </div>
+                      <p className="text-slate-400 text-xs">View all 3 of your face-down cards</p>
+                    </div>
+
+                    {/* Queen */}
+                    <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3.5 border-l-[3px] border-l-purple-400">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🔄</span>
+                        <span className="font-bold text-purple-400">Queen</span>
+                        <span className="text-slate-500 text-xs">— Swap</span>
+                      </div>
+                      <p className="text-slate-400 text-xs">Swap any two unlocked cards between any players</p>
+                    </div>
+
+                    {/* King */}
+                    <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3.5 border-l-[3px] border-l-red-400">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🔒</span>
+                        <span className="font-bold text-red-400">King</span>
+                        <span className="text-slate-500 text-xs">— Lock</span>
+                      </div>
+                      <p className="text-slate-400 text-xs">Lock any card, preventing it from being swapped</p>
+                    </div>
+
+                    {/* 10 */}
+                    <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3.5 border-l-[3px] border-l-cyan-400">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🔓</span>
+                        <span className="font-bold text-cyan-400">10</span>
+                        <span className="text-slate-500 text-xs">— Unlock</span>
+                      </div>
+                      <p className="text-slate-400 text-xs">Unlock a previously locked card</p>
+                    </div>
+
+                    {/* Joker */}
+                    <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3.5 border-l-[3px] border-l-fuchsia-400 sm:col-span-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">🃏</span>
+                        <span className="font-bold text-fuchsia-400">Joker</span>
+                        <span className="text-slate-500 text-xs">— Chaos</span>
+                      </div>
+                      <p className="text-slate-400 text-xs">Randomly shuffle an opponent's unlocked cards</p>
+                    </div>
+                  </div>
                 </section>
 
-                {/* Locks */}
+                {/* Locked Cards */}
                 <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Locked Cards</h3>
-                  <p className="text-slate-400">
-                    Cards locked by a King show a <span className="text-red-400">King overlay with lock icon</span>.
-                    Hover or long-press to see who locked it.
-                    They cannot be swapped (by you, Queen, or Joker) or peeked (Jack). Use a 10 to unlock them.
-                  </p>
+                  <h3 className="font-bold text-emerald-400 text-base mb-2">🔒 Locked Cards</h3>
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 text-slate-400">
+                    <ul className="space-y-1.5">
+                      <li>Locked cards can't be swapped or peeked</li>
+                      <li>Shows a <span className="text-red-400 font-medium">King overlay</span> with lock icon</li>
+                      <li>Use a <span className="text-cyan-400 font-medium">10</span> to unlock them</li>
+                      <li>Hover or long-press to see who locked it</li>
+                    </ul>
+                  </div>
                 </section>
 
-                {/* Power usage */}
+                {/* Strategy Tips */}
                 <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Power Usage</h3>
-                  <p className="text-slate-400">
-                    Each <span className="text-amber-300 font-medium">physical card</span> can have its power used only once.
-                    If you discard a power card without using it, it stays <span className="text-slate-200">unspent</span> &mdash;
-                    anyone who takes it from discard can still use its power.
-                    Once spent, the power button is disabled for that card.
-                    A different card of the same rank has its own independent power.
-                  </p>
+                  <h3 className="font-bold text-emerald-400 text-base mb-2">🧠 Strategy Tips</h3>
+                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 text-slate-400">
+                    <ul className="space-y-1.5 list-disc list-inside">
+                      <li>Keep track of which cards you've peeked</li>
+                      <li><span className="text-amber-300 font-medium">7s are worth 0</span> — protect them with locks!</li>
+                      <li>Use Queen swap to give high cards to opponents</li>
+                      <li>Joker chaos is great for disrupting opponents who peeked</li>
+                      <li>Sometimes discarding a power is better than using it</li>
+                    </ul>
+                  </div>
                 </section>
 
-                {/* Settings */}
+                {/* How to Win */}
                 <section>
-                  <h3 className="font-semibold text-emerald-400 mb-1">Custom Settings</h3>
-                  <p className="text-slate-400">
-                    When creating a game, open <span className="text-slate-200 font-medium">Power Settings</span> to customize:
-                    assign any effect to any power-card rank, and choose the number of Jokers (1-4).
-                  </p>
+                  <h3 className="font-bold text-emerald-400 text-base mb-2">🏆 How to Win</h3>
+                  <div className="bg-slate-900/40 border border-amber-600/20 rounded-xl p-4 text-slate-400">
+                    <p className="text-slate-300 font-medium mb-1.5">Victory Conditions:</p>
+                    <ul className="space-y-1.5">
+                      <li>Have the <span className="text-amber-300 font-medium">lowest total score</span> when the pile runs out</li>
+                      <li><span className="text-amber-300 font-medium">7s</span> are your best friend (0 points each)</li>
+                      <li>Strategic use of powers gives you the edge</li>
+                    </ul>
+                  </div>
                 </section>
               </div>
-
-              <button
-                onClick={() => setOpen(false)}
-                className="w-full mt-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-sm font-medium transition-colors cursor-pointer"
-              >
-                Got it!
-              </button>
             </motion.div>
           </motion.div>
         )}

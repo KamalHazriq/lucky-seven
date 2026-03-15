@@ -48,6 +48,7 @@ interface GameModalsProps {
   onLockSelect: (playerId: string, slotIndex: number) => void
   onUnlockSelect: (playerId: string, slotIndex: number) => void
   onRearrangeSelect: (playerId: string) => void
+  onPeekOpponentSelect: (playerId: string, slotIndex: number) => void
   onCancelPower: () => void
 
   // Power guide
@@ -92,7 +93,7 @@ export default function GameModals({
   myLocks, myKnown, powerAssignments, spentPowerCardIds, drawnCardSource,
   hasAnyLocks, uiMode, drawnCardDismissed,
   onSwap, onDiscard, onUsePower, onCancelDraw, onDismissDrawn,
-  onPeekSelect, onSwapConfirm, onLockSelect, onUnlockSelect, onRearrangeSelect, onCancelPower,
+  onPeekSelect, onSwapConfirm, onLockSelect, onUnlockSelect, onRearrangeSelect, onPeekOpponentSelect, onCancelPower,
   showPowerGuide, onClosePowerGuide,
   showSettings, onCloseSettings,
   layout, onToggleLayout, uiModeValue, onToggleUiMode,
@@ -175,6 +176,27 @@ export default function GameModals({
         onSelect={onUnlockSelect}
         onCancel={onCancelPower}
         noTargetsMessage="No cards are locked."
+      />
+
+      <SlotPickerModal
+        open={modal.type === 'peekOpponent'}
+        title="Power: Peek Opponent"
+        subtitle="Choose an opponent's card to peek."
+        accentColor="amber"
+        players={players}
+        playerOrder={modalPlayerOrder}
+        localPlayerId={localPlayerId}
+        knownCards={myKnown}
+        slotFilter={(pid: string, slotIndex: number, pd: PlayerDoc) => pid !== localPlayerId && !pd.locks[slotIndex]}
+        onSelect={onPeekOpponentSelect}
+        onCancel={onCancelPower}
+        noTargetsMessage="No opponent cards available to peek."
+      />
+
+      <PeekResultModal
+        card={modal.type === 'peekOpponentResult' ? modal.card : null}
+        slotIndex={modal.type === 'peekOpponentResult' ? modal.slot : null}
+        onClose={() => setModal({ type: 'none' })}
       />
 
       <JokerChaosModal

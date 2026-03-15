@@ -627,6 +627,51 @@ export async function usePeekOne(gameId: string, slotIndex: number): Promise<Car
   return peekedCard!
 }
 
+// ─── Effect: peek_one_opponent_card ──────────────────────────────
+export async function usePeekOpponent(
+  gameId: string,
+  targetPlayerId: string,
+  slotIndex: number,
+): Promise<{ card: Card; playerName: string }> {
+  const user = await ensureAuth()
+  let peekedCard: Card | null = null
+  let targetName = ''
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    const game = gameSnap.data() as GameDoc
+    const privSnap = await tx.get(privateRef(gameId, user.uid))
+    const priv = privSnap.data() as PrivatePlayerDoc
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pd = playerSnap.data() as PlayerDoc
+    const targetPlayerSnap = await tx.get(playerRef(gameId, targetPlayerId))
+    const targetPD = targetPlayerSnap.data() as PlayerDoc
+    const targetPrivSnap = await tx.get(privateRef(gameId, targetPlayerId))
+    const targetPriv = targetPrivSnap.data() as PrivatePlayerDoc
+
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'action') throw new Error('Must draw first')
+    if (!priv.drawnCard) throw new Error('No drawn card')
+    const rankKey = assertPowerEffect(game, priv.drawnCard, 'peek_one_opponent_card')
+    if (targetPlayerId === user.uid) throw new Error('Cannot peek your own card — use Peek 1 instead')
+    if (targetPD.locks[slotIndex]) throw new Error('That card is locked!')
+
+    peekedCard = targetPriv.hand[slotIndex]
+    targetName = targetPD.displayName
+
+    const discardCard = priv.drawnCard
+    const peekOpponentMsg = `${pd.displayName} used ${rankKey} as peek_opponent: ${targetPD.displayName}'s #${slotIndex + 1}`
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
+    txHistory(tx, gameId, peekOpponentMsg)
+    tx.update(gameRef(gameId), {
+      ...buildEndTurnUpdates(game, user.uid, discardCard, peekOpponentMsg),
+      ...spentField(discardCard.id),
+    })
+  })
+
+  return { card: peekedCard!, playerName: targetName }
+}
+
 // ─── Effect: swap_one_to_one ────────────────────────────────────
 export async function useSwap(
   gameId: string,
@@ -828,12 +873,23 @@ export async function useRearrange(
     const unlockedIndices = [0, 1, 2].filter((i) => !locks[i])
 
     if (unlockedIndices.length > 1) {
-      const rng = seedrandom(`${game.actionVersion}-chaos`)
+      // Use crypto-random seed so the shuffle is unpredictable and never a no-op
+      const cryptoSeed = `${game.actionVersion}-chaos-${Date.now()}-${Math.random()}`
+      const rng = seedrandom(cryptoSeed)
       const unlockedCards = unlockedIndices.map((i) => targetPriv.hand[i])
-      for (let i = unlockedCards.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [unlockedCards[i], unlockedCards[j]] = [unlockedCards[j], unlockedCards[i]]
-      }
+      // Fisher-Yates shuffle — retry if result is identical to original (prevent no-op)
+      const original = [...unlockedCards]
+      let attempts = 0
+      do {
+        for (let i = unlockedCards.length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [unlockedCards[i], unlockedCards[j]] = [unlockedCards[j], unlockedCards[i]]
+        }
+        attempts++
+      } while (
+        attempts < 10 &&
+        unlockedCards.every((c, i) => c.id === original[i].id)
+      )
 
       const newHand = [...targetPriv.hand]
       unlockedIndices.forEach((idx, i) => {

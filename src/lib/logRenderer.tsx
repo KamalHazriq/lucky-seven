@@ -1,9 +1,10 @@
 import { type ReactNode } from 'react'
-import { getSeatColor } from './playerColors'
+import { getPlayerColor } from './playerColors'
 
 interface PlayerInfo {
   displayName: string
   seatIndex: number
+  colorKey?: number
 }
 
 // ─── Power label map ────────────────────────────────────────
@@ -27,6 +28,8 @@ const POWER_KEYWORDS: Record<string, string> = {
   'unlock_one_locked_card': 'UNLOCK',
   'as rearrange': 'CHAOS',
   'rearrange_cards': 'CHAOS',
+  'as peek_opponent': 'PEEK',
+  'peek_one_opponent_card': 'PEEK',
 }
 
 // Build a regex for power keywords — match longest first
@@ -233,10 +236,10 @@ export function renderLogMessage(
     (a, b) => b.displayName.length - a.displayName.length,
   )
 
-  // Build a name → seatIndex lookup
-  const nameToSeat: Record<string, number> = {}
+  // Build a name → player info lookup
+  const nameToInfo: Record<string, { seatIndex: number; colorKey?: number }> = {}
   for (const p of sorted) {
-    nameToSeat[p.displayName] = p.seatIndex
+    nameToInfo[p.displayName] = { seatIndex: p.seatIndex, colorKey: p.colorKey }
   }
 
   // ─── Step 1: Split on player names using word boundaries ───
@@ -264,9 +267,9 @@ export function renderLogMessage(
     if (!part) continue
 
     // Check if this part is a player name
-    const seat = nameToSeat[part]
-    if (seat !== undefined) {
-      const color = getSeatColor(seat)
+    const info = nameToInfo[part]
+    if (info !== undefined) {
+      const color = getPlayerColor(info.seatIndex, info.colorKey)
       result.push(
         <span
           key={`name-${i}`}

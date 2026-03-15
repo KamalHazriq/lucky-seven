@@ -23,6 +23,7 @@ const POWER_PATTERNS: { test: RegExp; icon: string }[] = [
   { test: /as lock/i,       icon: '🔒' },
   { test: /as unlock/i,     icon: '🔓' },
   { test: /as rearrange/i,  icon: '🌀' },
+  { test: /as peek_opponent/i, icon: '👁️' },
 ]
 
 export function useRemotePowerToast(
@@ -66,6 +67,7 @@ export function useRemotePowerToast(
       .replace(/as lock:/i, 'used LOCK:')
       .replace(/as unlock:/i, 'used UNLOCK:')
       .replace(/as rearrange:/i, 'used CHAOS:')
+      .replace(/as peek_opponent:/i, 'used PEEK OPPONENT:')
       .replace(/\s*used\s+used/i, ' used') // prevent double "used used"
       .replace(/\s{2,}/g, ' ')
       .trim()
