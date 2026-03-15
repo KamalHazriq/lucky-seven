@@ -32,18 +32,19 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+            className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
             onClick={() => setOpen(false)}
+            style={{ isolation: 'isolate' }}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 30 }}
+              initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
+              exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-600 rounded-2xl w-full max-w-lg md:max-w-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="relative bg-slate-800 border border-slate-600 rounded-2xl w-full max-w-4xl shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain"
             >
               {/* Header */}
-              <div className="sticky top-0 z-10 bg-slate-800 border-b border-slate-700/50 rounded-t-2xl px-5 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
+              <div className="sticky top-0 z-20 bg-slate-800/95 backdrop-blur-sm border-b border-slate-700/50 rounded-t-2xl px-5 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
                 <h2 className="text-xl sm:text-2xl font-bold text-amber-300">
                   Lucky Seven Rulebook
                 </h2>
@@ -57,7 +58,7 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
                 </button>
               </div>
 
-              <div className="p-5 sm:p-6 space-y-5 text-sm text-slate-300">
+              <div className="p-5 sm:p-6 pb-8 space-y-5 text-sm text-slate-300">
                 {/* Top 2-col: Overview + Basic Gameplay side-by-side on desktop */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Game Overview */}
