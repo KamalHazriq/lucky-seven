@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.7.7'
+export const CURRENT_VERSION = 'v1.8.0'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,60 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.8.0',
+    title: 'Premium UI Redesign',
+    date: '15 March 2026',
+    sections: [
+      {
+        heading: 'Visual Overhaul',
+        items: [
+          'Premium felt-table aesthetic with themed CSS variables across all 3 themes',
+          'Redesigned card faces: separate rank and suit display with corner indicators',
+          'Subtler animations: reduced glow (3s cycle), gentler shimmer (7s cycle), softer card flight shadows',
+          'Table felt surface uses radial gradient with theme-aware colors',
+        ],
+      },
+      {
+        heading: 'Layout Stability',
+        items: [
+          'Seat positions inset for 5-7 players to prevent panel edge clipping',
+          'Tighter card gaps and reduced padding on remote player panels',
+          'Minimum panel widths raised for 6+ players so 3 cards always fit',
+          'Table zone height constraints refined to prevent action bar push-off',
+          'Card container overflow set to visible so selection badges are never clipped',
+        ],
+      },
+      {
+        heading: 'Game Flow Clarity',
+        items: [
+          'Selection confirm banner now shows specific swap summary (e.g. "Confirm swap: Kamal\'s #1 ↔ Sara\'s #2")',
+          'Peek reveal duration increased from 1.2s to 2s for better readability',
+          'Turn indicator shows pulsing green dot when it\'s your turn',
+          'Action phase text is now context-aware based on held card state',
+          '"FINAL ROUND" banner appears when a player calls end — shows who called it',
+          'Action highlight labels larger and more readable on table layout',
+        ],
+      },
+      {
+        heading: 'Theme Consistency',
+        items: [
+          'All modals themed: Drawn Card, Vote Kick, Settings, Patch Notes use CSS variables',
+          'Home, Lobby, and Results pages use themed containers',
+          'Game log newest entry highlight uses theme variable instead of hardcoded color',
+          'Selection pulse uses dedicated CSS keyframe instead of generic animate-pulse',
+        ],
+      },
+      {
+        heading: 'Performance',
+        items: [
+          'GameLog wrapped in React.memo to prevent re-renders on unrelated state changes',
+          'hasAnyLocks computation memoized to avoid recalculating every render',
+          'All animations GPU-accelerated via transform/opacity — no layout thrashing',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.7.7',
     title: 'Card Overflow, Timer & Celebration',
