@@ -23,6 +23,7 @@ export type PowerEffectType =
   | 'lock_one_card'
   | 'unlock_one_locked_card'
   | 'rearrange_cards'
+  | 'peek_one_opponent_card'
 
 /** Rank keys that can be assigned powers */
 export type PowerRankKey = '10' | 'J' | 'Q' | 'K' | 'JOKER'
@@ -37,6 +38,7 @@ export const ALL_EFFECT_TYPES: { value: PowerEffectType; label: string }[] = [
   { value: 'lock_one_card', label: 'Lock 1 card' },
   { value: 'unlock_one_locked_card', label: 'Unlock 1 card' },
   { value: 'rearrange_cards', label: 'Rearrange cards' },
+  { value: 'peek_one_opponent_card', label: 'Peek 1 opponent card' },
 ]
 
 export const DEFAULT_POWER_ASSIGNMENTS: PowerAssignments = {
@@ -73,6 +75,7 @@ export const EFFECT_LABELS: Record<PowerEffectType, { label: string; desc: strin
   lock_one_card: { label: 'Lock', desc: 'Lock any card (cannot be swapped)', color: 'bg-red-600 hover:bg-red-500' },
   unlock_one_locked_card: { label: 'Unlock', desc: 'Unlock a locked card', color: 'bg-cyan-600 hover:bg-cyan-500' },
   rearrange_cards: { label: 'Chaos', desc: "Randomly shuffle another player's unlocked cards", color: 'bg-fuchsia-600 hover:bg-fuchsia-500' },
+  peek_one_opponent_card: { label: 'Peek Opponent', desc: "Peek at one of another player's cards", color: 'bg-amber-600 hover:bg-amber-500' },
 }
 
 // ─── Lock metadata ──────────────────────────────────────────

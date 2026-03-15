@@ -239,7 +239,7 @@ export default function Game() {
     handleDrawPile, handleTakeDiscard, handleCancelDraw, handleSwap, handleDiscard,
     handleUsePower, handleChoreoComplete, handleSelectionConfirm, handleSelectionClick,
     handlePlayerSelect, handlePeekSelect, handleSwapConfirm, handleLockSelect,
-    handleUnlockSelect, handleRearrangeSelect, handleCancelPower,
+    handleUnlockSelect, handleRearrangeSelect, handlePeekOpponentSelect, handleCancelPower,
   } = useGameActions({
     gameId, isMyTurn, isDrawPhase, isActionPhase, hasDrawnCard, drawnCard,
     reduced, isDesktop, isSpectator, privateState: privateState ?? null,
@@ -966,6 +966,7 @@ export default function Game() {
         onLockSelect={handleLockSelect}
         onUnlockSelect={handleUnlockSelect}
         onRearrangeSelect={handleRearrangeSelect}
+        onPeekOpponentSelect={handlePeekOpponentSelect}
         onCancelPower={handleCancelPower}
         showPowerGuide={showPowerGuide}
         onClosePowerGuide={() => setShowPowerGuide(false)}

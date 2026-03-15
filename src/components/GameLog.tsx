@@ -28,6 +28,7 @@ function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
     Object.values(players).map((p) => ({
       displayName: p.displayName,
       seatIndex: p.seatIndex,
+      colorKey: p.colorKey,
     })),
     [players],
   )

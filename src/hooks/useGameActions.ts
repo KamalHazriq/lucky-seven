@@ -12,6 +12,7 @@ import {
   useLock as lockCard,
   useUnlock as unlockCard,
   useRearrange as rearrangeCards,
+  usePeekOpponent as peekOpponent,
 } from '../lib/gameService'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PrivatePlayerDoc } from '../lib/types'
@@ -54,6 +55,8 @@ export type ModalState =
   | { type: 'lock' }
   | { type: 'unlock' }
   | { type: 'rearrange' }
+  | { type: 'peekOpponent' }
+  | { type: 'peekOpponentResult'; card: Card; playerName: string; slot: number }
   | { type: 'none' }
 
 // ─── Hook params ─────────────────────────────────────────────
@@ -138,6 +141,7 @@ interface UseGameActionsReturn {
   handleLockSelect: (targetPlayerId: string, slotIndex: number) => void
   handleUnlockSelect: (targetPlayerId: string, slotIndex: number) => void
   handleRearrangeSelect: (targetPlayerId: string) => void
+  handlePeekOpponentSelect: (targetPlayerId: string, slotIndex: number) => void
   handleCancelPower: () => void
 }
 
@@ -350,6 +354,10 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
         case 'rearrange_cards':
           startSelection(REARRANGE_CONSTRAINT)
           break
+        case 'peek_one_opponent_card':
+          playSfx('peek')
+          setModal({ type: 'peekOpponent' })
+          break
       }
       return
     }
@@ -379,6 +387,10 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
         break
       case 'rearrange_cards':
         setModal({ type: 'rearrange' })
+        break
+      case 'peek_one_opponent_card':
+        playSfx('peek')
+        setModal({ type: 'peekOpponent' })
         break
     }
   }
@@ -487,6 +499,15 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
     withBusy(async () => { await rearrangeCards(gameId!, targetPlayerId); playSfx('chaos'); vibrate(80) })
   }
 
+  const handlePeekOpponentSelect = (targetPlayerId: string, slotIndex: number) => {
+    setModal({ type: 'none' })
+    withBusy(async () => {
+      const { card, playerName } = await peekOpponent(gameId!, targetPlayerId, slotIndex)
+      playSfx('peek')
+      setModal({ type: 'peekOpponentResult', card, playerName, slot: slotIndex })
+    })
+  }
+
   const handleCancelPower = () => {
     setModal({ type: 'none' })
   }
@@ -555,6 +576,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
     handleLockSelect,
     handleUnlockSelect,
     handleRearrangeSelect,
+    handlePeekOpponentSelect,
     handleCancelPower,
   }
 }
