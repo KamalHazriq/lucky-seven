@@ -64,7 +64,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   jokerCount: 2,
   deckSize: 1,
   turnSeconds: 0,
-  peekAllowsOpponent: false,
+  peekAllowsOpponent: true,
 }
 
 /** Human-readable effect label for UI */

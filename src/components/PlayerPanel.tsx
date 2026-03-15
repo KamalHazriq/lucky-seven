@@ -105,8 +105,11 @@ function PlayerPanel({
   // For 'anyPlayer' selection: is this whole panel clickable?
   const isPlayerTarget = selectionTargetType === 'anyPlayer' && playerId !== localPlayerId
 
+  // For 'anyPlayer': is this panel the currently selected target? (solid highlight, not just clickable pulse)
+  const isSelectedPlayer = selectionTargetType === 'anyPlayer' && selectedTarget?.playerId === playerId
+
   // Dim the entire panel if in selection mode and no slots are selectable here
-  const panelDimmed = inSelectionMode && !isPlayerTarget && localPlayerId && players
+  const panelDimmed = inSelectionMode && !isPlayerTarget && !isSelectedPlayer && localPlayerId && players
     ? ![0, 1, 2].some((i) =>
         isSlotSelectable(selectionTargetType!, playerId, i, localPlayerId, players),
       )
@@ -129,8 +132,8 @@ function PlayerPanel({
           ? 'bg-amber-900/10 border border-amber-500/25'
           : 'bg-slate-800/30 border border-slate-700/40'
     }
-    ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/60 hover:ring-amber-300 bg-amber-900/20 shadow-lg shadow-amber-500/10 selection-pulse-panel' : ''}
-  `, [isLocalPlayer, isCurrentTurn, panelDimmed, isPlayerTarget, perfMode])
+    ${isSelectedPlayer ? 'ring-2 ring-amber-400 bg-amber-900/30 shadow-lg shadow-amber-500/20' : isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/60 hover:ring-amber-300 bg-amber-900/20 shadow-lg shadow-amber-500/10 selection-pulse-panel' : ''}
+  `, [isLocalPlayer, isCurrentTurn, panelDimmed, isPlayerTarget, isSelectedPlayer, perfMode])
 
   return (
     <div
@@ -250,8 +253,9 @@ function PlayerPanel({
             : false
 
           // Is this slot the currently selected first or second target?
-          const isSelected = selectedTarget?.playerId === playerId && selectedTarget?.slotIndex === i
-          const isSecondSelected = selectedSecondTarget?.playerId === playerId && selectedSecondTarget?.slotIndex === i
+          // For 'anyPlayer' (chaos), selection is panel-level — don't highlight individual slots
+          const isSelected = selectionTargetType !== 'anyPlayer' && selectedTarget?.playerId === playerId && selectedTarget?.slotIndex === i
+          const isSecondSelected = selectionTargetType !== 'anyPlayer' && selectedSecondTarget?.playerId === playerId && selectedSecondTarget?.slotIndex === i
 
           const handleSlotClick = () => {
             if (inSelectionMode && slotSelectable && onSelectionClick) {
