@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, onSnapshot, updateDoc, setDoc, increment } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, setDoc, increment } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
 export interface GlobalStats {
@@ -11,8 +11,11 @@ export interface GlobalStats {
 const INITIAL: GlobalStats = { gamesPlayed: 0, totalVisits: 0, lastGameAt: null }
 
 /**
- * Subscribe to global game statistics from Firestore.
- * All stats are universal (cross-device) via a single shared Firestore doc.
+ * Fetch global game statistics from Firestore (single read, no live listener).
+ * Stats are universal (cross-device) via a single shared Firestore doc.
+ *
+ * Uses getDoc instead of onSnapshot to save one active listener on the Home page.
+ * Stats rarely change mid-session — a one-time read is sufficient.
  */
 export function useGlobalStats() {
   const [stats, setStats] = useState<GlobalStats>(INITIAL)
@@ -35,11 +38,10 @@ export function useGlobalStats() {
     })
   }, [visitCounted])
 
-  // Subscribe to Firestore global stats
+  // Single read instead of live listener — stats rarely change mid-session
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, 'stats', 'global'),
-      (snap) => {
+    getDoc(doc(db, 'stats', 'global'))
+      .then((snap) => {
         if (snap.exists()) {
           const data = snap.data()
           setStats({
@@ -48,14 +50,11 @@ export function useGlobalStats() {
             lastGameAt: data.lastGameAt ?? null,
           })
         }
-        setLoading(false)
-      },
-      () => {
+      })
+      .catch(() => {
         // Doc doesn't exist yet — that's fine
-        setLoading(false)
-      },
-    )
-    return unsub
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   return { stats, loading }

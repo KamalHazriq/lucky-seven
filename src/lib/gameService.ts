@@ -277,7 +277,7 @@ export async function joinGame(
       known: {},
     } satisfies PrivatePlayerDoc)
   })
-  addHistory(gameId, `${displayName} joined`)
+  // Join events are tracked in game.log only (not history subcollection) to reduce writes
 }
 
 // ─── Start Game ─────────────────────────────────────────────────
@@ -385,7 +385,7 @@ export async function drawFromPile(gameId: string): Promise<void> {
     tx.update(privateRef(gameId, user.uid), { drawnCard: drawn, drawnCardSource: 'pile' })
     // Reset AFK strikes on action
     tx.update(playerRef(gameId, user.uid), { afkStrikes: 0 })
-    txHistory(tx, gameId, `${pName} drew from the pile`)
+    // Skip history write for draw — high-frequency, already in bounded game.log
     tx.update(gameRef(gameId), {
       drawPileCount: newPile.length,
       turnPhase: 'action',
@@ -414,7 +414,7 @@ export async function takeFromDiscard(gameId: string): Promise<void> {
     tx.update(privateRef(gameId, user.uid), { drawnCard: game.discardTop, drawnCardSource: 'discard' })
     // Reset AFK strikes on action
     tx.update(playerRef(gameId, user.uid), { afkStrikes: 0 })
-    txHistory(tx, gameId, `${pName} took from discard`)
+    // Skip history write for discard take — high-frequency, already in bounded game.log
     tx.update(gameRef(gameId), {
       discardTop: null,
       turnPhase: 'action',
@@ -455,7 +455,6 @@ export async function cancelDraw(gameId: string): Promise<void> {
       // Put card back on discard pile
       const cancelMsg = `${pd.displayName} returned the card to discard`
       tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
-      txHistory(tx, gameId, cancelMsg)
       tx.update(gameRef(gameId), {
         discardTop: cardToReturn,
         turnPhase: 'draw',
@@ -499,7 +498,6 @@ export async function swapWithSlot(gameId: string, slotIndex: number): Promise<v
     })
 
     const swapMsg = `${pd.displayName} swapped their card #${slotIndex + 1}`
-    txHistory(tx, gameId, swapMsg)
     tx.update(gameRef(gameId), buildEndTurnUpdates(game, user.uid, oldCard, swapMsg))
   })
 }
@@ -522,7 +520,6 @@ export async function discardDrawn(gameId: string): Promise<void> {
 
     const discardCard = priv.drawnCard
     tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
-    txHistory(tx, gameId, `${pName} discarded`)
     tx.update(gameRef(gameId), buildEndTurnUpdates(game, user.uid, discardCard, `${pName} discarded`))
   })
 }
@@ -1196,7 +1193,7 @@ export async function skipTurn(gameId: string, expectedActionVersion: number): P
       // First AFK strike — just skip the turn
       tx.update(playerRef(gameId, currentPid), { afkStrikes: currentStrikes })
 
-      txHistory(tx, gameId, `${pd.displayName}'s turn was skipped (AFK).`)
+      // Skip history for routine AFK skip — already in bounded game.log
       const updates: Record<string, unknown> = {
         ...discardUpdates,
         currentTurnPlayerId: shouldFinish ? null : nextPlayerId,
@@ -1374,19 +1371,6 @@ export async function cancelVoteKick(gameId: string): Promise<void> {
       log: boundLog(game.log, logEntry(`Vote to kick ${game.voteKick.targetName} was cancelled.`)),
     })
   })
-}
-
-// ─── Presence (throttled) ─────────────────────────────────────────
-let lastPresenceWrite = 0
-const PRESENCE_THROTTLE_MS = 60_000 // 60 seconds
-
-export async function updatePresenceThrottled(gameId: string, connected: boolean): Promise<void> {
-  const now = Date.now()
-  // Always allow disconnection writes; throttle connection writes
-  if (connected && now - lastPresenceWrite < PRESENCE_THROTTLE_MS) return
-  lastPresenceWrite = now
-  const user = await ensureAuth()
-  await updateDoc(playerRef(gameId, user.uid), { connected })
 }
 
 // ─── Feedback ───────────────────────────────────────────────────
@@ -1637,11 +1621,6 @@ export async function findGameByCode(joinCode: string): Promise<string | null> {
   const snap = await getDocs(q)
   if (snap.empty) return null
   return snap.docs[0].id
-}
-
-export async function updatePresence(gameId: string, connected: boolean): Promise<void> {
-  const user = await ensureAuth()
-  await updateDoc(playerRef(gameId, user.uid), { connected })
 }
 
 // ─── Update Player Profile (Lobby) — transaction-safe unique name + color ──
