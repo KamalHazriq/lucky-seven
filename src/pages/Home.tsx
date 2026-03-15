@@ -73,6 +73,7 @@ export default function Home() {
   const [jokerCount, setJokerCount] = useState(DEFAULT_GAME_SETTINGS.jokerCount)
   const [deckSize, setDeckSize] = useState<DeckSize>(DEFAULT_GAME_SETTINGS.deckSize)
   const [turnSeconds, setTurnSeconds] = useState<TurnSeconds>(DEFAULT_GAME_SETTINGS.turnSeconds)
+  const [peekAllowsOpponent, setPeekAllowsOpponent] = useState(DEFAULT_GAME_SETTINGS.peekAllowsOpponent)
 
   const updateAssignment = (key: PowerRankKey, value: PowerEffectType) => {
     setAssignments((prev) => ({ ...prev, [key]: value }))
@@ -88,6 +89,7 @@ export default function Home() {
         jokerCount,
         deckSize,
         turnSeconds,
+        peekAllowsOpponent,
       })
       navigate(`/lobby/${gameId}`)
     } catch (e) {
@@ -231,6 +233,9 @@ export default function Home() {
                     <span className="text-xl">{'\u{1F91D}'}</span>
                     Join Game
                   </motion.button>
+                </motion.div>
+                <motion.div variants={staggerItem}>
+                  <HowToPlay variant="large" />
                 </motion.div>
               </motion.div>
             )}
@@ -411,6 +416,32 @@ export default function Home() {
                             <p className="text-[10px] text-slate-500 mt-1">Default: 2 (standard deck)</p>
                           </div>
 
+                          <div>
+                            <label className="block text-xs font-medium text-amber-300 mb-1">
+                              Peek Allows Opponent
+                            </label>
+                            <div className="flex gap-2">
+                              {([false, true] as const).map((val) => (
+                                <motion.button
+                                  key={String(val)}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => setPeekAllowsOpponent(val)}
+                                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                                    peekAllowsOpponent === val
+                                      ? 'bg-amber-600 text-white'
+                                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                  }`}
+                                >
+                                  {val ? 'Yes' : 'No'}
+                                </motion.button>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                              {peekAllowsOpponent ? 'Peek powers can target your cards OR opponent cards' : 'Peek powers only peek your own cards (default)'}
+                            </p>
+                          </div>
+
                           <div className="bg-slate-900/40 rounded-lg p-2">
                             <p className="text-[10px] text-amber-400/80 font-medium">
                               Powers can be used every time you draw that card type. Any rank can be assigned any effect!
@@ -502,8 +533,6 @@ export default function Home() {
             2-8 players &middot; Lowest score wins &middot; Sevens are worth zero!
           </p>
           <div className="flex items-center justify-center gap-3">
-            <HowToPlay />
-            <span className="text-slate-700">|</span>
             <motion.button
               whileHover={{ scale: 1.05 }}
               onClick={() => setShowPatchNotes(true)}

@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from 'framer-motion'
 import DrawnCardModal from './DrawnCardModal'
 import PeekModal from './PeekModal'
 import PeekResultModal from './PeekResultModal'
@@ -49,6 +50,8 @@ interface GameModalsProps {
   onUnlockSelect: (playerId: string, slotIndex: number) => void
   onRearrangeSelect: (playerId: string) => void
   onPeekOpponentSelect: (playerId: string, slotIndex: number) => void
+  onPeekChoiceSelf: () => void
+  onPeekChoiceOpponent: () => void
   onCancelPower: () => void
 
   // Power guide
@@ -93,7 +96,8 @@ export default function GameModals({
   myLocks, myKnown, powerAssignments, spentPowerCardIds, drawnCardSource,
   hasAnyLocks, uiMode, drawnCardDismissed,
   onSwap, onDiscard, onUsePower, onCancelDraw, onDismissDrawn,
-  onPeekSelect, onSwapConfirm, onLockSelect, onUnlockSelect, onRearrangeSelect, onPeekOpponentSelect, onCancelPower,
+  onPeekSelect, onSwapConfirm, onLockSelect, onUnlockSelect, onRearrangeSelect, onPeekOpponentSelect,
+  onPeekChoiceSelf, onPeekChoiceOpponent, onCancelPower,
   showPowerGuide, onClosePowerGuide,
   showSettings, onCloseSettings,
   layout, onToggleLayout, uiModeValue, onToggleUiMode,
@@ -138,6 +142,51 @@ export default function GameModals({
         locks={myLocks}
         onClose={() => setModal({ type: 'none' })}
       />
+
+      {/* Peek Choice Modal — shown when peekAllowsOpponent is enabled */}
+      <AnimatePresence>
+        {modal.type === 'peekChoice' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={onCancelPower}
+          >
+            <motion.div
+              initial={{ scale: 0.85, y: 30, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.88, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
+              className="bg-slate-800 border border-slate-600 rounded-2xl p-5 max-w-xs w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold text-amber-300 mb-1">Peek Power</h3>
+              <p className="text-xs text-slate-400 mb-4">Choose whose card to peek at.</p>
+              <div className="space-y-2">
+                <button
+                  onClick={onPeekChoiceSelf}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+                >
+                  Peek Your Card
+                </button>
+                <button
+                  onClick={onPeekChoiceOpponent}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+                >
+                  Peek Opponent's Card
+                </button>
+              </div>
+              <button
+                onClick={onCancelPower}
+                className="w-full mt-2 py-2 text-slate-400 hover:text-slate-200 text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <QueenSwapModal
         open={modal.type === 'swap'}

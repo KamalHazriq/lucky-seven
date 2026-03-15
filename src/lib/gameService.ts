@@ -154,6 +154,7 @@ export async function createGame(
     jokerCount: settings?.jokerCount ?? DEFAULT_GAME_SETTINGS.jokerCount,
     deckSize: settings?.deckSize ?? DEFAULT_GAME_SETTINGS.deckSize,
     turnSeconds: settings?.turnSeconds ?? DEFAULT_GAME_SETTINGS.turnSeconds,
+    peekAllowsOpponent: settings?.peekAllowsOpponent ?? DEFAULT_GAME_SETTINGS.peekAllowsOpponent,
   }
 
   const gameData: GameDoc = {
@@ -627,7 +628,7 @@ export async function usePeekOne(gameId: string, slotIndex: number): Promise<Car
   return peekedCard!
 }
 
-// ─── Effect: peek_one_opponent_card ──────────────────────────────
+// ─── Effect: peek opponent (extension of peek powers when peekAllowsOpponent) ─
 export async function usePeekOpponent(
   gameId: string,
   targetPlayerId: string,
@@ -652,8 +653,19 @@ export async function usePeekOpponent(
     if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
     if (game.turnPhase !== 'action') throw new Error('Must draw first')
     if (!priv.drawnCard) throw new Error('No drawn card')
-    const rankKey = assertPowerEffect(game, priv.drawnCard, 'peek_one_opponent_card')
-    if (targetPlayerId === user.uid) throw new Error('Cannot peek your own card — use Peek 1 instead')
+
+    // Validate: drawn card must be a peek power AND setting must allow opponent peek
+    const settings = game.settings ?? DEFAULT_GAME_SETTINGS
+    if (!settings.peekAllowsOpponent) throw new Error('Peek opponent is not enabled')
+    const rankKey = getCardRankKey(priv.drawnCard)
+    if (!rankKey) throw new Error('This card has no power')
+    const effect = (settings.powerAssignments ?? DEFAULT_GAME_SETTINGS.powerAssignments)[rankKey]
+    if (effect !== 'peek_one_of_your_cards' && effect !== 'peek_all_three_of_your_cards') {
+      throw new Error('This card does not have a peek power')
+    }
+    if (game.spentPowerCardIds?.[priv.drawnCard.id]) throw new Error('Power already used for this card.')
+
+    if (targetPlayerId === user.uid) throw new Error('Cannot peek your own card — use Peek instead')
     if (targetPD.locks[slotIndex]) throw new Error('That card is locked!')
 
     peekedCard = targetPriv.hand[slotIndex]
@@ -1490,6 +1502,7 @@ export async function playAgain(
         jokerCount: settings?.jokerCount ?? DEFAULT_GAME_SETTINGS.jokerCount,
         deckSize: settings?.deckSize ?? DEFAULT_GAME_SETTINGS.deckSize,
         turnSeconds: settings?.turnSeconds ?? DEFAULT_GAME_SETTINGS.turnSeconds,
+        peekAllowsOpponent: settings?.peekAllowsOpponent ?? DEFAULT_GAME_SETTINGS.peekAllowsOpponent,
       }
       const now = Date.now()
       tx.set(gameRef(candidateGameId), {
