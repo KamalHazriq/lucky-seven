@@ -1550,8 +1550,8 @@ export async function playAgain(
   return result
 }
 
-// ─── Dev: Set Discard Top (owner-only reorder) ─────────────────
-export async function devSetDiscardTop(gameId: string, card: Card): Promise<void> {
+// ─── Dev: Reorder Draw Pile (owner-only) ────────────────────────
+export async function devReorderDrawPile(gameId: string, reordered: Card[]): Promise<void> {
   const user = await ensureAuth()
 
   await runTransaction(db, async (tx) => {
@@ -1567,8 +1567,18 @@ export async function devSetDiscardTop(gameId: string, card: Card): Promise<void
     const devDoc = devSnap.data() as DevAccessDoc
     if (!devDoc.privileges?.canReorderDiscardPile) throw new Error('No reorder privilege')
 
-    // Set the chosen card as discardTop (the old discardTop returns to the virtual discard pool)
-    tx.update(gameRef(gameId), { discardTop: card })
+    // Verify the reordered pile has the same cards (no additions/removals)
+    const pileSnap = await tx.get(drawPileRef(gameId))
+    const currentPile = (pileSnap.data()?.cards as Card[]) ?? []
+    if (reordered.length !== currentPile.length) throw new Error('Draw pile size mismatch')
+
+    const currentIds = new Set(currentPile.map((c) => c.id))
+    const reorderedIds = new Set(reordered.map((c) => c.id))
+    if (currentIds.size !== reorderedIds.size || [...currentIds].some((id) => !reorderedIds.has(id))) {
+      throw new Error('Draw pile card mismatch — cards were added or removed')
+    }
+
+    tx.update(drawPileRef(gameId), { cards: reordered })
   })
 }
 

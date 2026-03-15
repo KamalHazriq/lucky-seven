@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { revealHand, leaveGame, initiateVoteKick, castVoteKick, cancelVoteKick, devSetDiscardTop } from '../lib/gameService'
+import { revealHand, leaveGame, initiateVoteKick, castVoteKick, cancelVoteKick, devReorderDrawPile } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
 import GameLog from '../components/GameLog'
@@ -658,7 +658,7 @@ export default function Game() {
                       <button
                         onClick={() => setShowDiscardReorder(true)}
                         className="mt-1 px-2 py-0.5 text-[9px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 rounded-full font-bold transition-colors cursor-pointer border border-amber-500/30"
-                        title="Reorder discard pile (dev)"
+                        title="Reorder draw pile (dev)"
                       >
                         🔀 Reorder
                       </button>
@@ -882,7 +882,7 @@ export default function Game() {
                   <button
                     onClick={() => setShowDiscardReorder(true)}
                     className="mt-1 px-2 py-0.5 text-[9px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 rounded-full font-bold transition-colors cursor-pointer border border-amber-500/30"
-                    title="Reorder discard pile (dev)"
+                    title="Reorder draw pile (dev)"
                   >
                     🔀 Reorder
                   </button>
@@ -1098,14 +1098,12 @@ export default function Game() {
         isDesktop={isDesktop}
       />
 
-      {/* Dev-only: Discard Reorder Modal */}
+      {/* Dev-only: Draw Pile Reorder Modal */}
       {devMode.isDevMode && devMode.privileges?.canReorderDiscardPile && (
         <DiscardReorderModal
           open={showDiscardReorder}
-          game={game}
-          allPlayerHands={devMode.allPlayerHands}
           drawPileCards={devMode.drawPileCards}
-          onApply={async (card) => { await devSetDiscardTop(gameId!, card) }}
+          onApply={async (reordered) => { await devReorderDrawPile(gameId!, reordered) }}
           onClose={() => setShowDiscardReorder(false)}
         />
       )}

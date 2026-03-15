@@ -1,73 +1,78 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
-import type { Card, GameDoc, PrivatePlayerDoc } from '../lib/types'
-import { buildDeck } from '../lib/deck'
+import type { Card } from '../lib/types'
 
-interface DiscardReorderModalProps {
+interface DrawPileReorderModalProps {
   open: boolean
-  game: GameDoc
-  allPlayerHands: Record<string, PrivatePlayerDoc>
   drawPileCards: Card[]
-  onApply: (card: Card) => Promise<void>
+  onApply: (reordered: Card[]) => Promise<void>
   onClose: () => void
 }
 
 /**
- * Dev-only modal: shows all "virtual" discarded cards (deck minus draw pile, hands, drawn cards, discardTop).
- * Allows the owner to pick any discarded card to become the new discardTop.
+ * Dev-only modal: shows the draw pile and allows the owner to reorder cards.
+ * Tap a card to move it to the top of the draw pile (position #1 = next drawn).
+ * Long-press or use arrows to move cards up/down.
  */
-export default function DiscardReorderModal({
+export default function DrawPileReorderModal({
   open,
-  game,
-  allPlayerHands,
   drawPileCards,
   onApply,
   onClose,
-}: DiscardReorderModalProps) {
-  const [selected, setSelected] = useState<Card | null>(null)
+}: DrawPileReorderModalProps) {
+  const [cards, setCards] = useState<Card[]>([])
   const [applying, setApplying] = useState(false)
+  const [dirty, setDirty] = useState(false)
 
-  // Compute virtual discard pile: full deck minus accounted cards
-  const discardedCards = useMemo(() => {
-    if (!game) return []
+  // Sync from props when modal opens
+  const handleOpen = useCallback(() => {
+    setCards([...drawPileCards])
+    setDirty(false)
+  }, [drawPileCards])
 
-    const jokerCount = game.settings?.jokerCount ?? 2
-    const deckSize = game.settings?.deckSize ?? 1
-    const fullDeck = buildDeck(jokerCount, deckSize, game.seed)
-
-    // Collect all accounted card IDs
-    const accounted = new Set<string>()
-
-    // Draw pile
-    drawPileCards.forEach((c) => accounted.add(c.id))
-
-    // All player hands + drawn cards
-    Object.values(allPlayerHands).forEach((priv) => {
-      priv.hand.forEach((c) => { if (c) accounted.add(c.id) })
-      if (priv.drawnCard) accounted.add(priv.drawnCard.id)
+  const moveToTop = (index: number) => {
+    if (index === 0) return
+    setCards((prev) => {
+      const next = [...prev]
+      const [card] = next.splice(index, 1)
+      next.unshift(card)
+      return next
     })
+    setDirty(true)
+  }
 
-    // Current discard top
-    if (game.discardTop) accounted.add(game.discardTop.id)
+  const moveUp = (index: number) => {
+    if (index === 0) return
+    setCards((prev) => {
+      const next = [...prev]
+      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+      return next
+    })
+    setDirty(true)
+  }
 
-    // Remaining = discarded / lost cards
-    return fullDeck.filter((c) => !accounted.has(c.id))
-  }, [game, allPlayerHands, drawPileCards])
+  const moveDown = (index: number) => {
+    setCards((prev) => {
+      if (index >= prev.length - 1) return prev
+      const next = [...prev]
+      ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
+      return next
+    })
+    setDirty(true)
+  }
 
   const handleApply = useCallback(async () => {
-    if (!selected) return
     setApplying(true)
     try {
-      await onApply(selected)
-      setSelected(null)
+      await onApply(cards)
       onClose()
     } catch (e) {
-      console.error('Failed to set discard top:', e)
+      console.error('Failed to reorder draw pile:', e)
     } finally {
       setApplying(false)
     }
-  }, [selected, onApply, onClose])
+  }, [cards, onApply, onClose])
 
   return (
     <AnimatePresence>
@@ -78,6 +83,7 @@ export default function DiscardReorderModal({
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={onClose}
+          onAnimationComplete={handleOpen}
         >
           <motion.div
             initial={{ scale: 0.9, y: 20, opacity: 0 }}
@@ -92,7 +98,7 @@ export default function DiscardReorderModal({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">🔀</span>
-                  <h3 className="text-sm font-bold text-amber-300">Discard Pile Reorder</h3>
+                  <h3 className="text-sm font-bold text-amber-300">Draw Pile Reorder</h3>
                 </div>
                 <button
                   onClick={onClose}
@@ -102,57 +108,83 @@ export default function DiscardReorderModal({
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
-                Pick a card from the virtual discard pile to place on top.
+                Tap a card to move it to the top. Use arrows to fine-tune order. Card #1 is drawn next.
               </p>
             </div>
 
-            {/* Current discard top */}
-            <div className="px-4 py-3 border-b border-slate-700/50">
-              <p className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider font-semibold">
-                Current Discard Top
-              </p>
-              {game.discardTop ? (
-                <div className="flex items-center gap-3">
-                  <CardView card={game.discardTop} faceUp size="sm" />
-                  <span className="text-xs text-slate-300">
-                    {game.discardTop.isJoker ? 'Joker' : `${game.discardTop.rank} of ${game.discardTop.suit}`}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-xs text-slate-500 italic">Empty</span>
-              )}
-            </div>
-
-            {/* Discarded cards list */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5">
+            {/* Cards list */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
               <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-2">
-                Discarded Cards ({discardedCards.length})
+                Draw Pile ({cards.length} cards)
               </p>
-              {discardedCards.length === 0 ? (
+              {cards.length === 0 ? (
                 <p className="text-xs text-slate-500 italic text-center py-4">
-                  No discarded cards found.
+                  Draw pile is empty.
                 </p>
               ) : (
-                discardedCards.map((card) => (
-                  <button
+                cards.map((card, i) => (
+                  <div
                     key={card.id}
-                    onClick={() => setSelected(selected?.id === card.id ? null : card)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all cursor-pointer ${
-                      selected?.id === card.id
-                        ? 'bg-amber-600/20 border border-amber-500/40 ring-1 ring-amber-500/30'
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all ${
+                      i === 0
+                        ? 'bg-amber-600/15 border border-amber-500/30'
                         : 'bg-slate-900/40 border border-transparent hover:bg-slate-700/40'
                     }`}
                   >
-                    <CardView card={card} faceUp size="sm" />
-                    <span className="text-xs text-slate-300 flex-1 text-left">
-                      {card.isJoker ? 'Joker' : `${card.rank} of ${card.suit}`}
+                    {/* Position number */}
+                    <span className="text-[10px] text-slate-500 w-5 text-right font-mono shrink-0">
+                      {i + 1}.
                     </span>
-                    {selected?.id === card.id && (
-                      <span className="text-[9px] px-2 py-0.5 bg-amber-500/30 text-amber-300 rounded-full font-bold">
-                        SELECTED
+
+                    {/* Card preview */}
+                    <CardView card={card} faceUp size="sm" />
+
+                    {/* Card name */}
+                    <span className="text-xs text-slate-300 flex-1 text-left truncate">
+                      {card.isJoker ? '🃏 Joker' : `${card.rank} of ${card.suit}`}
+                    </span>
+
+                    {/* NEXT badge for position 1 */}
+                    {i === 0 && (
+                      <span className="text-[8px] px-1.5 py-0.5 bg-amber-600/30 text-amber-300 rounded-full font-bold shrink-0">
+                        NEXT
                       </span>
                     )}
-                  </button>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {/* Move to top */}
+                      {i > 0 && (
+                        <button
+                          onClick={() => moveToTop(i)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md bg-amber-900/40 hover:bg-amber-900/60 text-amber-300 text-[10px] transition-colors cursor-pointer"
+                          title="Move to top"
+                        >
+                          ⏫
+                        </button>
+                      )}
+                      {/* Move up */}
+                      {i > 0 && (
+                        <button
+                          onClick={() => moveUp(i)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-300 text-[10px] transition-colors cursor-pointer"
+                          title="Move up"
+                        >
+                          ▲
+                        </button>
+                      )}
+                      {/* Move down */}
+                      {i < cards.length - 1 && (
+                        <button
+                          onClick={() => moveDown(i)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-300 text-[10px] transition-colors cursor-pointer"
+                          title="Move down"
+                        >
+                          ▼
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))
               )}
             </div>
@@ -167,10 +199,10 @@ export default function DiscardReorderModal({
               </button>
               <button
                 onClick={handleApply}
-                disabled={!selected || applying}
+                disabled={!dirty || applying}
                 className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors cursor-pointer"
               >
-                {applying ? 'Applying...' : 'Set as Top'}
+                {applying ? 'Applying...' : 'Apply Order'}
               </button>
             </div>
           </motion.div>
