@@ -653,16 +653,6 @@ export default function Game() {
                         <span className="text-slate-600 text-[10px]">Empty</span>
                       </div>
                     )}
-                    {/* Dev-only: discard reorder button (owner privilege) */}
-                    {devMode.isDevMode && devMode.privileges?.canReorderDiscardPile && (
-                      <button
-                        onClick={() => setShowDiscardReorder(true)}
-                        className="mt-1 px-2 py-0.5 text-[9px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 rounded-full font-bold transition-colors cursor-pointer border border-amber-500/30"
-                        title="Reorder draw pile (dev)"
-                      >
-                        🔀 Reorder
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -876,16 +866,6 @@ export default function Game() {
                   <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
                     <span className="text-slate-600 text-xs">Empty</span>
                   </div>
-                )}
-                {/* Dev-only: discard reorder button (owner privilege) */}
-                {devMode.isDevMode && devMode.privileges?.canReorderDiscardPile && (
-                  <button
-                    onClick={() => setShowDiscardReorder(true)}
-                    className="mt-1 px-2 py-0.5 text-[9px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 rounded-full font-bold transition-colors cursor-pointer border border-amber-500/30"
-                    title="Reorder draw pile (dev)"
-                  >
-                    🔀 Reorder
-                  </button>
                 )}
               </div>
             </div>
