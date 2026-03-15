@@ -129,18 +129,37 @@ function CardView({
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* Rank + suit display — large clear text */}
-          <span
-            className="font-extrabold leading-none"
-            style={{ color: suitColor(card), fontSize: size === 'lg' ? '1.15rem' : size === 'md' ? '0.95rem' : '0.75rem' }}
-          >
-            {card.isJoker ? 'J' : card.rank}
-          </span>
-          <span
-            className="leading-none"
-            style={{ color: suitColor(card), fontSize: size === 'lg' ? '1rem' : size === 'md' ? '0.8rem' : '0.65rem', marginTop: '1px' }}
-          >
-            {card.isJoker ? '\u2605' : { hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }[card.suit]}
-          </span>
+          {card.isJoker ? (
+            <>
+              <span
+                className="leading-none"
+                style={{ color: suitColor(card), fontSize: size === 'lg' ? '1.3rem' : size === 'md' ? '1.1rem' : '0.85rem' }}
+              >
+                🃏
+              </span>
+              <span
+                className="font-bold leading-none tracking-tight"
+                style={{ color: suitColor(card), fontSize: size === 'lg' ? '0.55rem' : size === 'md' ? '0.5rem' : '0.4rem', marginTop: '1px' }}
+              >
+                JOKER
+              </span>
+            </>
+          ) : (
+            <>
+              <span
+                className="font-extrabold leading-none"
+                style={{ color: suitColor(card), fontSize: size === 'lg' ? '1.15rem' : size === 'md' ? '0.95rem' : '0.75rem' }}
+              >
+                {card.rank}
+              </span>
+              <span
+                className="leading-none"
+                style={{ color: suitColor(card), fontSize: size === 'lg' ? '1rem' : size === 'md' ? '0.8rem' : '0.65rem', marginTop: '1px' }}
+              >
+                {{ hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }[card.suit]}
+              </span>
+            </>
+          )}
           {card.rank === '7' && !card.isJoker && (
             <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-900 text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">
               0
@@ -157,7 +176,7 @@ function CardView({
               lineHeight: 1,
             }}
           >
-            {card.isJoker ? '\u2605' : card.rank}
+            {card.isJoker ? '🃏' : card.rank}
           </span>
         </motion.div>
       ) : (

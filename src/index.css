@@ -192,6 +192,16 @@ select option {
   animation: selection-pulse 1.5s ease-in-out infinite;
 }
 
+@keyframes selection-pulse-panel {
+  0% { box-shadow: 0 0 0 2px rgba(251,191,36,0.3), 0 0 12px rgba(251,191,36,0.15); }
+  50% { box-shadow: 0 0 0 3px rgba(251,191,36,0.6), 0 0 24px rgba(251,191,36,0.3); }
+  100% { box-shadow: 0 0 0 2px rgba(251,191,36,0.3), 0 0 12px rgba(251,191,36,0.15); }
+}
+
+.selection-pulse-panel {
+  animation: selection-pulse-panel 1.5s ease-in-out infinite;
+}
+
 /* Stamp slam animation */
 @keyframes stamp-slam {
   0% { transform: scale(2) rotate(-15deg); opacity: 0; }
@@ -316,6 +326,7 @@ select option {
   .turn-glow { animation: none; }
   .slot-pulse-ring { animation: none; }
   .selection-pulse { animation: none; }
+  .selection-pulse-panel { animation: none; }
   .stamp-slam { animation: none; }
   .staging-active { animation: none; }
   .seat-breathe { animation: none; }
@@ -328,6 +339,7 @@ html[data-page-hidden] .action-pulse-ring,
 html[data-page-hidden] .turn-glow,
 html[data-page-hidden] .slot-pulse-ring,
 html[data-page-hidden] .selection-pulse,
+html[data-page-hidden] .selection-pulse-panel,
 html[data-page-hidden] .staging-active,
 html[data-page-hidden] .seat-breathe {
   animation-play-state: paused;

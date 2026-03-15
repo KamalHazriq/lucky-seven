@@ -81,14 +81,22 @@ function PowerChip({ label }: { label: string }) {
   )
 }
 
-/** Card display chip — shows card with suit color */
+/** Card display chip — shows card with suit color matching actual card colors */
 function CardChip({ text }: { text: string }) {
   const isRed = text.includes('\u2665') || text.includes('\u2666') // hearts or diamonds
   const isJoker = text.toLowerCase().includes('joker')
-  const colorClass = isJoker ? 'text-purple-400' : isRed ? 'text-red-400' : 'text-slate-300'
+  // Red suits = bright red, black suits = white (high contrast), joker = purple
+  const style = isJoker
+    ? { color: '#c084fc', backgroundColor: 'rgba(126,34,206,0.15)', borderColor: 'rgba(168,85,247,0.3)' }
+    : isRed
+      ? { color: '#f87171', backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(248,113,113,0.3)' }
+      : { color: '#f1f5f9', backgroundColor: 'rgba(100,116,139,0.15)', borderColor: 'rgba(100,116,139,0.3)' }
 
   return (
-    <span className={`inline-flex items-center px-1 py-px rounded text-[9px] font-bold bg-slate-800/50 border border-slate-600/30 leading-none align-middle ${colorClass}`}>
+    <span
+      className="inline-flex items-center px-1 py-px rounded text-[9px] font-bold leading-none align-middle"
+      style={style}
+    >
       {text}
     </span>
   )

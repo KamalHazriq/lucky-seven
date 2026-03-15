@@ -129,7 +129,7 @@ function PlayerPanel({
           ? 'bg-amber-900/10 border border-amber-500/25'
           : 'bg-slate-800/30 border border-slate-700/40'
     }
-    ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/50 hover:ring-amber-400' : ''}
+    ${isPlayerTarget ? 'cursor-pointer ring-2 ring-amber-400/60 hover:ring-amber-300 bg-amber-900/20 shadow-lg shadow-amber-500/10 selection-pulse-panel' : ''}
   `, [isLocalPlayer, isCurrentTurn, panelDimmed, isPlayerTarget, perfMode])
 
   return (
@@ -227,8 +227,8 @@ function PlayerPanel({
           </span>
         )}
         {isPlayerTarget && (
-          <span className="ml-auto px-1.5 py-0.5 bg-amber-500/25 border border-amber-500/50 text-amber-300 text-[9px] font-bold rounded animate-pulse shrink-0">
-            Select
+          <span className="ml-auto px-2 py-0.5 bg-amber-500/30 border border-amber-400/60 text-amber-200 text-[10px] font-bold rounded-md animate-pulse shrink-0 shadow-sm shadow-amber-500/20">
+            TAP TO SELECT
           </span>
         )}
       </div>

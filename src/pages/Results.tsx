@@ -106,6 +106,13 @@ export default function Results() {
   const autoJoinedRef = useRef(false)
   const celebratedRef = useRef(false)
 
+  // Compute derived state (safe before early return)
+  const totalPlayers = game?.playerOrder?.length ?? 0
+  const allRevealed = totalPlayers > 0 && scores.length >= totalPlayers
+
+  // Confetti canvas — must be called before any early return (rules of hooks)
+  const confettiRef = useConfetti(allRevealed)
+
   // Subscribe to reveals in real-time (players reveal asynchronously)
   useEffect(() => {
     if (!gameId) return
@@ -157,9 +164,6 @@ export default function Results() {
     )
   }
 
-  const totalPlayers = game.playerOrder.length
-  const allRevealed = scores.length >= totalPlayers
-
   // Multi-winner tie handling:
   // 1. Find minimum score
   // 2. If tied on score, use most sevens as tiebreaker
@@ -184,9 +188,6 @@ export default function Results() {
     // Small delay so the UI renders first
     setTimeout(() => playSfx('celebrate'), 400)
   }
-
-  // Confetti canvas — fires when all scores are revealed
-  const confettiRef = useConfetti(allRevealed)
 
   // Winner names for display
   const winnerNames = allRevealed
@@ -355,6 +356,7 @@ export default function Results() {
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
         Built by Kamal Hazriq
       </div>
+
     </div>
   )
 }

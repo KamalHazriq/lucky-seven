@@ -1,39 +1,14 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import {
-  drawFromPile,
-  takeFromDiscard,
-  cancelDraw,
-  swapWithSlot,
-  discardDrawn,
-  usePeekOne,
-  usePeekAll,
-  useSwap,
-  useLock,
-  useUnlock,
-  useRearrange,
-  revealHand,
-  leaveGame,
-  initiateVoteKick,
-  castVoteKick,
-  cancelVoteKick,
-} from '../lib/gameService'
+import { revealHand, leaveGame, initiateVoteKick, castVoteKick, cancelVoteKick } from '../lib/gameService'
 import CardView from '../components/CardView'
 import PlayerPanel from '../components/PlayerPanel'
 import GameLog from '../components/GameLog'
-import DrawnCardModal from '../components/DrawnCardModal'
-import PeekModal from '../components/PeekModal'
-import PeekResultModal from '../components/PeekResultModal'
-import PeekAllModal from '../components/PeekAllModal'
-import QueenSwapModal from '../components/QueenSwapModal'
-import SlotPickerModal from '../components/SlotPickerModal'
-import JokerChaosModal from '../components/JokerChaosModal'
-import SettingsModal from '../components/SettingsModal'
-import PowerGuideModal from '../components/PowerGuideModal'
+import GameModals from '../components/GameModals'
 import VersionLabel from '../components/VersionLabel'
 import TurnQueue from '../components/TurnQueue'
 import { useActionHighlight } from '../hooks/useActionHighlight'
@@ -54,51 +29,16 @@ import TurnTimer from '../components/TurnTimer'
 import VoteKickModal from '../components/VoteKickModal'
 import { getSeatPositions } from '../lib/seatPositions'
 import ActionBar from '../components/ActionBar'
-import DevModeModal from '../components/DevModeModal'
-import DevPanel from '../components/DevPanel'
 import { useSelectionMode } from '../hooks/useSelectionMode'
 import { useDevMode } from '../hooks/useDevMode'
-import type { SelectionConstraint, SelectedTarget } from '../hooks/useSelectionMode'
 import { useChoreography } from '../hooks/useChoreography'
-import { playSfx, vibrate } from '../lib/sfx'
 import { useRemoteSfx } from '../hooks/useRemoteSfx'
+import { useRemotePowerToast } from '../hooks/useRemotePowerToast'
+import { useRemoteAnimations } from '../hooks/useRemoteAnimations'
+import { useGameActions } from '../hooks/useGameActions'
 import { copyToClipboard } from '../lib/share'
-import type { Card, PowerEffectType, PowerRankKey, PlayerDoc } from '../lib/types'
+import type { Card } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS } from '../lib/types'
-
-type ModalState =
-  | { type: 'none' }
-  | { type: 'peekOne' }
-  | { type: 'peekResult'; card: Card; slot: number }
-  | { type: 'peekAll'; cards: Record<number, Card> }
-  | { type: 'swap' }
-  | { type: 'lock' }
-  | { type: 'unlock' }
-  | { type: 'rearrange' }
-
-// ─── Selection constraints for each power ──────────────────
-const PEEK_ONE_CONSTRAINT: SelectionConstraint = {
-  targetType: 'yourSlot',
-  prompt: 'Pick one of your cards to peek',
-}
-const SWAP_CONSTRAINT: SelectionConstraint = {
-  targetType: 'anyPlayerSlot',
-  prompt: 'Pick the first card to swap',
-  secondTargetType: 'anyPlayerSlot',
-  secondPrompt: 'Pick the second card to swap',
-}
-const LOCK_CONSTRAINT: SelectionConstraint = {
-  targetType: 'anyUnlockedSlot',
-  prompt: 'Pick an unlocked card to lock',
-}
-const UNLOCK_CONSTRAINT: SelectionConstraint = {
-  targetType: 'anyLockedSlot',
-  prompt: 'Pick a locked card to unlock',
-}
-const REARRANGE_CONSTRAINT: SelectionConstraint = {
-  targetType: 'anyPlayer',
-  prompt: 'Pick a player to shuffle their cards',
-}
 
 export default function Game() {
   const { gameId } = useParams<{ gameId: string }>()
@@ -106,15 +46,14 @@ export default function Game() {
   const { game, players, privateState, loading } = useGame(gameId, user?.uid)
   const navigate = useNavigate()
 
-  const [busy, setBusy] = useState(false)
-  const busyRef = useRef(false)
-  const [modal, setModal] = useState<ModalState>({ type: 'none' })
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showDevModal, setShowDevModal] = useState(false)
   const devMode = useDevMode(gameId, user?.uid)
   const revealedRef = useRef(false)
+  // Track whether user was ever in playerOrder (to distinguish kicked vs spectator)
+  const [wasPlayer, setWasPlayer] = useState(false)
   const { reduced } = useReducedMotion()
   const { layout, toggle: toggleLayout, isMobile } = useLayout()
   const { uiMode, toggleMode: toggleUiMode, isDesktop } = useUiMode()
@@ -160,11 +99,6 @@ export default function Game() {
 
   // Remote staging: when another player is in action phase, show a card in staging
   const [remoteStaging, setRemoteStaging] = useState<{ card: Card | null; faceUp: boolean; ownerColor?: string } | null>(null)
-  const prevDiscardTopRef = useRef<Card | null>(game?.discardTop ?? null)
-
-  // Temporary peek reveal state (Section F)
-  const [peekReveal, setPeekReveal] = useState<{ slot: number; card: Card } | null>(null)
-  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Measure sticky header + banner stack height for layout offsets.
   // Sets CSS custom properties so the left sidebar and table zone adapt dynamically.
@@ -187,12 +121,13 @@ export default function Game() {
   }, [])
 
   // Hidden dev mode shortcut (Ctrl+Shift+D)
+  const { isDevMode: devActive, deactivate: devDeactivate } = devMode
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault()
-        if (devMode.isDevMode) {
-          devMode.deactivate()
+        if (devActive) {
+          devDeactivate()
         } else {
           setShowDevModal(true)
         }
@@ -200,7 +135,7 @@ export default function Game() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [devMode.isDevMode])
+  }, [devActive, devDeactivate])
 
   // Chat (lazy subscribe — only on first open)
   const chat = useChat(
@@ -213,7 +148,7 @@ export default function Game() {
   const chatBubbles = useChatBubbles(chat.messages, user?.uid ?? '')
 
   // Queue number map: playerId → queue position (1 = current turn)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const queueNumbers = useMemo(() => {
     const map: Record<string, number> = {}
     if (!game?.currentTurnPlayerId || !game?.playerOrder) return map
@@ -233,7 +168,7 @@ export default function Game() {
 
   // Reset dismissed state when drawn card is consumed/cleared
   useEffect(() => {
-    if (!hasDrawnCard) setDrawnCardDismissed(false)
+    if (!hasDrawnCard) setDrawnCardDismissed(false) // eslint-disable-line react-hooks/set-state-in-effect
   }, [hasDrawnCard])
 
   // When game becomes finished, reveal own hand then redirect
@@ -263,7 +198,6 @@ export default function Game() {
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
   // Check if any card is locked anywhere (for disabling unlock power when no targets)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const hasAnyLocks = useMemo(() => Object.values(players).some((p) => p.locks?.some(Boolean)), [players])
 
   // Action highlights (temporary colored ring on actor's panel + per-slot overlays + swap labels)
@@ -276,180 +210,49 @@ export default function Game() {
   // Remote SFX — plays sounds for other players' actions; local actions use playSfx() directly
   useRemoteSfx(game?.actionVersion ?? 0, game?.log ?? [], players, user?.uid)
 
-  // Remote player flying card detection
-  const prevActionVersion = useRef(game?.actionVersion ?? 0)
+  // Remote power toast — subtle notification when another player uses a power card
+  useRemotePowerToast(game?.actionVersion ?? 0, game?.log ?? [], players, user?.uid)
+
+
+  // Track if user was ever in playerOrder (distinguishes kicked from spectator)
   useEffect(() => {
-    const av = game?.actionVersion ?? 0
-    if (av === prevActionVersion.current || reduced || document.hidden) {
-      prevActionVersion.current = av
-      return
+    if (user && game?.playerOrder?.includes(user.uid)) {
+      setWasPlayer(true) // eslint-disable-line react-hooks/set-state-in-effect
     }
-    prevActionVersion.current = av
+  }, [user, game?.playerOrder])
+  const isSpectator = !!(user && game && !game.playerOrder.includes(user.uid) && !wasPlayer
+    && (game.status === 'active' || game.status === 'ending'))
 
-    // Defer to next frame so DOM refs (staging, piles) have settled after layout render
-    const rafId = requestAnimationFrame(() => {
+  // Remote player flying card animations
+  useRemoteAnimations(
+    {
+      game, players, localUserId: user?.uid, reduced,
+      drawPileRef, discardPileRef, stagingRef, localPanelRef, otherPanelRefs,
+      triggerFly, queueFly,
+    },
+    { setRemoteStaging },
+  )
 
-    const lastEntry = game?.log?.[game.log.length - 1]
-    if (!lastEntry) return
-
-    const msg = lastEntry.msg
-
-    // Find actor from message
-    let actorId: string | null = null
-    for (const [pid, pd] of Object.entries(players)) {
-      if (msg.startsWith(pd.displayName)) {
-        actorId = pid
-        break
-      }
-    }
-
-    if (!actorId) return
-
-    const actorColor = getPlayerColor(players[actorId]?.seatIndex ?? 0, players[actorId]?.colorKey).solid
-
-    // Helper: get actual slot rect from DOM — queries data-slot attribute set by PlayerPanel.
-    // No hardcoded card dimensions — works at any viewport width, gap size, or card size.
-    const getSlotRect = (panelEl: HTMLDivElement, slot: number): DOMRect => {
-      const slotEl = panelEl.querySelector<HTMLElement>(`[data-slot="${slot}"]`)
-      if (slotEl) return slotEl.getBoundingClientRect()
-      // Fallback: rough panel-center estimate (should not be reached after Iter 25)
-      const p = panelEl.getBoundingClientRect()
-      const segW = p.width / 3
-      return new DOMRect(p.left + segW * slot + segW * 0.1, p.top + p.height * 0.35, segW * 0.8, p.height * 0.6)
-    }
-
-    // Helper: get panel element for a player (local or remote)
-    const getPanelEl = (pid: string): HTMLDivElement | null => {
-      if (pid === user?.uid) return localPanelRef.current
-      return otherPanelRefs.current[pid] ?? null
-    }
-
-    // ─── Queen swap: "used X as swap: A's #1 ↔ B's #2" ───
-    // Animate for ALL viewers (including local player)
-    const queenSwapMatch = msg.match(/as swap:\s*(.+)'s #(\d)\s*↔\s*(.+)'s #(\d)/)
-    if (queenSwapMatch) {
-      const nameA = queenSwapMatch[1]
-      const slotA = parseInt(queenSwapMatch[2], 10) - 1
-      const nameB = queenSwapMatch[3]
-      const slotB = parseInt(queenSwapMatch[4], 10) - 1
-
-      let pidA: string | null = null
-      let pidB: string | null = null
-      for (const [pid, pd] of Object.entries(players)) {
-        if (pd.displayName === nameA) pidA = pid
-        if (pd.displayName === nameB) pidB = pid
-      }
-
-      if (pidA && pidB) {
-        const panelA = getPanelEl(pidA)
-        const panelB = getPanelEl(pidB)
-        if (panelA && panelB) {
-          const colorA = getPlayerColor(players[pidA]?.seatIndex ?? 0, players[pidA]?.colorKey).solid
-          const colorB = getPlayerColor(players[pidB]?.seatIndex ?? 0, players[pidB]?.colorKey).solid
-          const rectA = getSlotRect(panelA, slotA)
-          const rectB = getSlotRect(panelB, slotB)
-
-          // Fly card A → B (with A's color initially)
-          triggerFly(rectA, rectB, false, null, colorA)
-          // Queue card B → A (with B's color initially)
-          queueFly(rectB, rectA, false, null, colorB)
-        }
-      }
-      // Clear remote staging if it was up
-      setRemoteStaging(null)
-      return
-    }
-
-    // ─── Only animate draw/take/discard for remote players ───
-    if (actorId === user?.uid) return
-
-    const targetEl = otherPanelRefs.current[actorId]
-    if (!targetEl) return
-
-    // Helper: get staging rect, always preferring the staging slot over opponent panel.
-    // If stagingRef is somehow null, fall back to opponent panel as last resort.
-    const getStagingRect = (): DOMRect => {
-      const el = stagingRef.current
-      return el ? el.getBoundingClientRect() : targetEl.getBoundingClientRect()
-    }
-
-    if (msg.includes('drew from the pile')) {
-      // Set remote staging FIRST so StagingSlot renders as active
-      setRemoteStaging({ card: null, faceUp: false, ownerColor: actorColor })
-      // Defer animation to next frame so staging slot has painted with active state
-      requestAnimationFrame(() => {
-        const fromEl = drawPileRef.current
-        if (fromEl) {
-          triggerFly(fromEl.getBoundingClientRect(), getStagingRect(), false, null, actorColor)
-        }
-      })
-    } else if (msg.includes('took from discard')) {
-      // Guard: if turnPhase already reverted to 'draw', the player called cancelDraw —
-      // don't set staging (the RAF fires after the turnPhase-clear effect).
-      if (game?.turnPhase !== 'action') {
-        setRemoteStaging(null)
-        return
-      }
-      const takenCard = prevDiscardTopRef.current
-      // Set remote staging FIRST so StagingSlot renders as active
-      setRemoteStaging({ card: takenCard, faceUp: true, ownerColor: actorColor })
-      // Defer animation to next frame so staging slot has painted with active state
-      requestAnimationFrame(() => {
-        const fromEl = discardPileRef.current
-        if (fromEl) {
-          triggerFly(fromEl.getBoundingClientRect(), getStagingRect(), true, takenCard, actorColor)
-        }
-      })
-    } else if (msg.includes('discarded') || msg.includes('swapped their card')) {
-      // Resolution always routes FROM staging → discard/slot (never from opponent seat directly)
-      const fromEl = stagingRef.current ?? otherPanelRefs.current[actorId]
-      if (msg.includes('swapped their card')) {
-        // Parse slot index from "swapped their card #N"
-        const slotMatch = msg.match(/swapped their card #(\d)/)
-        const slotIdx = slotMatch ? parseInt(slotMatch[1]) - 1 : 0
-
-        // Swap: staging → specific slot, then swapped card → discard
-        const actorPanel = otherPanelRefs.current[actorId]
-        const toEl = discardPileRef.current
-
-        if (fromEl && actorPanel) {
-          const slotRect = getSlotRect(actorPanel, slotIdx)
-          // First fly staging → specific slot
-          triggerFly(fromEl.getBoundingClientRect(), slotRect, false, null, actorColor)
-        }
-        // Then fly swapped card → discard
-        if (actorPanel && toEl) {
-          const slotRect = getSlotRect(actorPanel, slotIdx)
-          queueFly(slotRect, toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
-        }
-      } else {
-        // Discard: staging → discard pile
-        const toEl = discardPileRef.current
-        if (fromEl && toEl) {
-          triggerFly(fromEl.getBoundingClientRect(), toEl.getBoundingClientRect(), true, game?.discardTop ?? null, actorColor)
-        }
-      }
-      // Clear remote staging when action is resolved
-      setRemoteStaging(null)
-    }
-
-    }) // end requestAnimationFrame
-    return () => cancelAnimationFrame(rafId)
-  }, [game?.actionVersion, game?.log, players, user?.uid, reduced, triggerFly, queueFly, game?.discardTop])
-
-  // Track previous discardTop for remote staging visuals
-  useEffect(() => {
-    if (game?.discardTop) prevDiscardTopRef.current = game.discardTop
-  }, [game?.discardTop])
-
-  // Clear remote staging when turn changes back to draw phase
-  useEffect(() => {
-    if (game?.turnPhase === 'draw') setRemoteStaging(null)
-  }, [game?.turnPhase])
-
-  // Draw pile/discard clickable during draw phase only
-  const canDraw = isDrawPhase && !busy
-  const canTakeDiscard = canDraw && !!game?.discardTop
+  // All game action handlers, busy/modal state, keyboard shortcuts
+  const {
+    busy, modal, setModal, canDraw, canTakeDiscard, peekReveal,
+    handleDrawPile, handleTakeDiscard, handleCancelDraw, handleSwap, handleDiscard,
+    handleUsePower, handleChoreoComplete, handleSelectionConfirm, handleSelectionClick,
+    handlePlayerSelect, handlePeekSelect, handleSwapConfirm, handleLockSelect,
+    handleUnlockSelect, handleRearrangeSelect, handleCancelPower,
+  } = useGameActions({
+    gameId, isMyTurn, isDrawPhase, isActionPhase, hasDrawnCard, drawnCard,
+    reduced, isDesktop, isSpectator, privateState: privateState ?? null,
+    myLocks, uiMode, drawnCardDismissed,
+    drawPileRef, discardPileRef, stagingRef, localPanelRef,
+    choreo, startDiscardTake, startSwapFromStaging, startDiscardAction,
+    startPileDraw, onStagingArrival, onSlotArrival, onDiscardArrival,
+    onPlayerArrival, reconstructStaging, resetChoreo,
+    triggerFly, flushQueue,
+    selection, isSelecting, startSelection, selectTarget,
+    confirmSelection, setStampOverlays,
+    discardTop: game?.discardTop ?? null,
+  })
 
   // Player order with local player first (for modals)
   const modalPlayerOrder = game ? [
@@ -457,421 +260,23 @@ export default function Game() {
     ...game.playerOrder.filter((pid) => pid !== user?.uid),
   ] : []
 
-  const withBusy = useCallback(async (fn: () => Promise<void>) => {
-    if (busyRef.current) return
-    busyRef.current = true
-    setBusy(true)
-    try {
-      await fn()
-    } catch (e) {
-      toast.error((e as Error).message)
-    } finally {
-      busyRef.current = false
-      setBusy(false)
-    }
-  }, []) // stable — uses ref for guard, not state
-
-  const handleDrawPile = () => {
-    if (!canDraw) return
-    const fromEl = drawPileRef.current
-    const stagingEl = stagingRef.current
-    withBusy(async () => {
-      await drawFromPile(gameId!)
-      playSfx('draw'); vibrate()
-      if (!reduced && fromEl && stagingEl) {
-        // Fly from pile to staging area first (not directly to player panel)
-        startPileDraw(fromEl.getBoundingClientRect(), stagingEl.getBoundingClientRect())
-      } else {
-        // No animation — show in staging immediately (drawnCard comes via Firestore listener)
-        reconstructStaging(drawnCard, 'pile')
-      }
-    })
-  }
-
-  const handleTakeDiscard = () => {
-    if (!canTakeDiscard) return
-    const fromEl = discardPileRef.current
-    const stagingEl = stagingRef.current
-    const discardCard = game?.discardTop ?? null
-    withBusy(async () => {
-      await takeFromDiscard(gameId!)
-      playSfx('take'); vibrate()
-      if (!reduced && fromEl && stagingEl && discardCard) {
-        // Section 2: fly discard card to staging area
-        startDiscardTake(discardCard, fromEl.getBoundingClientRect(), stagingEl.getBoundingClientRect())
-      }
-    })
-  }
-
-  const handleCancelDraw = () => {
-    const source = privateState?.drawnCardSource
-    withBusy(async () => {
-      await cancelDraw(gameId!)
-      // Clear staging on cancel
-      if (source === 'discard') {
-        const stagingEl = stagingRef.current
-        const discardEl = discardPileRef.current
-        if (!reduced && stagingEl && discardEl) {
-          startDiscardAction(
-            stagingEl.getBoundingClientRect(),
-            discardEl.getBoundingClientRect(),
-            choreo.staging.card,
-            choreo.staging.faceUp,
-          )
-        } else {
-          resetChoreo()
-        }
-      } else {
-        resetChoreo()
-      }
-    })
-  }
-
-  const handleSwap = (slotIndex: number) => {
-    setModal({ type: 'none' })
-    const stagingEl = stagingRef.current
-    const localEl = localPanelRef.current
-    const discardEl = discardPileRef.current
-
-    withBusy(async () => {
-      await swapWithSlot(gameId!, slotIndex)
-      playSfx('swap'); vibrate()
-
-      if (!reduced && choreo.phase === 'staging' && stagingEl && localEl && discardEl) {
-        // Section 2: staging → slot, then swapped card → discard (face-down, identity hidden)
-        // The DiscardFlip component will reveal the card when discardTop updates
-        startSwapFromStaging(
-          stagingEl.getBoundingClientRect(),
-          localEl.getBoundingClientRect(),
-          discardEl.getBoundingClientRect(),
-          null, // Don't show card face — it's private until it lands on discard
-        )
-      } else {
-        resetChoreo()
-        flushQueue()
-      }
-    })
-  }
-
-  const handleDiscard = () => {
-    setModal({ type: 'none' })
-    const stagingEl = stagingRef.current
-    const localEl = localPanelRef.current
-    const discardEl = discardPileRef.current
-    withBusy(async () => {
-      await discardDrawn(gameId!)
-      playSfx('discard')
-
-      if (!reduced && choreo.phase === 'staging' && stagingEl && discardEl) {
-        // Section 2: staging card → discard pile
-        startDiscardAction(
-          stagingEl.getBoundingClientRect(),
-          discardEl.getBoundingClientRect(),
-          choreo.staging.card,
-          choreo.staging.faceUp,
-        )
-      } else if (!reduced && localEl && discardEl) {
-        // Pile draw path: fly from player to discard
-        triggerFly(localEl.getBoundingClientRect(), discardEl.getBoundingClientRect(), false)
-        flushQueue()
-      } else {
-        resetChoreo()
-        flushQueue()
-      }
-    })
-  }
-
-  // ─── Choreography flight completion handler ─────────────────
-  const handleChoreoComplete = useCallback(() => {
-    switch (choreo.phase) {
-      case 'flyToStaging':
-        onStagingArrival()
-        break
-      case 'flyToSlot':
-        onSlotArrival()
-        break
-      case 'flySwapToDiscard':
-        onDiscardArrival()
-        break
-      case 'flyToPlayer':
-        onPlayerArrival()
-        break
-      case 'flyToDiscard':
-        resetChoreo()
-        break
-    }
-  }, [choreo.phase, onStagingArrival, onSlotArrival, onDiscardArrival, onPlayerArrival, resetChoreo])
-
-  // ─── Section 6: Reconstruct staging on resume/refresh ──────
-  const hasReconstructedRef = useRef(false)
-  useEffect(() => {
-    if (hasReconstructedRef.current) return
-    if (!isMyTurn || !hasDrawnCard || !privateState) return
-    // Only reconstruct if choreography is idle (page just loaded)
-    if (choreo.phase !== 'idle') return
-
-    hasReconstructedRef.current = true
-    reconstructStaging(drawnCard, privateState.drawnCardSource)
-  }, [isMyTurn, hasDrawnCard, privateState, choreo.phase, drawnCard, reconstructStaging])
-
-  // Reset reconstruction flag when drawn card is consumed
-  useEffect(() => {
-    if (!hasDrawnCard) {
-      hasReconstructedRef.current = false
-      // Also reset choreography when turn completes
-      if (choreo.phase === 'staging') resetChoreo()
-    }
-  }, [hasDrawnCard, choreo.phase, resetChoreo])
-
-  // ─── Power handlers ────────────────────────────────────────
-  // In actionbar mode, powers use selection mode instead of modals
-  const handleUsePower = (_rankKey: PowerRankKey, effectType: PowerEffectType) => {
-    if (uiMode === 'actionbar') {
-      switch (effectType) {
-        case 'peek_all_three_of_your_cards':
-          // No target selection — execute immediately, show modal
-          withBusy(async () => {
-            const cards = await usePeekAll(gameId!)
-            playSfx('peekAll')
-            setModal({ type: 'peekAll', cards })
-          })
-          break
-        case 'peek_one_of_your_cards':
-          startSelection(PEEK_ONE_CONSTRAINT)
-          break
-        case 'swap_one_to_one':
-          startSelection(SWAP_CONSTRAINT)
-          break
-        case 'lock_one_card':
-          startSelection(LOCK_CONSTRAINT)
-          break
-        case 'unlock_one_locked_card':
-          startSelection(UNLOCK_CONSTRAINT)
-          break
-        case 'rearrange_cards':
-          startSelection(REARRANGE_CONSTRAINT)
-          break
-      }
-      return
-    }
-
-    // Modal mode — original behavior
-    switch (effectType) {
-      case 'peek_all_three_of_your_cards':
-        setModal({ type: 'none' })
-        withBusy(async () => {
-          const cards = await usePeekAll(gameId!)
-          playSfx('peekAll')
-          setModal({ type: 'peekAll', cards })
-        })
-        break
-      case 'peek_one_of_your_cards':
-        playSfx('peek')
-        setModal({ type: 'peekOne' })
-        break
-      case 'swap_one_to_one':
-        setModal({ type: 'swap' })
-        break
-      case 'lock_one_card':
-        setModal({ type: 'lock' })
-        break
-      case 'unlock_one_locked_card':
-        setModal({ type: 'unlock' })
-        break
-      case 'rearrange_cards':
-        setModal({ type: 'rearrange' })
-        break
-    }
-  }
-
-  // ─── Selection mode confirm handler ────────────────────────
-  const handleSelectionConfirm = useCallback(() => {
-    if (!selection.constraint || selection.phase !== 'confirming') return
-    const { targetType } = selection.constraint
-    const first = selection.firstTarget
-    const second = selection.secondTarget
-
-    if (!first) return
-
-    confirmSelection()
-
-    switch (targetType) {
-      case 'yourSlot': {
-        // Peek one — Section F: temporary reveal
-        withBusy(async () => {
-          const card = await usePeekOne(gameId!, first.slotIndex)
-          playSfx('peek')
-          if (reduced) {
-            setModal({ type: 'peekResult', card, slot: first.slotIndex })
-          } else {
-            // Temporary reveal: flip card face-up briefly then flip back
-            setPeekReveal({ slot: first.slotIndex, card })
-            if (peekTimerRef.current) clearTimeout(peekTimerRef.current)
-            peekTimerRef.current = setTimeout(() => {
-              setPeekReveal(null)
-            }, 2000)
-          }
-        })
-        break
-      }
-      case 'anyPlayerSlot': {
-        // Queen swap
-        if (!second) return
-        withBusy(async () => {
-          await useSwap(gameId!,
-            { playerId: first.playerId, slotIndex: first.slotIndex },
-            { playerId: second.playerId, slotIndex: second.slotIndex },
-          )
-          playSfx('swap'); vibrate()
-        })
-        break
-      }
-      case 'anyUnlockedSlot': {
-        // Lock — Section E: stamp overlay
-        withBusy(async () => {
-          await useLock(gameId!, first.playerId, first.slotIndex)
-          playSfx('lock'); vibrate(50)
-          if (!reduced) {
-            setStampOverlays((prev) => ({ ...prev, [first.playerId]: 'lock' }))
-            setTimeout(() => {
-              setStampOverlays((prev) => ({ ...prev, [first.playerId]: null }))
-            }, 800)
-          }
-        })
-        break
-      }
-      case 'anyLockedSlot': {
-        // Unlock — Section E: stamp overlay
-        withBusy(async () => {
-          await useUnlock(gameId!, first.playerId, first.slotIndex)
-          playSfx('unlock')
-          if (!reduced) {
-            setStampOverlays((prev) => ({ ...prev, [first.playerId]: 'unlock' }))
-            setTimeout(() => {
-              setStampOverlays((prev) => ({ ...prev, [first.playerId]: null }))
-            }, 800)
-          }
-        })
-        break
-      }
-      case 'anyPlayer': {
-        // Rearrange/chaos — Section G
-        withBusy(async () => {
-          await useRearrange(gameId!, first.playerId)
-          playSfx('chaos'); vibrate(80)
-        })
-        break
-      }
-    }
-  }, [selection, confirmSelection, withBusy, gameId, reduced])
-
-  // Handle selection target clicks from PlayerPanel
-  const handleSelectionClick = useCallback((target: SelectedTarget) => {
-    selectTarget(target)
-  }, [selectTarget])
-
-  // Handle player-level selection for rearrange
-  const handlePlayerSelect = useCallback((playerId: string) => {
-    selectTarget({ playerId, slotIndex: 0 })
-  }, [selectTarget])
-
-  // ─── Keyboard shortcuts (Section H) ───────────────────────
-  useEffect(() => {
-    if (!isDesktop || !isMyTurn) return
-
-    const handler = (e: KeyboardEvent) => {
-      // Don't capture when chat input or other input is focused
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-
-      // During selection mode, Enter to confirm
-      if (isSelecting) {
-        if (e.key === 'Enter' && selection.phase === 'confirming') {
-          e.preventDefault()
-          handleSelectionConfirm()
-        }
-        // Esc is handled by useSelectionMode hook
-        return
-      }
-
-      // Actionbar mode: 1/2/3 for swap, Esc for cancel
-      if (uiMode === 'actionbar' && hasDrawnCard && isActionPhase && modal.type === 'none' && !drawnCardDismissed) {
-        const num = parseInt(e.key)
-        if (num >= 1 && num <= 3) {
-          const slotIdx = num - 1
-          if (!myLocks[slotIdx]) {
-            e.preventDefault()
-            handleSwap(slotIdx)
-          }
-        }
-        if (e.key === 'Escape') {
-          if (privateState?.drawnCardSource === 'discard') {
-            e.preventDefault()
-            handleCancelDraw()
-          }
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [
-    isDesktop, isMyTurn, isSelecting, selection.phase, uiMode,
-    hasDrawnCard, isActionPhase, modal.type, drawnCardDismissed,
-    myLocks, handleSelectionConfirm, privateState?.drawnCardSource,
-  ])
-
-  const handlePeekSelect = (slotIndex: number) => {
-    setModal({ type: 'none' })
-    withBusy(async () => {
-      const card = await usePeekOne(gameId!, slotIndex)
-      setModal({ type: 'peekResult', card, slot: slotIndex })
-    })
-  }
-
-  const handleSwapConfirm = (
-    targetA: { playerId: string; slotIndex: number },
-    targetB: { playerId: string; slotIndex: number },
-  ) => {
-    setModal({ type: 'none' })
-    withBusy(() => useSwap(gameId!, targetA, targetB))
-  }
-
-  const handleLockSelect = (targetPlayerId: string, slotIndex: number) => {
-    setModal({ type: 'none' })
-    withBusy(async () => { await useLock(gameId!, targetPlayerId, slotIndex); playSfx('lock'); vibrate(50) })
-  }
-
-  const handleUnlockSelect = (targetPlayerId: string, slotIndex: number) => {
-    setModal({ type: 'none' })
-    withBusy(async () => { await useUnlock(gameId!, targetPlayerId, slotIndex); playSfx('unlock') })
-  }
-
-  const handleRearrangeSelect = (targetPlayerId: string) => {
-    setModal({ type: 'none' })
-    withBusy(async () => { await useRearrange(gameId!, targetPlayerId); playSfx('chaos'); vibrate(80) })
-  }
-
-  const handleCancelPower = () => {
-    setModal({ type: 'none' })
-  }
-
-  // Clean up peek timer on unmount
-  useEffect(() => {
-    return () => {
-      if (peekTimerRef.current) clearTimeout(peekTimerRef.current)
-    }
-  }, [])
-
   // Must be before any conditional early returns to satisfy Rules of Hooks
+  // Spectators see ALL players as "other" (they have no local panel)
   const otherPlayers = useMemo(
-    () => (game?.playerOrder ?? []).filter((pid) => pid !== user?.uid),
-    [game?.playerOrder, user?.uid],
+    () => {
+      const order = game?.playerOrder ?? []
+      // If user is not in the game (spectator), show all players
+      if (user && !order.includes(user.uid)) return order
+      return order.filter((pid) => pid !== user?.uid)
+    },
+    [game?.playerOrder, user],
   )
   const currentTurnName = useMemo(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     () => game?.currentTurnPlayerId ? (players[game.currentTurnPlayerId]?.displayName ?? 'Unknown') : null,
     [game?.currentTurnPlayerId, players],
   )
+
 
   if (loading || !game || !user) {
     return (
@@ -900,8 +305,8 @@ export default function Game() {
     )
   }
 
-  // Kicked player screen — shown when player is removed from playerOrder mid-game
-  if (!game.playerOrder.includes(user.uid) && (game.status === 'active' || game.status === 'ending')) {
+  // Kicked player screen — shown when player is removed from playerOrder mid-game (not spectators)
+  if (!game.playerOrder.includes(user.uid) && wasPlayer && (game.status === 'active' || game.status === 'ending')) {
     return (
       <div
         className="min-h-dvh flex items-center justify-center p-4"
@@ -1000,6 +405,11 @@ export default function Game() {
 
           {/* ── RIGHT: Clean icon cluster ── */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {isSpectator && (
+              <span className="px-2 py-0.5 bg-violet-900/40 border border-violet-500/40 text-violet-300 text-[10px] font-bold rounded-md">
+                SPECTATING
+              </span>
+            )}
             {/* Settings — opens modal with all options */}
             <motion.button
               whileHover={{ scale: 1.08 }}
@@ -1284,7 +694,8 @@ export default function Game() {
                   )
                 })}
 
-                {/* Local player at bottom center */}
+                {/* Local player at bottom center (hidden for spectators) */}
+                {!isSpectator && (
                 <div
                   className="absolute left-1/2 z-10"
                   ref={localPanelRef}
@@ -1319,9 +730,10 @@ export default function Game() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
               {/* Action Bar for table layout — below table zone, clear gap */}
-              {uiMode === 'actionbar' && (
+              {!isSpectator && uiMode === 'actionbar' && (
                 <div className="mx-auto mb-4 mt-2" style={{ maxWidth: '380px', width: '90%' }}>
                   <ActionBar
                     card={isMyTurn && hasDrawnCard ? drawnCard : null}
@@ -1447,7 +859,8 @@ export default function Game() {
               </div>
             </div>
 
-            {/* Local player */}
+            {/* Local player (hidden for spectators) */}
+            {!isSpectator && (
             <div className="mb-4" ref={localPanelRef}>
               <PlayerPanel
                 playerId={user.uid}
@@ -1478,7 +891,7 @@ export default function Game() {
                 </div>
               )}
               {/* Action Bar — inline alternative to drawn card modal */}
-              {uiMode === 'actionbar' && (
+              {!isSpectator && uiMode === 'actionbar' && (
                 <ActionBar
                   card={isMyTurn && hasDrawnCard ? drawnCard : null}
                   visible={modal.type === 'none' && !drawnCardDismissed}
@@ -1500,7 +913,16 @@ export default function Game() {
                 />
               )}
             </div>
+            )}
           </>
+        )}
+
+        {/* Spectator info bar — shown in classic layout when spectating */}
+        {isSpectator && layout !== 'table' && (
+          <div className="mb-4 py-3 px-4 rounded-xl border text-center" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+            <span className="text-violet-300 text-sm font-semibold">You are spectating this game</span>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Watch the action unfold in real-time</p>
+          </div>
         )}
 
         {/* Game Log — bottom position (default) */}
@@ -1514,120 +936,58 @@ export default function Game() {
         </div>{/* end of content wrapper for left-log layout */}
       </div>
 
-      {/* ─── Modals ─────────────────────────────────────────── */}
 
-      {/* Drawn Card Modal (main action chooser) — only in modal UI mode */}
-      <DrawnCardModal
-        card={uiMode === 'modal' && isMyTurn && hasDrawnCard ? drawnCard : null}
-        open={modal.type === 'none' && !drawnCardDismissed}
-        locks={myLocks}
+      {/* ─── Modals ─────────────────────────────────────────── */}
+      <GameModals
+        modal={modal}
+        setModal={setModal}
+        game={game}
+        players={players}
+        localPlayerId={user.uid}
+        modalPlayerOrder={modalPlayerOrder}
+        isMyTurn={isMyTurn}
+        hasDrawnCard={hasDrawnCard}
+        drawnCard={drawnCard}
+        myLocks={myLocks}
+        myKnown={myKnown}
         powerAssignments={powerAssignments}
         spentPowerCardIds={spentPowerCardIds}
-        knownCards={myKnown}
         drawnCardSource={privateState?.drawnCardSource ?? null}
+        hasAnyLocks={hasAnyLocks}
+        uiMode={uiMode}
+        drawnCardDismissed={drawnCardDismissed}
         onSwap={handleSwap}
         onDiscard={handleDiscard}
         onUsePower={handleUsePower}
-        onClose={handleCancelDraw}
-        onDismiss={() => setDrawnCardDismissed(true)}
-        hasAnyLocks={hasAnyLocks}
-      />
-
-      <PeekModal
-        open={modal.type === 'peekOne'}
-        onSelect={handlePeekSelect}
-        onCancel={handleCancelPower}
-      />
-
-      <PeekResultModal
-        card={modal.type === 'peekResult' ? modal.card : null}
-        slotIndex={modal.type === 'peekResult' ? modal.slot : null}
-        onClose={() => setModal({ type: 'none' })}
-      />
-
-      <PeekAllModal
-        open={modal.type === 'peekAll'}
-        revealedCards={modal.type === 'peekAll' ? modal.cards : {}}
-        locks={myLocks}
-        onClose={() => setModal({ type: 'none' })}
-      />
-
-      <QueenSwapModal
-        open={modal.type === 'swap'}
-        players={players}
-        playerOrder={modalPlayerOrder}
-        localPlayerId={user.uid}
-        knownCards={myKnown}
-        onConfirm={handleSwapConfirm}
-        onCancel={handleCancelPower}
-      />
-
-      <SlotPickerModal
-        open={modal.type === 'lock'}
-        title="Power: Lock"
-        subtitle="Choose an unlocked card to lock. Locked cards cannot be swapped."
-        accentColor="red"
-        players={players}
-        playerOrder={modalPlayerOrder}
-        localPlayerId={user.uid}
-        knownCards={myKnown}
-        slotFilter={(_pid: string, slotIndex: number, pd: PlayerDoc) => !pd.locks[slotIndex]}
-        onSelect={handleLockSelect}
-        onCancel={handleCancelPower}
-      />
-
-      <SlotPickerModal
-        open={modal.type === 'unlock'}
-        title="Power: Unlock"
-        subtitle="Choose a locked card to unlock."
-        accentColor="cyan"
-        players={players}
-        playerOrder={modalPlayerOrder}
-        localPlayerId={user.uid}
-        knownCards={myKnown}
-        slotFilter={(_pid: string, slotIndex: number, pd: PlayerDoc) => pd.locks[slotIndex]}
-        onSelect={handleUnlockSelect}
-        onCancel={handleCancelPower}
-        noTargetsMessage="No cards are locked."
-      />
-
-      <JokerChaosModal
-        open={modal.type === 'rearrange'}
-        players={players}
-        playerOrder={modalPlayerOrder}
-        localPlayerId={user.uid}
-        onSelect={handleRearrangeSelect}
-        onCancel={handleCancelPower}
-      />
-
-      <PowerGuideModal
-        open={showPowerGuide}
-        onClose={() => setShowPowerGuide(false)}
-        powerAssignments={powerAssignments}
-      />
-
-      <SettingsModal
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
+        onCancelDraw={handleCancelDraw}
+        onDismissDrawn={() => setDrawnCardDismissed(true)}
+        onPeekSelect={handlePeekSelect}
+        onSwapConfirm={handleSwapConfirm}
+        onLockSelect={handleLockSelect}
+        onUnlockSelect={handleUnlockSelect}
+        onRearrangeSelect={handleRearrangeSelect}
+        onCancelPower={handleCancelPower}
+        showPowerGuide={showPowerGuide}
+        onClosePowerGuide={() => setShowPowerGuide(false)}
+        showSettings={showSettings}
+        onCloseSettings={() => setShowSettings(false)}
         layout={layout}
         onToggleLayout={toggleLayout}
-        uiMode={uiMode}
+        uiModeValue={uiMode}
         onToggleUiMode={toggleUiMode}
         logPosition={logPosition}
         onToggleLogPosition={toggleLogPosition}
-        showLayoutToggle={!isMobile}
-        showUiModeToggle={!isMobile}
-        showLogToggle={canLogSidebar}
+        isMobile={isMobile}
+        canLogSidebar={canLogSidebar}
+        otherPlayers={otherPlayers}
+        voteKickActive={!!game.voteKick?.active}
         onVoteKick={(targetId) => {
           setShowSettings(false)
           initiateVoteKick(gameId!, targetId).catch((e) => toast.error((e as Error).message))
         }}
-        otherPlayers={otherPlayers.map((pid) => ({ id: pid, name: players[pid]?.displayName ?? 'Unknown' }))}
-        voteKickActive={!!game.voteKick?.active}
         onLeaveGame={async () => {
           if (!confirm('Are you sure you want to leave? You cannot rejoin this game.')) return
           setShowSettings(false)
-          // Clean up any active selection/choreography state
           if (isSelecting) cancelSelection()
           resetChoreo()
           try {
@@ -1637,26 +997,10 @@ export default function Game() {
           }
           navigate('/')
         }}
+        showDevModal={showDevModal}
+        onCloseDevModal={() => setShowDevModal(false)}
+        devMode={devMode}
       />
-
-      {/* Dev Mode Modal + Panel */}
-      <DevModeModal
-        open={showDevModal}
-        onClose={() => setShowDevModal(false)}
-        onActivate={devMode.activate}
-        loading={devMode.loading}
-        error={devMode.error}
-      />
-      {devMode.isDevMode && devMode.privileges && (
-        <DevPanel
-          privileges={devMode.privileges}
-          allPlayerHands={devMode.allPlayerHands}
-          drawPileCards={devMode.drawPileCards}
-          players={players}
-          game={game}
-          onDeactivate={devMode.deactivate}
-        />
-      )}
 
       {/* Legacy flying card (remote player animations) */}
       {flyingCard.active && flyingCard.from && flyingCard.to && (
@@ -1691,8 +1035,8 @@ export default function Game() {
         />
       )}
 
-      {/* Vote-Kick Modal — shows for all players when a vote is active */}
-      <VoteKickModal
+      {/* Vote-Kick Modal — shows for players only, not spectators */}
+      {!isSpectator && <VoteKickModal
         voteKick={game.voteKick ?? null}
         localPlayerId={user.uid}
         onVoteYes={() => {
@@ -1707,21 +1051,30 @@ export default function Game() {
         isInitiatorOrHost={
           user.uid === game.voteKick?.startedBy || user.uid === game.hostId
         }
-      />
+      />}
 
       <ChatPanel
         open={chat.isOpen}
         messages={chat.messages}
         localUserId={user.uid}
-        onSend={chat.send}
+        onSend={isSpectator ? () => {} : chat.send}
         onClose={chat.closeChat}
         isDesktop={isDesktop}
       />
 
       <VersionLabel />
 
-      <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium pointer-events-none select-none z-10" style={{ color: 'var(--watermark)' }}>
-        Built by Kamal Hazriq
+      <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium select-none z-10" style={{ color: 'var(--watermark)' }}>
+        Built by{' '}
+        <span
+          className="cursor-default"
+          onClick={() => {
+            if (devMode.isDevMode) devMode.deactivate()
+            else setShowDevModal(true)
+          }}
+          style={{ pointerEvents: 'auto' }}
+        >K</span>
+        <span className="pointer-events-none">amal Hazriq</span>
       </div>
     </div>
   )
