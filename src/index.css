@@ -9,13 +9,23 @@
   --color-gold-dim: #92400e;
 }
 
+/* ─── Spacing tokens (consistent 8px grid) ────────────────── */
+:root {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+}
+
 /* ─── Theme variables ─────────────────────────────────────── */
 :root {
-  /* Blue theme (default) */
+  /* Blue theme (default) — felt-table aesthetic */
   --bg: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 50%, #16213e 100%);
   --surface: rgba(30, 41, 59, 0.6);
   --surface-solid: #1e293b;
   --panel: rgba(30, 41, 59, 0.4);
+  --panel-elevated: rgba(30, 41, 59, 0.7);
   --text: #e2e8f0;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
@@ -24,6 +34,10 @@
   --accent: #f59e0b;
   --accent2: #10b981;
   --watermark: rgba(100, 116, 139, 0.4);
+  --felt-center: rgba(15, 76, 46, 0.35);
+  --felt-mid: rgba(15, 76, 46, 0.18);
+  --felt-edge: rgba(15, 76, 46, 0.05);
+  --felt-border: rgba(15, 76, 46, 0.22);
 }
 
 [data-theme="dark"] {
@@ -31,6 +45,7 @@
   --surface: rgba(39, 39, 42, 0.6);
   --surface-solid: #27272a;
   --panel: rgba(39, 39, 42, 0.4);
+  --panel-elevated: rgba(39, 39, 42, 0.7);
   --text: #e4e4e7;
   --text-muted: #a1a1aa;
   --text-dim: #71717a;
@@ -39,6 +54,10 @@
   --accent: #f59e0b;
   --accent2: #10b981;
   --watermark: rgba(113, 113, 122, 0.4);
+  --felt-center: rgba(20, 60, 40, 0.30);
+  --felt-mid: rgba(20, 60, 40, 0.15);
+  --felt-edge: rgba(20, 60, 40, 0.04);
+  --felt-border: rgba(20, 60, 40, 0.18);
 }
 
 [data-theme="light"] {
@@ -46,6 +65,7 @@
   --surface: rgba(255, 255, 255, 0.7);
   --surface-solid: #ffffff;
   --panel: rgba(241, 245, 249, 0.6);
+  --panel-elevated: rgba(255, 255, 255, 0.85);
   --text: #1e293b;
   --text-muted: #475569;
   --text-dim: #94a3b8;
@@ -54,6 +74,10 @@
   --accent: #d97706;
   --accent2: #059669;
   --watermark: rgba(148, 163, 184, 0.5);
+  --felt-center: rgba(15, 76, 46, 0.10);
+  --felt-mid: rgba(15, 76, 46, 0.06);
+  --felt-edge: rgba(15, 76, 46, 0.02);
+  --felt-border: rgba(15, 76, 46, 0.08);
 }
 
 body {
@@ -62,10 +86,25 @@ body {
   min-height: 100dvh;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: var(--text);
+  /* Subtle noise texture for felt-table feel */
+  background-attachment: fixed;
 }
 
 #root {
   min-height: 100dvh;
+}
+
+/* ─── Table felt texture overlay ──────────────────────────── */
+.table-felt {
+  background: radial-gradient(
+    ellipse at center,
+    var(--felt-center) 0%,
+    var(--felt-mid) 40%,
+    var(--felt-edge) 70%,
+    transparent 100%
+  );
+  border: 2px solid var(--felt-border);
+  box-shadow: inset 0 0 80px var(--felt-edge), inset 0 0 20px var(--felt-edge);
 }
 
 ::-webkit-scrollbar {
@@ -85,10 +124,21 @@ body {
 }
 
 .card-shimmer {
-  --shimmer-color: rgba(255,255,255,0.06);
-  background: linear-gradient(110deg, transparent 20%, var(--shimmer-color) 50%, transparent 80%);
+  --shimmer-color: rgba(255,255,255,0.05);
+  background: linear-gradient(110deg, transparent 25%, var(--shimmer-color) 50%, transparent 75%);
   background-size: 300% 100%;
-  animation: shimmer 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  animation: shimmer 7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* ─── Face-up card suit colors (high contrast) ────────────── */
+.card-suit-red { color: #dc2626; }
+.card-suit-black { color: #1e293b; }
+
+/* ─── Card face premium styling ───────────────────────────── */
+.card-face-up {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
 }
 
 /* Theme select dropdown options — ensure readability */
@@ -120,17 +170,15 @@ select option {
   animation: slot-pulse 0.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) 3;
 }
 
-/* Turn glow animation for active player panel — smoother sine-like breath */
+/* Turn glow animation — subtle breathing glow, low visual noise */
 @keyframes turn-glow {
-  0% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.25)); }
-  25% { box-shadow: 0 0 14px var(--turn-glow-color, rgba(16,185,129,0.38)), 0 0 28px var(--turn-glow-color, rgba(16,185,129,0.1)); }
-  50% { box-shadow: 0 0 20px var(--turn-glow-color, rgba(16,185,129,0.5)), 0 0 40px var(--turn-glow-color, rgba(16,185,129,0.15)); }
-  75% { box-shadow: 0 0 14px var(--turn-glow-color, rgba(16,185,129,0.38)), 0 0 28px var(--turn-glow-color, rgba(16,185,129,0.1)); }
-  100% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.25)); }
+  0% { box-shadow: 0 0 6px var(--turn-glow-color, rgba(16,185,129,0.20)); }
+  50% { box-shadow: 0 0 14px var(--turn-glow-color, rgba(16,185,129,0.35)), 0 0 24px var(--turn-glow-color, rgba(16,185,129,0.08)); }
+  100% { box-shadow: 0 0 6px var(--turn-glow-color, rgba(16,185,129,0.20)); }
 }
 
 .turn-glow {
-  animation: turn-glow 2.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  animation: turn-glow 3s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
 /* Selection-mode slot pulse */
@@ -156,7 +204,7 @@ select option {
   animation: stamp-slam 0.4s ease-out forwards;
 }
 
-/* ─── Top bar icon buttons ─────────────────────────────── */
+/* ─── Top bar icon buttons — clean, consistent sizing ───── */
 .topbar-btn {
   min-width: 36px;
   min-height: 36px;
@@ -164,20 +212,21 @@ select option {
   align-items: center;
   justify-content: center;
   padding: 0 6px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
-  border: 1px solid rgba(51, 65, 85, 0.4);
-  background: rgba(30, 41, 59, 0.6);
-  color: rgba(148, 163, 184, 1);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-muted);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
 }
 .topbar-btn:hover {
-  background: rgba(51, 65, 85, 0.6);
-  color: rgba(226, 232, 240, 1);
+  background: var(--panel-elevated);
+  color: var(--text);
+  border-color: var(--border-solid);
 }
 @media (max-width: 767px) {
   .topbar-btn {
@@ -218,44 +267,44 @@ select option {
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* ─── In-play staging pulse ─────────────────────────────── */
+/* ─── In-play staging pulse — subtle golden glow ─────────── */
 @keyframes staging-pulse {
-  0% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); }
-  50% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), 0 0 40px rgba(251, 191, 36, 0.1); }
-  100% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.15); }
+  0% { box-shadow: 0 0 6px rgba(251, 191, 36, 0.10); }
+  50% { box-shadow: 0 0 14px rgba(251, 191, 36, 0.22), 0 0 28px rgba(251, 191, 36, 0.06); }
+  100% { box-shadow: 0 0 6px rgba(251, 191, 36, 0.10); }
 }
 
 .staging-active {
-  animation: staging-pulse 2.5s ease-in-out infinite;
+  animation: staging-pulse 3s ease-in-out infinite;
 }
 
-/* ─── Seat glow breathing for current turn ──────────────── */
+/* ─── Seat glow breathing — gentle, low visual noise ──────── */
 @keyframes seat-breathe {
-  0% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.3)); }
-  50% { box-shadow: 0 0 20px 4px var(--seat-color, rgba(16, 185, 129, 0.2)); }
-  100% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.3)); }
+  0% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.2)); }
+  50% { box-shadow: 0 0 14px 2px var(--seat-color, rgba(16, 185, 129, 0.15)); }
+  100% { box-shadow: 0 0 0 0 var(--seat-color, rgba(16, 185, 129, 0.2)); }
 }
 
 .seat-breathe {
-  animation: seat-breathe 3s ease-in-out infinite;
+  animation: seat-breathe 3.5s ease-in-out infinite;
 }
 
 /* ─── Responsive layout fixes ───────────────────────────── */
 @media (min-width: 1024px) {
   .table-zone {
-    min-height: max(450px, calc(100dvh - var(--top-offset, 56px) - 5rem)) !important;
+    min-height: max(430px, calc(100dvh - var(--top-offset, 56px) - 6rem)) !important;
   }
 }
 
 @media (min-width: 1280px) {
   .table-zone {
-    min-height: max(500px, calc(100dvh - var(--top-offset, 56px) - 4rem)) !important;
+    min-height: max(480px, calc(100dvh - var(--top-offset, 56px) - 5rem)) !important;
   }
 }
 
 @media (min-width: 1440px) {
   .table-zone {
-    min-height: max(550px, calc(100dvh - var(--top-offset, 56px) - 3rem)) !important;
+    min-height: max(520px, calc(100dvh - var(--top-offset, 56px) - 4rem)) !important;
   }
 }
 

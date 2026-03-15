@@ -263,14 +263,15 @@ export default function Results() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: rank * 0.15 }}
                 className={`
-                  rounded-2xl p-4 border
+                  rounded-2xl p-4 border backdrop-blur-sm
                   ${isWinner
-                    ? 'bg-amber-900/30 border-amber-500/50 shadow-lg shadow-amber-500/10'
+                    ? 'bg-amber-900/25 border-amber-500/40 shadow-lg shadow-amber-500/10'
                     : isYou
-                      ? 'bg-amber-900/15 border-amber-500/30'
-                      : 'bg-slate-800/40 border-slate-700/50'
+                      ? 'bg-amber-900/10 border-amber-500/25'
+                      : 'border'
                   }
                 `}
+                style={!isWinner && !isYou ? { background: 'var(--panel)', borderColor: 'var(--border)' } : undefined}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`

@@ -263,7 +263,8 @@ export default function Game() {
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
   // Check if any card is locked anywhere (for disabling unlock power when no targets)
-  const hasAnyLocks = Object.values(players).some((p) => p.locks?.some(Boolean))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hasAnyLocks = useMemo(() => Object.values(players).some((p) => p.locks?.some(Boolean)), [players])
 
   // Action highlights (temporary colored ring on actor's panel + per-slot overlays + swap labels)
   const { highlights: actionHighlights, slotOverlays, swapLabels } = useActionHighlight(
@@ -708,7 +709,7 @@ export default function Game() {
             if (peekTimerRef.current) clearTimeout(peekTimerRef.current)
             peekTimerRef.current = setTimeout(() => {
               setPeekReveal(null)
-            }, 1200)
+            }, 2000)
           }
         })
         break
@@ -946,26 +947,27 @@ export default function Game() {
       {/* ─── Sticky Top Bar (v1.5 — 3-zone layout) ──────────── */}
       <div
         ref={headerRef}
-        className="sticky top-0 z-50 w-full backdrop-blur-md border-b"
+        className="sticky top-0 z-50 w-full backdrop-blur-lg border-b"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
-          background: 'color-mix(in srgb, var(--surface-solid) 85%, transparent)',
-          borderColor: 'var(--border-solid)',
+          background: 'color-mix(in srgb, var(--surface-solid) 90%, transparent)',
+          borderColor: 'var(--border)',
         }}
       >
-        <div className="flex items-center px-3 md:px-5 py-1.5 min-h-[48px] max-w-5xl mx-auto gap-2">
+        <div className="flex items-center px-3 md:px-5 py-2 min-h-[52px] max-w-5xl mx-auto gap-3">
           {/* ── LEFT: Title + Room Code + Pile ── */}
           <div className="flex items-center gap-2 shrink-0 min-w-0">
             <h1 className="text-base font-bold text-amber-300 leading-none whitespace-nowrap hidden sm:block">Lucky Seven™</h1>
             <h1 className="text-base font-bold text-amber-300 leading-none whitespace-nowrap sm:hidden">L7</h1>
             <button
               onClick={() => { copyToClipboard(game.joinCode); toast.success('Room code copied!') }}
-              className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-800/60 border border-slate-700/40 hover:bg-slate-700/60 transition-colors cursor-pointer"
+              className="group relative flex items-center gap-1.5 px-2 py-1 rounded-lg border hover:border-emerald-500/40 transition-colors cursor-pointer"
+              style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
               aria-label={`Copy room code ${game.joinCode}`}
               title="Click to copy room code"
             >
-              <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-400">{game.joinCode}</span>
-              <svg className="w-3 h-3 text-slate-500 group-hover:text-slate-300 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <span className="text-[11px] font-mono font-bold tracking-widest text-emerald-400">{game.joinCode}</span>
+              <svg className="w-3 h-3 text-slate-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
               <span className="toolbar-tooltip">Copy Code</span>
@@ -1054,7 +1056,17 @@ export default function Game() {
 
       {/* ─── Safe Layout Stack: banners push content down ────── */}
       <div ref={bannerRef} className="safe-layout-stack flex flex-col">
-        {/* Resume banner removed — drawn card now shown in staging slot with "Resolve" chip */}
+        {/* Last round banner — shows when someone called end */}
+        {game.status === 'ending' && (
+          <div className="px-3 md:px-5 pt-2">
+            <div className="py-1.5 px-4 bg-red-900/25 border border-red-600/30 rounded-xl text-red-300 text-[11px] font-semibold text-center tracking-wide">
+              FINAL ROUND — {game.endCalledBy && players[game.endCalledBy]
+                ? `${players[game.endCalledBy].displayName} called end`
+                : 'End called'
+              }
+            </div>
+          </div>
+        )}
 
         {/* Selection mode prompt banner */}
         {isSelecting && (
@@ -1072,7 +1084,11 @@ export default function Game() {
             >
               {selection.phase === 'choosingTarget' && selection.constraint?.prompt}
               {selection.phase === 'choosingSecondTarget' && selection.constraint?.secondPrompt}
-              {selection.phase === 'confirming' && 'Ready to confirm — check the Action Bar below'}
+              {selection.phase === 'confirming' && (
+                selection.constraint?.targetType === 'anyPlayerSlot' && selection.firstTarget && selection.secondTarget
+                  ? `Confirm swap: ${players[selection.firstTarget.playerId]?.displayName ?? '?'}'s #${selection.firstTarget.slotIndex + 1} ↔ ${players[selection.secondTarget.playerId]?.displayName ?? '?'}'s #${selection.secondTarget.slotIndex + 1}`
+                  : 'Ready — confirm your selection below'
+              )}
             </div>
           </motion.div>
         )}
@@ -1122,19 +1138,21 @@ export default function Game() {
               transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.6 }}
               aria-live="polite"
               aria-atomic="true"
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-4 rounded-xl mb-3 text-xs font-medium ${
+              className={`flex items-center justify-center gap-2 py-2 px-5 rounded-xl mb-3 text-xs font-semibold tracking-wide ${
                 isMyTurn
-                  ? 'bg-emerald-900/40 border border-emerald-500/40 text-emerald-300'
-                  : 'bg-slate-800/40 border border-slate-700/50 text-slate-400'
+                  ? 'bg-emerald-900/30 border border-emerald-500/30 text-emerald-300 shadow-sm shadow-emerald-500/10'
+                  : 'bg-slate-800/30 border border-slate-700/40 text-slate-400'
               }`}
             >
-              {!isMyTurn && curColor && (
+              {isMyTurn ? (
+                <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-emerald-400 animate-pulse" />
+              ) : curColor ? (
                 <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: curColor.solid }} />
-              )}
+              ) : null}
               {isMyTurn ? (
                 isDrawPhase
                   ? 'Your turn — draw from the pile or discard'
-                  : 'Swap, discard, or use a power'
+                  : hasDrawnCard ? 'Choose: swap a card, discard, or use a power' : 'Swap, discard, or use a power'
               ) : (
                 `Waiting for ${currentTurnName}...`
               )}
@@ -1146,30 +1164,27 @@ export default function Game() {
           /* ─── TABLE LAYOUT ─── Poker-table circular arrangement ─── */
           (() => {
             const seatPositions = getSeatPositions(otherPlayers.length)
-            const panelW = otherPlayers.length <= 3 ? '220px' : otherPlayers.length <= 5 ? '200px' : '185px'
+            const panelW = otherPlayers.length <= 3 ? '220px' : otherPlayers.length <= 5 ? '205px' : '190px'
             return (
               <>
               <div
                 className="table-zone relative w-full mb-4 pt-2"
                 style={{
                   /* Fill remaining viewport below header+banners, clamped for sanity */
-                  minHeight: 'max(400px, calc(100dvh - var(--top-offset, 56px) - 6rem))',
-                  maxHeight: 'min(800px, calc(100dvh - var(--top-offset, 56px) - 2rem))',
+                  minHeight: 'max(400px, calc(100dvh - var(--top-offset, 56px) - 7rem))',
+                  maxHeight: 'min(780px, calc(100dvh - var(--top-offset, 56px) - 3rem))',
                 }}
               >
-                {/* Table surface — oval felt gradient */}
+                {/* Table surface — oval felt gradient (themed via CSS vars) */}
                 <div
-                  className="absolute rounded-[50%] pointer-events-none"
+                  className="absolute rounded-[50%] pointer-events-none table-felt"
                   style={{
                     left: '5%', right: '5%', top: '3%', bottom: '6%',
-                    background: 'radial-gradient(ellipse at center, rgba(15,76,46,0.35) 0%, rgba(15,76,46,0.18) 40%, rgba(15,76,46,0.05) 70%, transparent 100%)',
-                    border: '2px solid rgba(15,76,46,0.22)',
-                    boxShadow: 'inset 0 0 80px rgba(15,76,46,0.12), inset 0 0 20px rgba(15,76,46,0.08)',
                   }}
                 />
 
                 {/* Center: Draw + Staging + Discard piles */}
-                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-4 z-10">
+                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
                   <div className="text-center" ref={drawPileRef}>
                     <p className="text-[10px] text-slate-500 mb-1">Draw</p>
                     <CardView
@@ -1236,8 +1251,8 @@ export default function Game() {
                         top: `${pos.top}%`,
                         transform: 'translate(-50%, -50%)',
                         maxWidth: panelW,
-                        width: otherPlayers.length <= 4 ? '42%' : otherPlayers.length <= 6 ? '38%' : '36%',
-                        minWidth: otherPlayers.length <= 5 ? '185px' : '150px',
+                        width: otherPlayers.length <= 4 ? '42%' : otherPlayers.length <= 6 ? '38%' : '35%',
+                        minWidth: otherPlayers.length <= 5 ? '190px' : '175px',
                         overflow: 'visible',
                       }}
                     >
@@ -1273,7 +1288,7 @@ export default function Game() {
                 <div
                   className="absolute left-1/2 z-10"
                   ref={localPanelRef}
-                  style={{ bottom: 'max(4px, env(safe-area-inset-bottom, 4px))', transform: 'translateX(-50%)', maxWidth: '340px', width: '85%' }}
+                  style={{ bottom: 'max(8px, env(safe-area-inset-bottom, 8px))', transform: 'translateX(-50%)', maxWidth: '340px', width: '82%' }}
                 >
                   <PlayerPanel
                     playerId={user.uid}
@@ -1305,9 +1320,9 @@ export default function Game() {
                   )}
                 </div>
               </div>
-              {/* Action Bar for table layout — below table zone */}
+              {/* Action Bar for table layout — below table zone, clear gap */}
               {uiMode === 'actionbar' && (
-                <div className="mx-auto mb-4" style={{ maxWidth: '380px', width: '90%' }}>
+                <div className="mx-auto mb-4 mt-2" style={{ maxWidth: '380px', width: '90%' }}>
                   <ActionBar
                     card={isMyTurn && hasDrawnCard ? drawnCard : null}
                     visible={modal.type === 'none' && !drawnCardDismissed}
@@ -1377,7 +1392,7 @@ export default function Game() {
             )}
 
             {/* Table area: Draw + Staging + Discard */}
-            <div className="flex items-center justify-center gap-6 mb-4 py-3" aria-busy={busy} aria-label="Card piles">
+            <div className="flex items-center justify-center gap-5 sm:gap-6 mb-4 py-4" aria-busy={busy} aria-label="Card piles">
               <div className="text-center" ref={drawPileRef}>
                 <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
                 <CardView
@@ -1425,7 +1440,7 @@ export default function Game() {
                     <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                   </div>
                 ) : (
-                  <div className="w-24 h-[8.75rem] rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
+                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
                     <span className="text-slate-600 text-xs">Empty</span>
                   </div>
                 )}

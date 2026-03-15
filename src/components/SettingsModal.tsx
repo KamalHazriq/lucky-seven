@@ -103,7 +103,8 @@ export default function SettingsModal({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.88, y: 20, opacity: 0 }}
             transition={SPRING_MODAL}
-            className="bg-slate-800 border border-slate-600 rounded-2xl p-5 max-w-sm w-full shadow-2xl max-h-[85vh] overflow-y-auto"
+            className="border rounded-2xl p-5 max-w-sm w-full shadow-2xl max-h-[85vh] overflow-y-auto"
+            style={{ background: 'var(--surface-solid)', borderColor: 'var(--border-solid)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -154,7 +155,7 @@ export default function SettingsModal({
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={toggleSfx}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-base">{sfx ? '\u{1F50A}' : '\u{1F507}'}</span>
@@ -175,7 +176,7 @@ export default function SettingsModal({
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={toggleHaptic}
-                      className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base">{haptic ? '\u{1F4F3}' : '\u{1F4F4}'}</span>
@@ -196,7 +197,7 @@ export default function SettingsModal({
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={cycle}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-base">{reduced ? '\u{23F8}\uFE0F' : '\u{25B6}\uFE0F'}</span>
@@ -215,7 +216,7 @@ export default function SettingsModal({
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={togglePerfMode}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-base">{perfMode ? '\u26A1' : '\u2728'}</span>
@@ -245,7 +246,7 @@ export default function SettingsModal({
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={onToggleLayout}
-                        className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="text-base">{layout === 'table' ? '\u{1FA91}' : '\u{1F4CB}'}</span>
@@ -266,7 +267,7 @@ export default function SettingsModal({
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={onToggleUiMode}
-                        className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="text-base">{uiMode === 'actionbar' ? '\u{2261}' : '\u{25A1}'}</span>
@@ -287,7 +288,7 @@ export default function SettingsModal({
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={onToggleLogPosition}
-                        className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
+                        className="w-full flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="text-base">{logPosition === 'left' ? '\u{2190}' : '\u{2193}'}</span>
@@ -320,7 +321,7 @@ export default function SettingsModal({
                           onVoteKick(p.id)
                         }}
                         disabled={voteKickActive}
-                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-900/40 border border-slate-700/40 hover:bg-red-900/20 hover:border-red-700/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl border hover:bg-red-900/20 hover:border-red-700/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
                       >
                         <span className="text-sm text-slate-200">{p.name}</span>
                         <span className="text-[10px] font-bold text-red-400 bg-red-900/30 px-2 py-0.5 rounded-lg">

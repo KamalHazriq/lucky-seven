@@ -24,8 +24,8 @@ export interface SeatPosition {
 // ─── Safe bounds — reserve header, sides, and local player zone ───
 const MIN_TOP = 8    // Reserve top for banner safe-gap (bumped from 6)
 const MAX_TOP = 76   // Reserve bottom for local player
-const MIN_LEFT = 4   // Left edge padding
-const MAX_LEFT = 96  // Right edge padding
+const MIN_LEFT = 6   // Left edge padding (bumped from 4 to prevent panel clipping)
+const MAX_LEFT = 94  // Right edge padding (bumped from 96)
 
 // Center of the ellipse (slightly above center for visual balance)
 const CX = 50
@@ -133,40 +133,40 @@ export function getSeatPositions(
 
   if (otherCount === 5) {
     // Row 1 (top arc): 3 players evenly spaced
-    // Row 2 (sides): 2 players flanking lower
+    // Row 2 (sides): 2 players flanking lower (inset from edges)
     return validateSpacing([
-      clamp({ left: 4, top: 44 }),
-      clamp({ left: 18, top: 14 }),
+      clamp({ left: 7, top: 44 }),
+      clamp({ left: 20, top: 14 }),
       clamp({ left: CX, top: 9 }),
-      clamp({ left: 82, top: 14 }),
-      clamp({ left: 96, top: 44 }),
+      clamp({ left: 80, top: 14 }),
+      clamp({ left: 93, top: 44 }),
     ])
   }
 
   if (otherCount === 6) {
     // Row 1 (top arc): 4 players
-    // Row 2 (sides): 2 players
+    // Row 2 (sides): 2 players (inset from edges)
     return validateSpacing([
-      clamp({ left: 4, top: 46 }),
-      clamp({ left: 12, top: 20 }),
+      clamp({ left: 7, top: 46 }),
+      clamp({ left: 14, top: 20 }),
       clamp({ left: 35, top: 9 }),
       clamp({ left: 65, top: 9 }),
-      clamp({ left: 88, top: 20 }),
-      clamp({ left: 96, top: 46 }),
+      clamp({ left: 86, top: 20 }),
+      clamp({ left: 93, top: 46 }),
     ])
   }
 
   if (otherCount === 7) {
     // Row 1 (top arc): 5 players
-    // Row 2 (sides): 2 players lower
+    // Row 2 (sides): 2 players lower (inset from edges)
     return validateSpacing([
-      clamp({ left: 4, top: 50 }),
-      clamp({ left: 8, top: 24 }),
+      clamp({ left: 7, top: 50 }),
+      clamp({ left: 10, top: 24 }),
       clamp({ left: 28, top: 9 }),
       clamp({ left: CX, top: 8 }),
       clamp({ left: 72, top: 9 }),
-      clamp({ left: 92, top: 24 }),
-      clamp({ left: 96, top: 50 }),
+      clamp({ left: 90, top: 24 }),
+      clamp({ left: 93, top: 50 }),
     ])
   }
 
