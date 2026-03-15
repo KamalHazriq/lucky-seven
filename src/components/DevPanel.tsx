@@ -13,6 +13,7 @@ interface DevPanelProps {
   players: Record<string, PlayerDoc>
   game: GameDoc | null
   onDeactivate: () => void
+  onOpenReorder?: () => void
 }
 
 type Tab = 'cards' | 'pile' | 'state'
@@ -24,6 +25,7 @@ export default function DevPanel({
   players,
   game,
   onDeactivate,
+  onOpenReorder,
 }: DevPanelProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [tab, setTab] = useState<Tab>('cards')
@@ -71,6 +73,15 @@ export default function DevPanel({
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <div className="flex items-center gap-1.5">
+              {privileges.canReorderDiscardPile && onOpenReorder && (
+                <button
+                  onClick={onOpenReorder}
+                  className="px-2 py-1 rounded-md bg-amber-900/40 border border-amber-600/30 hover:bg-amber-900/60 text-amber-300 text-[10px] font-semibold transition-colors cursor-pointer"
+                  title="Reorder discard pile"
+                >
+                  🔀
+                </button>
+              )}
               <button
                 onClick={() => setCollapsed(true)}
                 className="w-6 h-6 flex items-center justify-center rounded-md bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-[10px]"

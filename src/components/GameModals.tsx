@@ -87,6 +87,7 @@ interface GameModalsProps {
     drawPileCards: Card[]
     deactivate: () => Promise<void>
   }
+  onOpenDiscardReorder?: () => void
 }
 
 export default function GameModals({
@@ -103,7 +104,7 @@ export default function GameModals({
   layout, onToggleLayout, uiModeValue, onToggleUiMode,
   logPosition, onToggleLogPosition, isMobile, canLogSidebar,
   otherPlayers, voteKickActive, onVoteKick, onLeaveGame,
-  showDevModal, onCloseDevModal, devMode,
+  showDevModal, onCloseDevModal, devMode, onOpenDiscardReorder,
 }: GameModalsProps) {
   return (
     <>
@@ -297,6 +298,7 @@ export default function GameModals({
           players={players}
           game={game}
           onDeactivate={devMode.deactivate}
+          onOpenReorder={onOpenDiscardReorder}
         />
       )}
     </>

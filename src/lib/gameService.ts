@@ -1559,8 +1559,6 @@ export async function devSetDiscardTop(gameId: string, card: Card): Promise<void
     if (!gameSnap.exists()) throw new Error('Game not found')
     const game = gameSnap.data() as GameDoc
 
-    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
-    if (game.turnPhase !== 'draw') throw new Error('Can only reorder during draw phase')
     if (game.status !== 'active' && game.status !== 'ending') throw new Error('Game not active')
 
     // Verify dev privilege
