@@ -20,6 +20,7 @@ export default function DevModeModal({
 }: DevModeModalProps) {
   const [code, setCode] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showCode, setShowCode] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,15 +83,30 @@ export default function DevModeModal({
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="password"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Enter access code..."
-                autoFocus
-                disabled={loading || success}
-                className="w-full px-4 py-3 rounded-xl bg-slate-900/60 border border-slate-600/50 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 disabled:opacity-50 transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type={showCode ? 'text' : 'password'}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="Enter access code..."
+                  autoFocus
+                  disabled={loading || success}
+                  className="w-full px-4 py-3 pr-11 rounded-xl bg-slate-900/60 border border-slate-600/50 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 disabled:opacity-50 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCode((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                  tabIndex={-1}
+                  aria-label={showCode ? 'Hide code' : 'Show code'}
+                >
+                  {showCode ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
 
               {/* Error message */}
               {error && (
