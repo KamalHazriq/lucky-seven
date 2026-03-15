@@ -37,9 +37,9 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
               </button>
             </div>
 
-            <div className="p-5 sm:p-6 pb-8 space-y-5 text-sm text-slate-300">
+            <div className="p-5 sm:p-6 pb-8 space-y-3 text-sm text-slate-300">
               {/* Top 2-col: Overview + Basic Gameplay side-by-side on desktop */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Game Overview */}
                 <section>
                   <h3 className="font-bold text-emerald-400 text-base mb-2">Game Overview</h3>
@@ -126,7 +126,7 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
               </section>
 
               {/* Bottom 2-col: Locked Cards + Strategy */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <section>
                   <h3 className="font-bold text-emerald-400 text-base mb-2">Locked Cards</h3>
                   <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 text-slate-400 h-full">
@@ -155,11 +155,11 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
 
               {/* How to Win */}
               <section>
-                <div className="bg-slate-900/40 border border-amber-600/20 rounded-xl p-4 text-slate-400">
+                <div className="bg-amber-900/20 border border-amber-500/30 rounded-xl p-4 text-amber-200/80">
                   <h3 className="font-bold text-amber-300 text-base mb-1.5">How to Win</h3>
                   <ul className="space-y-1">
-                    <li>Have the <span className="text-amber-300 font-medium">lowest total score</span> when the draw pile runs out</li>
-                    <li><span className="text-amber-300 font-medium">7s</span> are your best friend (0 points each)</li>
+                    <li>Have the <span className="text-amber-200 font-medium">lowest total score</span> when the draw pile runs out</li>
+                    <li><span className="text-amber-200 font-medium">7s</span> are your best friend (0 points each)</li>
                     <li>Strategic use of powers gives you the edge</li>
                   </ul>
                 </div>
