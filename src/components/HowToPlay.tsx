@@ -40,7 +40,7 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 border border-slate-600 rounded-2xl max-w-2xl w-full shadow-2xl max-h-[85vh] overflow-y-auto"
+              className="bg-slate-800 border border-slate-600 rounded-2xl max-w-4xl w-full shadow-2xl max-h-[85vh] overflow-y-auto"
             >
               {/* Header */}
               <div className="sticky top-0 z-10 bg-slate-800 border-b border-slate-700/50 rounded-t-2xl px-6 py-4 flex items-center justify-between">
