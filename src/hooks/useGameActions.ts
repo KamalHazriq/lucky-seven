@@ -55,6 +55,7 @@ export type ModalState =
   | { type: 'lock' }
   | { type: 'unlock' }
   | { type: 'rearrange' }
+  | { type: 'peekChoice'; effectType: PowerEffectType; rankKey: PowerRankKey }
   | { type: 'peekOpponent' }
   | { type: 'peekOpponentResult'; card: Card; playerName: string; slot: number }
   | { type: 'none' }
@@ -117,6 +118,9 @@ interface UseGameActionsParams {
 
   // Discard top (for choreography)
   discardTop: Card | null
+
+  // Settings
+  peekAllowsOpponent: boolean
 }
 
 interface UseGameActionsReturn {
@@ -142,6 +146,8 @@ interface UseGameActionsReturn {
   handleUnlockSelect: (targetPlayerId: string, slotIndex: number) => void
   handleRearrangeSelect: (targetPlayerId: string) => void
   handlePeekOpponentSelect: (targetPlayerId: string, slotIndex: number) => void
+  handlePeekChoiceSelf: () => void
+  handlePeekChoiceOpponent: () => void
   handleCancelPower: () => void
 }
 
@@ -156,7 +162,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
     onPlayerArrival, reconstructStaging, resetChoreo,
     triggerFly, flushQueue,
     selection, isSelecting, startSelection, selectTarget, confirmSelection,
-    setStampOverlays, discardTop,
+    setStampOverlays, discardTop, peekAllowsOpponent,
   } = params
 
   const [busy, setBusy] = useState(false)
@@ -329,7 +335,14 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
   }, [choreo.phase, onStagingArrival, onSlotArrival, onDiscardArrival, onPlayerArrival, resetChoreo])
 
   // ─── Power handlers ────────────────────────────
-  const handleUsePower = (_rankKey: PowerRankKey, effectType: PowerEffectType) => {
+  const handleUsePower = (rankKey: PowerRankKey, effectType: PowerEffectType) => {
+    // If peek power with opponent peek enabled, show choice first
+    const isPeek = effectType === 'peek_one_of_your_cards' || effectType === 'peek_all_three_of_your_cards'
+    if (isPeek && peekAllowsOpponent) {
+      setModal({ type: 'peekChoice', effectType, rankKey })
+      return
+    }
+
     if (uiMode === 'actionbar') {
       switch (effectType) {
         case 'peek_all_three_of_your_cards':
@@ -353,10 +366,6 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
           break
         case 'rearrange_cards':
           startSelection(REARRANGE_CONSTRAINT)
-          break
-        case 'peek_one_opponent_card':
-          playSfx('peek')
-          setModal({ type: 'peekOpponent' })
           break
       }
       return
@@ -388,11 +397,45 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
       case 'rearrange_cards':
         setModal({ type: 'rearrange' })
         break
-      case 'peek_one_opponent_card':
-        playSfx('peek')
-        setModal({ type: 'peekOpponent' })
-        break
     }
+  }
+
+  // Handle peek choice: user chose "Peek Your Cards" from the choice modal
+  const handlePeekChoiceSelf = () => {
+    if (modal.type !== 'peekChoice') return
+    const { effectType } = modal
+
+    if (uiMode === 'actionbar') {
+      if (effectType === 'peek_all_three_of_your_cards') {
+        setModal({ type: 'none' })
+        withBusy(async () => {
+          const cards = await peekAll(gameId!)
+          playSfx('peekAll')
+          setModal({ type: 'peekAll', cards })
+        })
+      } else {
+        setModal({ type: 'none' })
+        startSelection(PEEK_ONE_CONSTRAINT)
+      }
+    } else {
+      if (effectType === 'peek_all_three_of_your_cards') {
+        setModal({ type: 'none' })
+        withBusy(async () => {
+          const cards = await peekAll(gameId!)
+          playSfx('peekAll')
+          setModal({ type: 'peekAll', cards })
+        })
+      } else {
+        playSfx('peek')
+        setModal({ type: 'peekOne' })
+      }
+    }
+  }
+
+  // Handle peek choice: user chose "Peek Opponent's Card"
+  const handlePeekChoiceOpponent = () => {
+    playSfx('peek')
+    setModal({ type: 'peekOpponent' })
   }
 
   // ─── Selection mode confirm ────────────────────
@@ -577,6 +620,8 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
     handleUnlockSelect,
     handleRearrangeSelect,
     handlePeekOpponentSelect,
+    handlePeekChoiceSelf,
+    handlePeekChoiceOpponent,
     handleCancelPower,
   }
 }

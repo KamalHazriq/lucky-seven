@@ -239,7 +239,8 @@ export default function Game() {
     handleDrawPile, handleTakeDiscard, handleCancelDraw, handleSwap, handleDiscard,
     handleUsePower, handleChoreoComplete, handleSelectionConfirm, handleSelectionClick,
     handlePlayerSelect, handlePeekSelect, handleSwapConfirm, handleLockSelect,
-    handleUnlockSelect, handleRearrangeSelect, handlePeekOpponentSelect, handleCancelPower,
+    handleUnlockSelect, handleRearrangeSelect, handlePeekOpponentSelect,
+    handlePeekChoiceSelf, handlePeekChoiceOpponent, handleCancelPower,
   } = useGameActions({
     gameId, isMyTurn, isDrawPhase, isActionPhase, hasDrawnCard, drawnCard,
     reduced, isDesktop, isSpectator, privateState: privateState ?? null,
@@ -252,6 +253,7 @@ export default function Game() {
     selection, isSelecting, startSelection, selectTarget,
     confirmSelection, setStampOverlays,
     discardTop: game?.discardTop ?? null,
+    peekAllowsOpponent: game?.settings?.peekAllowsOpponent ?? false,
   })
 
   // Player order with local player first (for modals)
@@ -967,6 +969,8 @@ export default function Game() {
         onUnlockSelect={handleUnlockSelect}
         onRearrangeSelect={handleRearrangeSelect}
         onPeekOpponentSelect={handlePeekOpponentSelect}
+        onPeekChoiceSelf={handlePeekChoiceSelf}
+        onPeekChoiceOpponent={handlePeekChoiceOpponent}
         onCancelPower={handleCancelPower}
         showPowerGuide={showPowerGuide}
         onClosePowerGuide={() => setShowPowerGuide(false)}

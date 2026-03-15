@@ -1,17 +1,30 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function HowToPlay() {
+export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'large' }) {
   const [open, setOpen] = useState(false)
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 cursor-pointer transition-colors"
-      >
-        How to Play
-      </button>
+      {variant === 'large' ? (
+        <motion.button
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          onClick={() => setOpen(true)}
+          className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-xl font-semibold text-lg transition-all shadow-lg shadow-amber-600/20 cursor-pointer flex items-center justify-center gap-2"
+        >
+          <span className="text-xl">{'\u{1F4D6}'}</span>
+          How to Play
+        </motion.button>
+      ) : (
+        <button
+          onClick={() => setOpen(true)}
+          className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 cursor-pointer transition-colors"
+        >
+          How to Play
+        </button>
+      )}
 
       <AnimatePresence>
         {open && (

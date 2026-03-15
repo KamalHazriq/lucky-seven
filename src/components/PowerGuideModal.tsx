@@ -30,7 +30,6 @@ const EFFECT_FRIENDLY: Record<PowerEffectType, string> = {
   lock_one_card: 'Lock 1 card (prevents swapping)',
   unlock_one_locked_card: 'Unlock 1 locked card',
   rearrange_cards: 'Rearrange opponent\'s cards randomly',
-  peek_one_opponent_card: 'Peek 1 opponent card',
 }
 
 const RANK_ORDER: PowerRankKey[] = ['10', 'J', 'Q', 'K', 'JOKER']
