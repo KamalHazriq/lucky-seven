@@ -263,7 +263,8 @@ export default function Game() {
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
   // Check if any card is locked anywhere (for disabling unlock power when no targets)
-  const hasAnyLocks = Object.values(players).some((p) => p.locks?.some(Boolean))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hasAnyLocks = useMemo(() => Object.values(players).some((p) => p.locks?.some(Boolean)), [players])
 
   // Action highlights (temporary colored ring on actor's panel + per-slot overlays + swap labels)
   const { highlights: actionHighlights, slotOverlays, swapLabels } = useActionHighlight(
@@ -708,7 +709,7 @@ export default function Game() {
             if (peekTimerRef.current) clearTimeout(peekTimerRef.current)
             peekTimerRef.current = setTimeout(() => {
               setPeekReveal(null)
-            }, 1200)
+            }, 2000)
           }
         })
         break
@@ -1055,7 +1056,17 @@ export default function Game() {
 
       {/* ─── Safe Layout Stack: banners push content down ────── */}
       <div ref={bannerRef} className="safe-layout-stack flex flex-col">
-        {/* Resume banner removed — drawn card now shown in staging slot with "Resolve" chip */}
+        {/* Last round banner — shows when someone called end */}
+        {game.status === 'ending' && (
+          <div className="px-3 md:px-5 pt-2">
+            <div className="py-1.5 px-4 bg-red-900/25 border border-red-600/30 rounded-xl text-red-300 text-[11px] font-semibold text-center tracking-wide">
+              FINAL ROUND — {game.endCalledBy && players[game.endCalledBy]
+                ? `${players[game.endCalledBy].displayName} called end`
+                : 'End called'
+              }
+            </div>
+          </div>
+        )}
 
         {/* Selection mode prompt banner */}
         {isSelecting && (
@@ -1073,7 +1084,11 @@ export default function Game() {
             >
               {selection.phase === 'choosingTarget' && selection.constraint?.prompt}
               {selection.phase === 'choosingSecondTarget' && selection.constraint?.secondPrompt}
-              {selection.phase === 'confirming' && 'Ready to confirm — check the Action Bar below'}
+              {selection.phase === 'confirming' && (
+                selection.constraint?.targetType === 'anyPlayerSlot' && selection.firstTarget && selection.secondTarget
+                  ? `Confirm swap: ${players[selection.firstTarget.playerId]?.displayName ?? '?'}'s #${selection.firstTarget.slotIndex + 1} ↔ ${players[selection.secondTarget.playerId]?.displayName ?? '?'}'s #${selection.secondTarget.slotIndex + 1}`
+                  : 'Ready — confirm your selection below'
+              )}
             </div>
           </motion.div>
         )}
@@ -1129,13 +1144,15 @@ export default function Game() {
                   : 'bg-slate-800/30 border border-slate-700/40 text-slate-400'
               }`}
             >
-              {!isMyTurn && curColor && (
+              {isMyTurn ? (
+                <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-emerald-400 animate-pulse" />
+              ) : curColor ? (
                 <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: curColor.solid }} />
-              )}
+              ) : null}
               {isMyTurn ? (
                 isDrawPhase
                   ? 'Your turn — draw from the pile or discard'
-                  : 'Swap, discard, or use a power'
+                  : hasDrawnCard ? 'Choose: swap a card, discard, or use a power' : 'Swap, discard, or use a power'
               ) : (
                 `Waiting for ${currentTurnName}...`
               )}

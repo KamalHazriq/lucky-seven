@@ -89,7 +89,8 @@ export default function DrawnCardModal({
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.88, y: 20, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7 }}
-            className="bg-slate-800 border border-slate-600 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
+            className="rounded-2xl p-6 max-w-sm w-full shadow-2xl relative border"
+            style={{ background: 'var(--surface-solid)', borderColor: 'var(--border-solid)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Screen-reader card description — hidden visually, always up-to-date */}
@@ -102,7 +103,8 @@ export default function DrawnCardModal({
             {canCancel ? (
               <button
                 onClick={onClose}
-                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-sm"
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:opacity-80 transition-colors cursor-pointer text-sm"
+                style={{ background: 'var(--panel)', color: 'var(--text-muted)' }}
                 aria-label="Cancel draw (choose again)"
                 title="Cancel draw (choose again)"
               >
@@ -111,7 +113,8 @@ export default function DrawnCardModal({
             ) : (
               <button
                 onClick={onDismiss}
-                className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 bg-slate-700/60 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-[9px] font-semibold rounded-md transition-colors cursor-pointer"
+                className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 hover:opacity-80 text-[9px] font-semibold rounded-md transition-colors cursor-pointer"
+                style={{ background: 'var(--panel)', color: 'var(--text-muted)' }}
                 title="Minimize — tap resume banner to return"
               >
                 <span className="text-xs">&minus;</span>
@@ -119,7 +122,7 @@ export default function DrawnCardModal({
               </button>
             )}
 
-            <h3 id="drawn-card-modal-title" className="text-center text-lg font-semibold text-slate-200 mb-4">
+            <h3 id="drawn-card-modal-title" className="text-center text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>
               You drew:
             </h3>
 
@@ -129,7 +132,7 @@ export default function DrawnCardModal({
 
             {/* Your hand — compact row showing known/unknown cards */}
             <div className="mb-4">
-              <p className="text-[11px] text-slate-400 text-center mb-2 font-medium uppercase tracking-wide">
+              <p className="text-[11px] text-center mb-2 font-medium uppercase tracking-wide" style={{ color: 'var(--text-dim)' }}>
                 Your cards
               </p>
               <div className="flex gap-2 justify-center">
@@ -143,7 +146,7 @@ export default function DrawnCardModal({
                         locked={locks[i]}
                         size="sm"
                       />
-                      <span className="text-[10px] text-slate-500 font-medium">#{i + 1}</span>
+                      <span className="text-[10px] font-medium" style={{ color: 'var(--text-dim)' }}>#{i + 1}</span>
                     </div>
                   )
                 })}
@@ -151,7 +154,7 @@ export default function DrawnCardModal({
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs text-slate-400 text-center mb-3">
+              <p className="text-xs text-center mb-3" style={{ color: 'var(--text-muted)' }}>
                 Swap with one of your cards, discard{effectInfo ? ', or use its power.' : '.'}
               </p>
 
@@ -174,7 +177,8 @@ export default function DrawnCardModal({
 
               <button
                 onClick={onDiscard}
-                className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                className="w-full py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border"
+                style={{ background: 'var(--panel)', borderColor: 'var(--border)', color: 'var(--text)' }}
               >
                 Discard
               </button>

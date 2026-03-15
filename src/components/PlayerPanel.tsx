@@ -172,7 +172,7 @@ function PlayerPanel({
           }}
         >
           <span
-            className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-md"
+            className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-lg"
             style={{ backgroundColor: actionHighlight.color, color: '#fff' }}
           >
             {actionHighlight.label}

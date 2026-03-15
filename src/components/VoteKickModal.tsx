@@ -38,12 +38,13 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0, y: 20 }}
             transition={springBounce}
-            className="bg-slate-800 border border-slate-700/60 rounded-2xl p-5 w-full max-w-xs shadow-2xl"
+            className="rounded-2xl p-5 w-full max-w-xs shadow-2xl border"
+            style={{ background: 'var(--surface-solid)', borderColor: 'var(--border-solid)' }}
           >
             <div className="text-center mb-4">
               <div className="text-2xl mb-2">{'\u{1F6AB}'}</div>
               <h3 className="text-lg font-bold text-red-400 mb-1">Vote to Kick</h3>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm" style={{ color: 'var(--text)' }}>
                 {isTarget
                   ? 'A vote to kick you is in progress...'
                   : <>Kick <span className="font-bold text-white">{voteKick.targetName}</span>?</>
@@ -52,8 +53,8 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
             </div>
 
             {/* Vote progress */}
-            <div className="bg-slate-900/50 rounded-xl p-3 mb-4">
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--panel)' }}>
+              <div className="flex items-center justify-between text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
                 <span>Votes</span>
                 <span
                   className="font-mono"
