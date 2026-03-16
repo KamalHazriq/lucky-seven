@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.8.1'
+export const CURRENT_VERSION = 'v1.9.0'
 
 export interface ReleaseNote {
   version: string
@@ -8,6 +8,38 @@ export interface ReleaseNote {
 }
 
 export const RELEASES: ReleaseNote[] = [
+  {
+    version: 'v1.9.0',
+    title: 'Jack Rework & Dev Tools',
+    date: '16 March 2026',
+    sections: [
+      {
+        heading: 'Gameplay',
+        items: [
+          'Jack power rework: peek all 3 cards of a selected opponent (instead of your own cards)',
+          'Player selection step added when using Jack with Peek Opponent enabled',
+          'Locked cards on opponent are shown as locked during peek',
+        ],
+      },
+      {
+        heading: 'UI / UX',
+        items: [
+          'Feedback button added to Patch Notes modal footer',
+          'Dev tools panel redesigned with grouped sections: Visibility, Debug, Session',
+          'Collapsible accordion-style tools for cards, draw pile, and game state',
+          'Clean permission-aware rendering — only shows tools you have access to',
+        ],
+      },
+      {
+        heading: 'Developer',
+        items: [
+          'Dev mode activation moved to feedback modal for better concealment',
+          'Rate limiting: max 5 activation attempts per minute',
+          'Old keyboard shortcut and watermark click removed',
+        ],
+      },
+    ],
+  },
   {
     version: 'v1.8.1',
     title: 'Card Polish & Chaos Animation',

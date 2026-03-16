@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { CURRENT_VERSION } from '../constants/releases'
 import PatchNotesModal from './PatchNotesModal'
 
-export default function VersionLabel() {
+interface VersionLabelProps {
+  onOpenFeedback?: () => void
+}
+
+export default function VersionLabel({ onOpenFeedback }: VersionLabelProps) {
   const [showNotes, setShowNotes] = useState(false)
 
   return (
@@ -15,7 +19,11 @@ export default function VersionLabel() {
       >
         Lucky Seven {CURRENT_VERSION}
       </button>
-      <PatchNotesModal open={showNotes} onClose={() => setShowNotes(false)} />
+      <PatchNotesModal
+        open={showNotes}
+        onClose={() => setShowNotes(false)}
+        onOpenFeedback={onOpenFeedback ? () => { setShowNotes(false); onOpenFeedback() } : undefined}
+      />
     </>
   )
 }

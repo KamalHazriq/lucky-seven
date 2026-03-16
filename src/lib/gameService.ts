@@ -682,6 +682,65 @@ export async function usePeekOpponent(
   return { card: peekedCard!, playerName: targetName }
 }
 
+// ─── Effect: peek all 3 of opponent's cards (Jack power) ────────
+export async function usePeekAllOpponent(
+  gameId: string,
+  targetPlayerId: string,
+): Promise<{ cards: Record<number, Card>; playerName: string; locks: [boolean, boolean, boolean] }> {
+  const user = await ensureAuth()
+  const revealed: Record<number, Card> = {}
+  let targetName = ''
+  let targetLocks: [boolean, boolean, boolean] = [false, false, false]
+
+  await runTransaction(db, async (tx) => {
+    const gameSnap = await tx.get(gameRef(gameId))
+    const game = gameSnap.data() as GameDoc
+    const privSnap = await tx.get(privateRef(gameId, user.uid))
+    const priv = privSnap.data() as PrivatePlayerDoc
+    const playerSnap = await tx.get(playerRef(gameId, user.uid))
+    const pd = playerSnap.data() as PlayerDoc
+    const targetPlayerSnap = await tx.get(playerRef(gameId, targetPlayerId))
+    const targetPD = targetPlayerSnap.data() as PlayerDoc
+    const targetPrivSnap = await tx.get(privateRef(gameId, targetPlayerId))
+    const targetPriv = targetPrivSnap.data() as PrivatePlayerDoc
+
+    if (game.currentTurnPlayerId !== user.uid) throw new Error('Not your turn')
+    if (game.turnPhase !== 'action') throw new Error('Must draw first')
+    if (!priv.drawnCard) throw new Error('No drawn card')
+
+    const settings = game.settings ?? DEFAULT_GAME_SETTINGS
+    if (!settings.peekAllowsOpponent) throw new Error('Peek opponent is not enabled')
+    const rankKey = getCardRankKey(priv.drawnCard)
+    if (!rankKey) throw new Error('This card has no power')
+    const effect = (settings.powerAssignments ?? DEFAULT_GAME_SETTINGS.powerAssignments)[rankKey]
+    if (effect !== 'peek_all_three_of_your_cards') {
+      throw new Error('This card does not have peek-all power')
+    }
+    if (game.spentPowerCardIds?.[priv.drawnCard.id]) throw new Error('Power already used for this card.')
+    if (targetPlayerId === user.uid) throw new Error('Cannot peek your own cards — use Peek All instead')
+
+    targetName = targetPD.displayName
+    targetLocks = targetPD.locks
+
+    for (let i = 0; i < 3; i++) {
+      if (!targetPD.locks[i]) {
+        revealed[i] = targetPriv.hand[i]
+      }
+    }
+
+    const discardCard = priv.drawnCard
+    const msg = `${pd.displayName} used ${rankKey} as peek_all_opponent: ${targetPD.displayName}'s cards`
+    tx.update(privateRef(gameId, user.uid), { drawnCard: null, drawnCardSource: null })
+    txHistory(tx, gameId, msg)
+    tx.update(gameRef(gameId), {
+      ...buildEndTurnUpdates(game, user.uid, discardCard, msg),
+      ...spentField(discardCard.id),
+    })
+  })
+
+  return { cards: revealed, playerName: targetName, locks: targetLocks }
+}
+
 // ─── Effect: swap_one_to_one ────────────────────────────────────
 export async function useSwap(
   gameId: string,

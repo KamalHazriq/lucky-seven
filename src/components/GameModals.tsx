@@ -3,6 +3,8 @@ import DrawnCardModal from './DrawnCardModal'
 import PeekModal from './PeekModal'
 import PeekResultModal from './PeekResultModal'
 import PeekAllModal from './PeekAllModal'
+import PeekAllOpponentPickerModal from './PeekAllOpponentPickerModal'
+import PeekAllOpponentModal from './PeekAllOpponentModal'
 import QueenSwapModal from './QueenSwapModal'
 import SlotPickerModal from './SlotPickerModal'
 import JokerChaosModal from './JokerChaosModal'
@@ -50,6 +52,7 @@ interface GameModalsProps {
   onUnlockSelect: (playerId: string, slotIndex: number) => void
   onRearrangeSelect: (playerId: string) => void
   onPeekOpponentSelect: (playerId: string, slotIndex: number) => void
+  onPeekAllOpponentSelect: (playerId: string) => void
   onPeekChoiceSelf: () => void
   onPeekChoiceOpponent: () => void
   onCancelPower: () => void
@@ -97,7 +100,7 @@ export default function GameModals({
   myLocks, myKnown, powerAssignments, spentPowerCardIds, drawnCardSource,
   hasAnyLocks, uiMode, drawnCardDismissed,
   onSwap, onDiscard, onUsePower, onCancelDraw, onDismissDrawn,
-  onPeekSelect, onSwapConfirm, onLockSelect, onUnlockSelect, onRearrangeSelect, onPeekOpponentSelect,
+  onPeekSelect, onSwapConfirm, onLockSelect, onUnlockSelect, onRearrangeSelect, onPeekOpponentSelect, onPeekAllOpponentSelect,
   onPeekChoiceSelf, onPeekChoiceOpponent, onCancelPower,
   showPowerGuide, onClosePowerGuide,
   showSettings, onCloseSettings,
@@ -246,6 +249,23 @@ export default function GameModals({
       <PeekResultModal
         card={modal.type === 'peekOpponentResult' ? modal.card : null}
         slotIndex={modal.type === 'peekOpponentResult' ? modal.slot : null}
+        onClose={() => setModal({ type: 'none' })}
+      />
+
+      <PeekAllOpponentPickerModal
+        open={modal.type === 'peekAllOpponent'}
+        players={players}
+        playerOrder={modalPlayerOrder}
+        localPlayerId={localPlayerId}
+        onSelect={onPeekAllOpponentSelect}
+        onCancel={onCancelPower}
+      />
+
+      <PeekAllOpponentModal
+        open={modal.type === 'peekAllOpponentResult'}
+        revealedCards={modal.type === 'peekAllOpponentResult' ? modal.cards : {}}
+        locks={modal.type === 'peekAllOpponentResult' ? modal.locks : [false, false, false]}
+        playerName={modal.type === 'peekAllOpponentResult' ? modal.playerName : ''}
         onClose={() => setModal({ type: 'none' })}
       />
 

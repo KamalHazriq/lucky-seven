@@ -13,6 +13,7 @@ import {
   useUnlock as unlockCard,
   useRearrange as rearrangeCards,
   usePeekOpponent as peekOpponent,
+  usePeekAllOpponent as peekAllOpponent,
 } from '../lib/gameService'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PrivatePlayerDoc } from '../lib/types'
@@ -58,6 +59,8 @@ export type ModalState =
   | { type: 'peekChoice'; effectType: PowerEffectType; rankKey: PowerRankKey }
   | { type: 'peekOpponent' }
   | { type: 'peekOpponentResult'; card: Card; playerName: string; slot: number }
+  | { type: 'peekAllOpponent' }
+  | { type: 'peekAllOpponentResult'; cards: Record<number, Card>; playerName: string; locks: [boolean, boolean, boolean] }
   | { type: 'none' }
 
 // ─── Hook params ─────────────────────────────────────────────
@@ -146,6 +149,7 @@ interface UseGameActionsReturn {
   handleUnlockSelect: (targetPlayerId: string, slotIndex: number) => void
   handleRearrangeSelect: (targetPlayerId: string) => void
   handlePeekOpponentSelect: (targetPlayerId: string, slotIndex: number) => void
+  handlePeekAllOpponentSelect: (targetPlayerId: string) => void
   handlePeekChoiceSelf: () => void
   handlePeekChoiceOpponent: () => void
   handleCancelPower: () => void
@@ -434,8 +438,15 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
 
   // Handle peek choice: user chose "Peek Opponent's Card"
   const handlePeekChoiceOpponent = () => {
-    playSfx('peek')
-    setModal({ type: 'peekOpponent' })
+    if (modal.type === 'peekChoice' && modal.effectType === 'peek_all_three_of_your_cards') {
+      // Jack (peek_all) → select a player, then reveal all 3 of their cards
+      playSfx('peek')
+      setModal({ type: 'peekAllOpponent' })
+    } else {
+      // peek_one → select one opponent slot
+      playSfx('peek')
+      setModal({ type: 'peekOpponent' })
+    }
   }
 
   // ─── Selection mode confirm ────────────────────
@@ -551,6 +562,15 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
     })
   }
 
+  const handlePeekAllOpponentSelect = (targetPlayerId: string) => {
+    setModal({ type: 'none' })
+    withBusy(async () => {
+      const { cards, playerName, locks } = await peekAllOpponent(gameId!, targetPlayerId)
+      playSfx('peekAll')
+      setModal({ type: 'peekAllOpponentResult', cards, playerName, locks })
+    })
+  }
+
   const handleCancelPower = () => {
     setModal({ type: 'none' })
   }
@@ -620,6 +640,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
     handleUnlockSelect,
     handleRearrangeSelect,
     handlePeekOpponentSelect,
+    handlePeekAllOpponentSelect,
     handlePeekChoiceSelf,
     handlePeekChoiceOpponent,
     handleCancelPower,

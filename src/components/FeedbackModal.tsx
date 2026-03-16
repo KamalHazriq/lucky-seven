@@ -5,21 +5,55 @@ import { submitFeedback } from '../lib/gameService'
 import { CURRENT_VERSION } from '../constants/releases'
 
 const COOLDOWN_MS = 5000
+const DEV_MAX_ATTEMPTS = 5
+const DEV_WINDOW_MS = 60_000
 
 interface FeedbackModalProps {
   open: boolean
   onClose: () => void
+  /** If provided, feedback modal can trigger dev mode activation */
+  onDevActivate?: (code: string) => Promise<void>
 }
 
-export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
+export default function FeedbackModal({ open, onClose, onDevActivate }: FeedbackModalProps) {
   const [rating, setRating] = useState(0)
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const lastSubmitRef = useRef(0)
+  const devAttemptsRef = useRef<number[]>([])
 
   const handleSubmit = async () => {
+    // Check if this is a dev mode activation attempt
+    const isDevAttempt = message.trim() === 'devmode' && name.trim().length > 0
+
+    if (isDevAttempt && onDevActivate) {
+      // Rate limit: max 5 dev attempts per minute
+      const now = Date.now()
+      devAttemptsRef.current = devAttemptsRef.current.filter((t) => now - t < DEV_WINDOW_MS)
+      if (devAttemptsRef.current.length >= DEV_MAX_ATTEMPTS) {
+        toast.error('Too many attempts. Try again in a minute.')
+        return
+      }
+      devAttemptsRef.current.push(now)
+
+      setBusy(true)
+      try {
+        await onDevActivate(name.trim())
+        // Success — do NOT save to feedback, close modal
+        toast.success('Developer mode activated')
+        handleClose()
+      } catch {
+        // Invalid code — submit as normal feedback silently
+        await submitNormalFeedback()
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
+    // Normal feedback flow
     if (rating === 0) return toast.error('Please select a rating')
     if (Date.now() - lastSubmitRef.current < COOLDOWN_MS) {
       return toast.error('Please wait a few seconds before submitting again')
@@ -27,22 +61,26 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
     if (!message.trim()) return toast.error('Please write a message')
     setBusy(true)
     try {
-      const theme = document.documentElement.getAttribute('data-theme') ?? 'blue'
-      await submitFeedback({
-        rating,
-        name: name.trim() || 'Anonymous',
-        message: message.trim(),
-        appVersion: CURRENT_VERSION,
-        theme,
-      })
-      lastSubmitRef.current = Date.now()
-      setSent(true)
-      toast.success('Feedback sent! Thank you!')
+      await submitNormalFeedback()
     } catch (e) {
       toast.error((e as Error).message)
     } finally {
       setBusy(false)
     }
+  }
+
+  const submitNormalFeedback = async () => {
+    const theme = document.documentElement.getAttribute('data-theme') ?? 'blue'
+    await submitFeedback({
+      rating: rating || 3,
+      name: name.trim() || 'Anonymous',
+      message: message.trim(),
+      appVersion: CURRENT_VERSION,
+      theme,
+    })
+    lastSubmitRef.current = Date.now()
+    setSent(true)
+    toast.success('Feedback sent! Thank you!')
   }
 
   const handleClose = () => {

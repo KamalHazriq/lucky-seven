@@ -17,6 +17,7 @@ import FlyingCard from '../components/FlyingCard'
 import StagingSlot from '../components/StagingSlot'
 import DiscardFlip from '../components/DiscardFlip'
 import DiscardReorderModal from '../components/DiscardReorderModal'
+import FeedbackModal from '../components/FeedbackModal'
 import ChatPanel from '../components/ChatPanel'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useChat } from '../hooks/useChat'
@@ -51,8 +52,8 @@ export default function Game() {
   const [drawnCardDismissed, setDrawnCardDismissed] = useState(false)
   const [showPowerGuide, setShowPowerGuide] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [showDevModal, setShowDevModal] = useState(false)
   const [showDiscardReorder, setShowDiscardReorder] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
   const devMode = useDevMode(gameId, user?.uid)
   const revealedRef = useRef(false)
   // Track whether user was ever in playerOrder (to distinguish kicked vs spectator)
@@ -123,22 +124,7 @@ export default function Game() {
     return () => { ro.disconnect(); document.documentElement.style.removeProperty('--header-h'); document.documentElement.style.removeProperty('--top-offset') }
   }, [])
 
-  // Hidden dev mode shortcut (Ctrl+Shift+D)
-  const { isDevMode: devActive, deactivate: devDeactivate } = devMode
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
-        e.preventDefault()
-        if (devActive) {
-          devDeactivate()
-        } else {
-          setShowDevModal(true)
-        }
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [devActive, devDeactivate])
+  // Dev mode is now activated via Patch Notes > Send Feedback modal
 
   // Chat (lazy subscribe — only on first open)
   const chat = useChat(
@@ -245,7 +231,7 @@ export default function Game() {
     handleDrawPile, handleTakeDiscard, handleCancelDraw, handleSwap, handleDiscard,
     handleUsePower, handleChoreoComplete, handleSelectionConfirm, handleSelectionClick,
     handlePlayerSelect, handlePeekSelect, handleSwapConfirm, handleLockSelect,
-    handleUnlockSelect, handleRearrangeSelect, handlePeekOpponentSelect,
+    handleUnlockSelect, handleRearrangeSelect, handlePeekOpponentSelect, handlePeekAllOpponentSelect,
     handlePeekChoiceSelf, handlePeekChoiceOpponent, handleCancelPower,
   } = useGameActions({
     gameId, isMyTurn, isDrawPhase, isActionPhase, hasDrawnCard, drawnCard,
@@ -979,6 +965,7 @@ export default function Game() {
         onUnlockSelect={handleUnlockSelect}
         onRearrangeSelect={handleRearrangeSelect}
         onPeekOpponentSelect={handlePeekOpponentSelect}
+        onPeekAllOpponentSelect={handlePeekAllOpponentSelect}
         onPeekChoiceSelf={handlePeekChoiceSelf}
         onPeekChoiceOpponent={handlePeekChoiceOpponent}
         onCancelPower={handleCancelPower}
@@ -1012,8 +999,8 @@ export default function Game() {
           }
           navigate('/')
         }}
-        showDevModal={showDevModal}
-        onCloseDevModal={() => setShowDevModal(false)}
+        showDevModal={false}
+        onCloseDevModal={() => {}}
         devMode={devMode}
         onOpenDiscardReorder={() => setShowDiscardReorder(true)}
       />
@@ -1088,19 +1075,16 @@ export default function Game() {
         />
       )}
 
-      <VersionLabel />
+      <FeedbackModal
+        open={showFeedback}
+        onClose={() => setShowFeedback(false)}
+        onDevActivate={devMode.activate}
+      />
+
+      <VersionLabel onOpenFeedback={() => setShowFeedback(true)} />
 
       <div className="fixed bottom-2 right-3 text-xs md:text-sm font-medium select-none z-10" style={{ color: 'var(--watermark)' }}>
-        Built by{' '}
-        <span
-          className="cursor-default"
-          onClick={() => {
-            if (devMode.isDevMode) devMode.deactivate()
-            else setShowDevModal(true)
-          }}
-          style={{ pointerEvents: 'auto' }}
-        >K</span>
-        <span className="pointer-events-none">amal Hazriq</span>
+        Built by Kamal Hazriq
       </div>
     </div>
   )

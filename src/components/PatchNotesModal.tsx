@@ -6,6 +6,7 @@ import type { ReleaseNote } from '../constants/releases'
 interface PatchNotesModalProps {
   open: boolean
   onClose: () => void
+  onOpenFeedback?: () => void
 }
 
 /**
@@ -24,7 +25,7 @@ interface VersionGroup {
   subs: ReleaseNote[]   // Sub-versions (v1.4.1, v1.4.2) — newest first
 }
 
-export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps) {
+export default function PatchNotesModal({ open, onClose, onOpenFeedback }: PatchNotesModalProps) {
   const [selectedGroupIdx, setSelectedGroupIdx] = useState(0)
   const [expandedSubs, setExpandedSubs] = useState<Record<string, boolean>>({})
 
@@ -157,7 +158,7 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
               )}
             </div>
 
-            {/* Footer — credits + trademark */}
+            {/* Footer — credits + trademark + feedback */}
             <div className="mt-4 pt-3 border-t border-slate-700/50 shrink-0">
               <p className="text-[10px] text-slate-500 text-center">
                 Created by Kamal Hazriq &middot; Idea by Imaduddin
@@ -165,6 +166,14 @@ export default function PatchNotesModal({ open, onClose }: PatchNotesModalProps)
               <p className="text-[9px] text-slate-600 text-center mt-1">
                 Lucky Seven&trade; is a fan-made game implementation.
               </p>
+              {onOpenFeedback && (
+                <button
+                  onClick={onOpenFeedback}
+                  className="mt-3 w-full py-2 bg-slate-700/60 hover:bg-slate-700 border border-slate-600/50 rounded-lg text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  Send Feedback
+                </button>
+              )}
             </div>
           </motion.div>
         </motion.div>
