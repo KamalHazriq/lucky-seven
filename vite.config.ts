@@ -4,5 +4,5 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ command }) => ({
   plugins: [react(), tailwindcss()],
-  base: command === 'serve' ? '/' : '/lucky-seven/',
+  base: command === 'serve' ? '/' : '/lucky-seven-supabase/',
 }))
