@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { submitFeedback } from '../lib/gameService'
+import { submitFeedback } from '../lib/supabaseGameService'
 import { CURRENT_VERSION } from '../constants/releases'
 
 const COOLDOWN_MS = 5000

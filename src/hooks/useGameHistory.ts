@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import type { DocumentSnapshot } from 'firebase/firestore'
-import { fetchHistoryPage } from '../lib/gameService'
+import { fetchHistoryPage } from '../lib/supabaseGameService'
 import type { LogEntry } from '../lib/types'
 
 export interface GameHistoryState {
@@ -16,7 +15,7 @@ export function useGameHistory(gameId: string | undefined): GameHistoryState {
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
 
-  const cursorRef = useRef<DocumentSnapshot | null>(null)
+  const offsetRef = useRef(0)
   const loadingRef = useRef(false)
 
   const load = useCallback(async (resetFlag = false) => {
@@ -24,11 +23,11 @@ export function useGameHistory(gameId: string | undefined): GameHistoryState {
     loadingRef.current = true
     setLoading(true)
     try {
-      const cursor = resetFlag ? null : cursorRef.current
-      const { entries: newEntries, lastDoc } = await fetchHistoryPage(gameId, cursor)
-      cursorRef.current = lastDoc
+      const offset = resetFlag ? 0 : offsetRef.current
+      const { entries: newEntries, hasMore: more } = await fetchHistoryPage(gameId, offset)
+      offsetRef.current = offset + newEntries.length
       setEntries((prev) => (resetFlag ? newEntries : [...prev, ...newEntries]))
-      setHasMore(lastDoc !== null)
+      setHasMore(more)
     } catch (e) {
       console.error('History load failed:', e)
     } finally {
@@ -39,7 +38,7 @@ export function useGameHistory(gameId: string | undefined): GameHistoryState {
 
   const reset = useCallback(() => {
     setEntries([])
-    cursorRef.current = null
+    offsetRef.current = 0
     setHasMore(true)
   }, [])
 

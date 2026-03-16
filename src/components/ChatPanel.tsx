@@ -200,7 +200,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
             maxHeight: 'min(420px, 60vh)',
             ...(isDesktop && pos
               ? { left: pos.x, top: pos.y, bottom: 'auto', right: 'auto' }
-              : { bottom: '4.5rem', right: '0.75rem' }),
+              : { bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))', right: '0.75rem' }),
           }}
         >
           {/* Header — draggable on desktop */}

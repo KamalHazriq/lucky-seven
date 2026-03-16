@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { skipTurn } from '../lib/gameService'
+import { skipTurn } from '../lib/supabaseGameService'
 import type { GameDoc } from '../lib/types'
 
 /** Grace buffer (seconds) added to the timer before auto-skip fires.

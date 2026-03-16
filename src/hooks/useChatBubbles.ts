@@ -5,10 +5,10 @@ const BUBBLE_DURATION_MS = 4000
 
 /**
  * Derives per-player latest chat bubble from chat messages.
- * UI-only — auto-clears after 4 seconds. No Firestore writes.
+ * UI-only — auto-clears after 4 seconds. No database writes.
  *
  * Only shows bubbles for messages that arrive AFTER the component mounts
- * (skips initial Firestore snapshot). Bubbles appear for remote players only.
+ * (skips initial snapshot). Bubbles appear for remote players only.
  */
 export function useChatBubbles(
   messages: ChatMessage[],

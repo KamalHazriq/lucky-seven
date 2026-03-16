@@ -39,7 +39,7 @@ function StatCard({ emoji, label, value, color }: StatCardProps) {
 
 /**
  * GameStats — universal statistics section for the Home page.
- * All stats come from Firestore (shared across all devices).
+ * All stats come from Supabase (shared across all devices).
  */
 export default function GameStats() {
   const { stats, loading } = useGlobalStats()

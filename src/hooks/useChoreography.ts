@@ -56,7 +56,7 @@ const INITIAL: ChoreographyState = {
 
 /**
  * useChoreography — manages multi-step animation sequences for
- * the card draw/discard/swap flow. Purely visual, no Firestore writes.
+ * the card draw/discard/swap flow. Purely visual, no database writes.
  *
  * v1.4.2: Staging area choreography for discard takes.
  */
@@ -191,7 +191,7 @@ export function useChoreography() {
     })
   }, [])
 
-  /** Reconstruct staging from Firestore state on resume/refresh (Section 6) */
+  /** Reconstruct staging from server state on resume/refresh (Section 6) */
   const reconstructStaging = useCallback((
     drawnCard: Card | null,
     source: 'pile' | 'discard' | null,
@@ -201,7 +201,7 @@ export function useChoreography() {
       return
     }
     // Always show drawn card face-up in staging for the local player.
-    // If drawnCard is null (Firestore hasn't delivered yet), show face-down placeholder
+    // If drawnCard is null (server hasn't delivered yet), show face-down placeholder
     // which will be corrected when the listener fires.
     setState({
       phase: 'staging',

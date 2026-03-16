@@ -6,7 +6,7 @@ import {
   subscribeDevAccess,
   subscribeAllPrivate,
   subscribeDrawPile,
-} from '../lib/devService'
+} from '../lib/supabaseGameService'
 
 export interface UseDevModeReturn {
   /** Whether dev mode is currently active for this user */
@@ -76,9 +76,7 @@ export function useDevMode(
       await activateDevModeFn(gameId, code)
     } catch (e) {
       const msg = (e as { message?: string }).message ?? 'Activation failed'
-      // Extract user-friendly message from Firebase function errors
-      const clean = msg.replace(/^.*?\]\s*/, '')
-      setError(clean)
+      setError(msg)
       throw e
     } finally {
       setLoading(false)

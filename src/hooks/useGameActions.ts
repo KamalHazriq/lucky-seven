@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+// Core turn-loop actions + powers from Supabase (Phase 3b + 3c)
 import {
   drawFromPile,
   takeFromDiscard,
@@ -14,7 +15,7 @@ import {
   useRearrange as rearrangeCards,
   usePeekOpponent as peekOpponent,
   usePeekAllOpponent as peekAllOpponent,
-} from '../lib/gameService'
+} from '../lib/supabaseGameService'
 import { playSfx, vibrate } from '../lib/sfx'
 import type { Card, PowerEffectType, PowerRankKey, PrivatePlayerDoc } from '../lib/types'
 import type { SelectionModeState, SelectedTarget, SelectionConstraint } from './useSelectionMode'

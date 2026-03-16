@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { findGameByCode, joinGame } from '../lib/gameService'
+import { findGameByCode, joinGame } from '../lib/supabaseGameService'
 import { LOBBY_COLORS } from '../lib/playerColors'
 import type { PlayerDoc } from '../lib/types'
 

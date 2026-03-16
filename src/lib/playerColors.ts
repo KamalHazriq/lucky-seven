@@ -1,5 +1,5 @@
 // Deterministic player color palette based on seatIndex (0–7).
-// No Firestore storage needed — derived purely from PlayerDoc.seatIndex.
+// Derived purely from PlayerDoc.seatIndex — no database storage needed.
 
 export interface SeatColor {
   name: string

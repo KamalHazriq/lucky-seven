@@ -26,7 +26,7 @@ interface StagingSlotProps {
 /**
  * StagingSlot — the "In play" card between Draw and Discard piles.
  * Shows a card with a gentle floating animation when active.
- * Purely visual — no game state changes, no Firestore writes.
+ * Purely visual — no game state changes, no database writes.
  *
  * v1.6: Uses motion/react (Motion One) for smoother crossfade.
  * Respects reduced motion via shorter durations.

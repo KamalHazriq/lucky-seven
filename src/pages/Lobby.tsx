@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
-import { startGame, updatePlayerProfile, leaveLobby, updateGameSettings } from '../lib/gameService'
+import { startGame, updatePlayerProfile, leaveLobby, updateGameSettings } from '../lib/supabaseGameService'
 import type { TurnSeconds, PowerRankKey, PowerEffectType } from '../lib/types'
 import { ALL_EFFECT_TYPES } from '../lib/types'
 import VersionLabel from '../components/VersionLabel'
@@ -49,12 +49,12 @@ export default function Lobby() {
   const [showPowerSettings, setShowPowerSettings] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
-  // Optimistic color key: updates instantly on pick, cleared once Firestore confirms.
+  // Optimistic color key: updates instantly on pick, cleared once Supabase confirms.
   // Needed because runTransaction doesn't give a local-first onSnapshot update.
   const [pendingColorKey, setPendingColorKey] = useState<number | null>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const myPlayer = user ? players[user.uid] : null
-  // Prefer Firestore truth once it arrives; fall back to pending optimistic value
+  // Prefer Supabase truth once it arrives; fall back to pending optimistic value
   const displayedColorKey = myPlayer?.colorKey ?? pendingColorKey
   const chat = useChat(
     gameId,
@@ -72,7 +72,7 @@ export default function Lobby() {
     }
   }, [game?.status, gameId, navigate])
 
-  // Clear optimistic pending key once Firestore confirms the color
+  // Clear optimistic pending key once Supabase confirms the color
   useEffect(() => {
     if (myPlayer?.colorKey != null) setPendingColorKey(null)
   }, [myPlayer?.colorKey])
@@ -435,7 +435,7 @@ export default function Lobby() {
                     transition={{ type: 'spring', stiffness: 500, damping: 25, delay: 0.1 }}
                     className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md"
                     style={{
-                      // Use optimistic color for own avatar while Firestore confirms
+                      // Use optimistic color for own avatar while Supabase confirms
                       backgroundColor: (() => {
                         const ck = p.id === user?.uid ? (displayedColorKey ?? p.colorKey) : p.colorKey
                         return ck != null && ck >= 0 && ck < LOBBY_COLORS.length

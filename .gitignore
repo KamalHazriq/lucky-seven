@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (Firebase keys, etc.)
+# Environment variables (Supabase keys, etc.)
 .env
 .env.local
 .env.*.local

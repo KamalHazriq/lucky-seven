@@ -97,7 +97,7 @@ export function isPlayerSelectable(
  *     → (two-target, e.g. queen swap) choosingSecondTarget → selectTarget(second) → confirming → confirm() → idle
  *   At any point: cancel() → idle
  *
- * The parent (Game.tsx) wires the confirm callback to the actual Firestore action.
+ * The parent (Game.tsx) wires the confirm callback to the actual RPC action.
  */
 export function useSelectionMode() {
   const [state, setState] = useState<SelectionModeState>(IDLE_STATE)
