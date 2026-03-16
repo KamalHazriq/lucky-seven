@@ -91,6 +91,8 @@ interface GameModalsProps {
     deactivate: () => Promise<void>
   }
   onOpenDiscardReorder?: () => void
+  showMonitor: boolean
+  onCloseMonitor: () => void
 }
 
 export default function GameModals({
@@ -108,6 +110,7 @@ export default function GameModals({
   logPosition, onToggleLogPosition, isMobile, canLogSidebar,
   otherPlayers, voteKickActive, onVoteKick, onLeaveGame,
   showDevModal, onCloseDevModal, devMode, onOpenDiscardReorder,
+  showMonitor, onCloseMonitor,
 }: GameModalsProps) {
   return (
     <>
@@ -312,6 +315,8 @@ export default function GameModals({
       />
       {devMode.isDevMode && devMode.privileges && (
         <DevPanel
+          open={showMonitor}
+          onClose={onCloseMonitor}
           privileges={devMode.privileges}
           allPlayerHands={devMode.allPlayerHands}
           drawPileCards={devMode.drawPileCards}

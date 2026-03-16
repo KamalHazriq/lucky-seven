@@ -54,6 +54,7 @@ export default function Game() {
   const [showSettings, setShowSettings] = useState(false)
   const [showDiscardReorder, setShowDiscardReorder] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
+  const [showMonitor, setShowMonitor] = useState(false)
   const devMode = useDevMode(gameId, user?.uid)
   const revealedRef = useRef(false)
   // Track whether user was ever in playerOrder (to distinguish kicked vs spectator)
@@ -404,6 +405,26 @@ export default function Game() {
                 SPECTATING
               </span>
             )}
+            {/* Game Monitor — dev only */}
+            {devMode.isDevMode && (
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                onClick={() => setShowMonitor(true)}
+                className="topbar-btn group relative bg-emerald-900/25 border-emerald-600/30 text-emerald-400 hover:bg-emerald-900/40"
+                aria-label="Game Monitor"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="toolbar-tooltip">Game Monitor</span>
+              </motion.button>
+            )}
+
             {/* Settings — opens modal with all options */}
             <motion.button
               whileHover={{ scale: 1.08 }}
@@ -1003,6 +1024,8 @@ export default function Game() {
         onCloseDevModal={() => {}}
         devMode={devMode}
         onOpenDiscardReorder={() => setShowDiscardReorder(true)}
+        showMonitor={showMonitor}
+        onCloseMonitor={() => setShowMonitor(false)}
       />
 
       {/* Legacy flying card (remote player animations) */}

@@ -1,12 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { DevPrivileges, PrivatePlayerDoc, Card, GameDoc, PlayerDoc } from '../lib/types'
 import { getPlayerColor } from '../lib/playerColors'
 
-const SPRING_PANEL = { type: 'spring' as const, stiffness: 300, damping: 26, mass: 0.7 }
+const SPRING_DRAWER = { type: 'spring' as const, stiffness: 340, damping: 28, mass: 0.6 }
 
 interface DevPanelProps {
+  open: boolean
+  onClose: () => void
   privileges: DevPrivileges
   allPlayerHands: Record<string, PrivatePlayerDoc>
   drawPileCards: Card[]
@@ -16,9 +18,11 @@ interface DevPanelProps {
   onOpenReorder?: () => void
 }
 
-type Section = 'visibility' | 'debug' | 'session'
+type Section = 'visibility' | 'state' | 'session'
 
 export default function DevPanel({
+  open,
+  onClose,
   privileges,
   allPlayerHands,
   drawPileCards,
@@ -27,313 +31,400 @@ export default function DevPanel({
   onDeactivate,
   onOpenReorder,
 }: DevPanelProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const [activeSection, setActiveSection] = useState<Section>('visibility')
-  const [showAllCards, setShowAllCards] = useState(false)
-  const [showDrawPile, setShowDrawPile] = useState(false)
-  const [showGameState, setShowGameState] = useState(false)
+  const [expandedCards, setExpandedCards] = useState(false)
+  const [expandedPile, setExpandedPile] = useState(false)
+  const [expandedState, setExpandedState] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const gameStateJson = useMemo(() => {
     if (!game) return '{}'
     return JSON.stringify(game, null, 2)
   }, [game])
 
+  // ESC to close
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
+  // Focus panel on open
+  useEffect(() => {
+    if (open && panelRef.current) {
+      panelRef.current.focus()
+    }
+  }, [open])
+
   const sections: { key: Section; label: string; icon: string }[] = [
     { key: 'visibility', label: 'Visibility', icon: '👁' },
-    { key: 'debug', label: 'Debug', icon: '🔧' },
-    { key: 'session', label: 'Session', icon: '🔑' },
+    { key: 'state', label: 'State', icon: '🧭' },
+    { key: 'session', label: 'Session', icon: '🧪' },
   ]
 
+  // Turn queue info
+  const turnInfo = useMemo(() => {
+    if (!game) return null
+    const currentPlayer = game.currentTurnPlayerId
+    const currentName = currentPlayer ? players[currentPlayer]?.displayName ?? '?' : 'None'
+    const phase = game.turnPhase ?? 'idle'
+    return { currentName, phase, round: game.playerOrder.length > 0 ? Math.floor((game.actionVersion ?? 0) / game.playerOrder.length) + 1 : 1 }
+  }, [game, players])
+
+  // Card distribution
+  const cardDistribution = useMemo(() => {
+    if (!game) return null
+    return {
+      drawPile: drawPileCards.length,
+      discardTop: game.discardTop ? 1 : 0,
+      inHands: Object.values(allPlayerHands).reduce((sum, p) => sum + p.hand.filter(Boolean).length + (p.drawnCard ? 1 : 0), 0),
+      players: game.playerOrder.length,
+    }
+  }, [game, drawPileCards, allPlayerHands])
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 20, scale: 0.95 }}
-      transition={SPRING_PANEL}
-      className="fixed bottom-4 right-4 z-40"
-      style={{ maxWidth: collapsed ? '48px' : '360px', width: collapsed ? '48px' : '360px' }}
-    >
-      {/* Collapsed FAB */}
-      {collapsed ? (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setCollapsed(false)}
-          className="w-11 h-11 rounded-full bg-amber-600/90 border border-amber-500/60 shadow-lg flex items-center justify-center cursor-pointer hover:bg-amber-500/90 transition-colors"
-          title="Developer Tools"
-        >
-          <span className="text-sm">🛠️</span>
-        </motion.button>
-      ) : (
-        <div className="bg-slate-900/95 backdrop-blur-md border border-amber-600/30 rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2.5 bg-amber-900/15 border-b border-amber-600/15">
-            <div className="flex items-center gap-2">
-              <span className="text-xs">🛠️</span>
-              <span className="text-[11px] font-bold text-amber-300 tracking-wide">DEV TOOLS</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCollapsed(true)}
-                className="w-5 h-5 flex items-center justify-center rounded bg-slate-800/60 hover:bg-slate-700 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer text-[9px]"
-                title="Minimize"
-              >
-                ▼
-              </button>
-            </div>
-          </div>
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[45] bg-black/40"
+            onClick={onClose}
+          />
 
-          {/* Section tabs */}
-          <div className="flex border-b border-slate-800/80">
-            {sections.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setActiveSection(s.key)}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium transition-colors cursor-pointer ${
-                  activeSection === s.key
-                    ? 'text-amber-300 bg-amber-900/10 border-b border-amber-500'
-                    : 'text-slate-500 hover:text-slate-400'
-                }`}
-              >
-                <span className="text-[10px]">{s.icon}</span>
-                {s.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Content */}
-          <div className="max-h-[55vh] overflow-y-auto">
-            <AnimatePresence mode="wait">
-              {/* ─── VISIBILITY SECTION ─── */}
-              {activeSection === 'visibility' && (
-                <motion.div
-                  key="visibility"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="p-2.5 space-y-1.5"
-                >
-                  {/* See All Cards */}
-                  {privileges.canSeeAllCards && (
-                    <div className="rounded-xl border border-slate-700/40 overflow-hidden">
-                      <button
-                        onClick={() => setShowAllCards(!showAllCards)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/50 hover:bg-slate-800/80 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px]">🃏</span>
-                          <div className="text-left">
-                            <span className="text-[11px] font-semibold text-slate-200 block">All Player Cards</span>
-                            <span className="text-[9px] text-slate-500">View every player's hand</span>
-                          </div>
-                        </div>
-                        <span className={`text-[9px] text-slate-500 transition-transform ${showAllCards ? 'rotate-180' : ''}`}>▼</span>
-                      </button>
-                      {showAllCards && (
-                        <div className="p-2.5 border-t border-slate-700/30 space-y-2.5">
-                          {Object.entries(allPlayerHands).map(([pid, priv]) => {
-                            const player = players[pid]
-                            if (!player) return null
-                            const color = getPlayerColor(player.seatIndex, player.colorKey)
-                            return (
-                              <div key={pid} className="space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color.solid }} />
-                                  <span className="text-[10px] font-semibold" style={{ color: color.text }}>
-                                    {player.displayName}
-                                  </span>
-                                </div>
-                                <div className="flex gap-1.5 pl-3">
-                                  {priv.hand.map((card, i) => (
-                                    <CardView key={card?.id ?? i} card={card} faceUp size="sm" label={`#${i + 1}`} />
-                                  ))}
-                                  {priv.drawnCard && (
-                                    <div className="relative">
-                                      <CardView card={priv.drawnCard} faceUp size="sm" label="Drawn" />
-                                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center text-[7px] font-bold text-white">D</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })}
-                          {Object.keys(allPlayerHands).length === 0 && (
-                            <p className="text-[10px] text-slate-500 text-center py-2">No player data yet.</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Draw Pile */}
-                  {privileges.canPeekDrawPile && (
-                    <div className="rounded-xl border border-slate-700/40 overflow-hidden">
-                      <button
-                        onClick={() => setShowDrawPile(!showDrawPile)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/50 hover:bg-slate-800/80 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px]">📚</span>
-                          <div className="text-left">
-                            <span className="text-[11px] font-semibold text-slate-200 block">Draw Pile</span>
-                            <span className="text-[9px] text-slate-500">{drawPileCards.length} cards remaining</span>
-                          </div>
-                        </div>
-                        <span className={`text-[9px] text-slate-500 transition-transform ${showDrawPile ? 'rotate-180' : ''}`}>▼</span>
-                      </button>
-                      {showDrawPile && (
-                        <div className="p-2.5 border-t border-slate-700/30 space-y-1">
-                          {drawPileCards.slice(0, 10).map((card, i) => (
-                            <div key={card.id} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-slate-900/30">
-                              <span className="text-[9px] text-slate-500 w-4 text-right font-mono">{i + 1}.</span>
-                              <CardView card={card} faceUp size="sm" />
-                              <span className="text-[10px] text-slate-400 flex-1">
-                                {card.isJoker ? 'Joker' : `${card.rank} of ${card.suit}`}
-                              </span>
-                              {i === 0 && (
-                                <span className="text-[8px] px-1.5 py-0.5 bg-amber-600/25 text-amber-300 rounded-full font-bold">NEXT</span>
-                              )}
-                            </div>
-                          ))}
-                          {drawPileCards.length > 10 && (
-                            <p className="text-[9px] text-slate-500 text-center pt-1">...{drawPileCards.length - 10} more</p>
-                          )}
-                          {drawPileCards.length === 0 && (
-                            <p className="text-[10px] text-slate-500 text-center py-2">Draw pile is empty.</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {/* ─── DEBUG SECTION ─── */}
-              {activeSection === 'debug' && (
-                <motion.div
-                  key="debug"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="p-2.5 space-y-1.5"
-                >
-                  {/* Inspect Game State */}
-                  {privileges.canInspectGameState && (
-                    <div className="rounded-xl border border-slate-700/40 overflow-hidden">
-                      <button
-                        onClick={() => setShowGameState(!showGameState)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/50 hover:bg-slate-800/80 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px]">🔍</span>
-                          <div className="text-left">
-                            <span className="text-[11px] font-semibold text-slate-200 block">Game State</span>
-                            <span className="text-[9px] text-slate-500">Full game document JSON</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(gameStateJson) }}
-                            className="text-[9px] text-slate-500 hover:text-amber-300 px-1.5 py-0.5 rounded bg-slate-800/60 hover:bg-slate-700/60 transition-colors cursor-pointer"
-                          >
-                            Copy
-                          </button>
-                          <span className={`text-[9px] text-slate-500 transition-transform ${showGameState ? 'rotate-180' : ''}`}>▼</span>
-                        </div>
-                      </button>
-                      {showGameState && (
-                        <div className="border-t border-slate-700/30">
-                          <pre className="text-[9px] text-slate-400 bg-slate-950/60 p-2.5 overflow-x-auto max-h-[35vh] font-mono leading-relaxed">
-                            {gameStateJson}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Reorder Draw Pile */}
-                  {privileges.canReorderDiscardPile && onOpenReorder && (
-                    <button
-                      onClick={onOpenReorder}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-700/30 bg-amber-900/10 hover:bg-amber-900/20 transition-colors cursor-pointer"
-                    >
-                      <span className="text-[11px]">🔀</span>
-                      <div className="text-left">
-                        <span className="text-[11px] font-semibold text-amber-300 block">Reorder Draw Pile</span>
-                        <span className="text-[9px] text-amber-500/60">Move cards to change draw order</span>
-                      </div>
-                    </button>
-                  )}
-
-                  {!privileges.canInspectGameState && !privileges.canReorderDiscardPile && (
-                    <p className="text-[10px] text-slate-500 text-center py-4">No debug tools available.</p>
-                  )}
-                </motion.div>
-              )}
-
-              {/* ─── SESSION SECTION ─── */}
-              {activeSection === 'session' && (
-                <motion.div
-                  key="session"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="p-2.5 space-y-2"
-                >
-                  {/* Status */}
-                  <div className="rounded-xl border border-slate-700/40 px-3 py-2.5 bg-slate-800/40">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      <span className="text-[11px] font-semibold text-emerald-300">Dev Mode Active</span>
-                    </div>
-                    <div className="space-y-1">
-                      {privileges.canSeeAllCards && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-emerald-400">✓</span>
-                          <span className="text-[9px] text-slate-400">See all cards</span>
-                        </div>
-                      )}
-                      {privileges.canPeekDrawPile && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-emerald-400">✓</span>
-                          <span className="text-[9px] text-slate-400">Peek draw pile</span>
-                        </div>
-                      )}
-                      {privileges.canInspectGameState && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-emerald-400">✓</span>
-                          <span className="text-[9px] text-slate-400">Inspect game state</span>
-                        </div>
-                      )}
-                      {privileges.canUseCheatActions && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-emerald-400">✓</span>
-                          <span className="text-[9px] text-slate-400">Cheat actions</span>
-                        </div>
-                      )}
-                      {privileges.canReorderDiscardPile && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] text-amber-400">★</span>
-                          <span className="text-[9px] text-amber-300">Reorder draw pile (owner)</span>
-                        </div>
-                      )}
+          {/* Drawer panel — right side */}
+          <motion.div
+            ref={panelRef}
+            tabIndex={-1}
+            initial={{ x: '100%', opacity: 0.8 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.8 }}
+            transition={SPRING_DRAWER}
+            className="fixed top-0 right-0 bottom-0 z-[46] w-[340px] max-w-[85vw] bg-slate-900/98 backdrop-blur-xl border-l border-slate-700/40 shadow-2xl flex flex-col outline-none"
+          >
+            {/* ─── Header ─── */}
+            <div className="px-4 py-3 border-b border-slate-800/80 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-900/40 border border-emerald-600/30 flex items-center justify-center">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-100 tracking-tight">Game Monitor</h2>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[9px] text-emerald-400/80 font-medium tracking-wide uppercase">Monitor Active</span>
                     </div>
                   </div>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                  aria-label="Close monitor"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-                  {/* Revoke */}
-                  <button
-                    onClick={onDeactivate}
-                    className="w-full py-2 rounded-xl bg-red-900/20 border border-red-700/30 hover:bg-red-900/40 text-red-400 text-[11px] font-semibold transition-colors cursor-pointer"
-                  >
-                    Revoke Dev Mode
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+            {/* ─── Section tabs ─── */}
+            <div className="flex px-3 pt-2 pb-0 gap-1 shrink-0">
+              {sections.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setActiveSection(s.key)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-t-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                    activeSection === s.key
+                      ? 'text-slate-100 bg-slate-800/80 border border-slate-700/50 border-b-transparent'
+                      : 'text-slate-500 hover:text-slate-400 bg-transparent border border-transparent'
+                  }`}
+                >
+                  <span>{s.icon}</span>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* ─── Content ─── */}
+            <div className="flex-1 overflow-y-auto px-3 pb-3 min-h-0">
+              <div className="bg-slate-800/50 rounded-b-xl rounded-tr-xl border border-slate-700/40 border-t-0 p-3">
+                <AnimatePresence mode="wait">
+                  {/* ══════ VISIBILITY ══════ */}
+                  {activeSection === 'visibility' && (
+                    <motion.div key="vis" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+
+                      {privileges.canSeeAllCards && (
+                        <ToolCard
+                          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+                          title="Inspect Player Cards"
+                          desc="View all players' current hands"
+                          expanded={expandedCards}
+                          onToggle={() => setExpandedCards(!expandedCards)}
+                        >
+                          <div className="space-y-2.5 pt-1">
+                            {Object.entries(allPlayerHands).map(([pid, priv]) => {
+                              const player = players[pid]
+                              if (!player) return null
+                              const color = getPlayerColor(player.seatIndex, player.colorKey)
+                              return (
+                                <div key={pid}>
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.solid }} />
+                                    <span className="text-[10px] font-semibold" style={{ color: color.text }}>{player.displayName}</span>
+                                    {player.connected ? (
+                                      <span className="text-[8px] text-emerald-500">online</span>
+                                    ) : (
+                                      <span className="text-[8px] text-red-500">offline</span>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-1.5 pl-3.5">
+                                    {priv.hand.map((card, i) => (
+                                      <CardView key={card?.id ?? i} card={card} faceUp size="sm" label={`#${i + 1}`} />
+                                    ))}
+                                    {priv.drawnCard && (
+                                      <div className="relative">
+                                        <CardView card={priv.drawnCard} faceUp size="sm" label="Drawn" />
+                                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center text-[7px] font-bold text-white">D</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                            {Object.keys(allPlayerHands).length === 0 && (
+                              <p className="text-[10px] text-slate-500 text-center py-2">No player data available.</p>
+                            )}
+                          </div>
+                        </ToolCard>
+                      )}
+
+                      {privileges.canPeekDrawPile && (
+                        <ToolCard
+                          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 3H8l-2 4h12l-2-4z"/></svg>}
+                          title="Inspect Draw Stack"
+                          desc={`${drawPileCards.length} cards remaining`}
+                          expanded={expandedPile}
+                          onToggle={() => setExpandedPile(!expandedPile)}
+                        >
+                          <div className="space-y-0.5 pt-1">
+                            {drawPileCards.slice(0, 12).map((card, i) => (
+                              <div key={card.id} className={`flex items-center gap-2 px-2 py-1 rounded-lg ${i === 0 ? 'bg-amber-900/15 border border-amber-700/20' : 'bg-slate-900/20'}`}>
+                                <span className="text-[9px] text-slate-500 w-4 text-right font-mono">{i + 1}.</span>
+                                <CardView card={card} faceUp size="sm" />
+                                <span className="text-[10px] text-slate-400 flex-1">{card.isJoker ? 'Joker' : `${card.rank} of ${card.suit}`}</span>
+                                {i === 0 && <span className="text-[7px] px-1.5 py-0.5 bg-amber-600/25 text-amber-300 rounded-full font-bold">NEXT</span>}
+                              </div>
+                            ))}
+                            {drawPileCards.length > 12 && (
+                              <p className="text-[9px] text-slate-500 text-center pt-1">...and {drawPileCards.length - 12} more</p>
+                            )}
+                            {drawPileCards.length === 0 && (
+                              <p className="text-[10px] text-slate-500 text-center py-2">Stack is empty.</p>
+                            )}
+                          </div>
+                        </ToolCard>
+                      )}
+
+                      {!privileges.canSeeAllCards && !privileges.canPeekDrawPile && (
+                        <p className="text-[10px] text-slate-500 text-center py-6">No visibility tools available.</p>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* ══════ STATE ══════ */}
+                  {activeSection === 'state' && (
+                    <motion.div key="state" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+
+                      {turnInfo && (
+                        <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                          <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2">Current Turn</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-200 font-medium">{turnInfo.currentName}</span>
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 font-mono">{turnInfo.phase}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {cardDistribution && (
+                        <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                          <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2">Card Distribution</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            <StatRow label="Draw stack" value={cardDistribution.drawPile} />
+                            <StatRow label="Discard top" value={cardDistribution.discardTop} />
+                            <StatRow label="In hands" value={cardDistribution.inHands} />
+                            <StatRow label="Players" value={cardDistribution.players} />
+                          </div>
+                        </div>
+                      )}
+
+                      {privileges.canInspectGameState && (
+                        <ToolCard
+                          icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>}
+                          title="Game State Document"
+                          desc="Full JSON representation"
+                          expanded={expandedState}
+                          onToggle={() => setExpandedState(!expandedState)}
+                          action={
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(gameStateJson) }}
+                              className="text-[8px] text-slate-500 hover:text-cyan-300 px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700/80 transition-colors cursor-pointer"
+                            >
+                              Copy
+                            </button>
+                          }
+                        >
+                          <pre className="text-[8px] text-slate-400 bg-slate-950/50 rounded-lg p-2 overflow-x-auto max-h-[30vh] font-mono leading-relaxed mt-1 border border-slate-800/50">
+                            {gameStateJson}
+                          </pre>
+                        </ToolCard>
+                      )}
+
+                      {privileges.canReorderDiscardPile && onOpenReorder && (
+                        <button
+                          onClick={() => { onOpenReorder(); onClose() }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-900/10 border border-amber-700/20 hover:bg-amber-900/20 transition-colors cursor-pointer group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-amber-900/30 border border-amber-600/20 flex items-center justify-center shrink-0">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                              <polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/>
+                            </svg>
+                          </div>
+                          <div className="text-left">
+                            <span className="text-[11px] font-semibold text-amber-300 block">Reorder Draw Stack</span>
+                            <span className="text-[9px] text-amber-500/50">Rearrange card positions</span>
+                          </div>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 group-hover:text-amber-400 ml-auto transition-colors shrink-0">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* ══════ SESSION ══════ */}
+                  {activeSection === 'session' && (
+                    <motion.div key="session" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2.5">
+
+                      <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                        <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2.5">Active Permissions</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {privileges.canSeeAllCards && <PermBadge label="Inspect Cards" />}
+                          {privileges.canPeekDrawPile && <PermBadge label="Draw Stack" />}
+                          {privileges.canInspectGameState && <PermBadge label="Game State" />}
+                          {privileges.canUseCheatActions && <PermBadge label="Actions" />}
+                          {privileges.canReorderDiscardPile && <PermBadge label="Reorder" highlight />}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                          <span className="text-[11px] font-semibold text-emerald-300">Session Active</span>
+                        </div>
+                        <p className="text-[9px] text-slate-500 pl-4">
+                          Monitor mode is bound to this game session. Leaving or refreshing will preserve access.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => { onDeactivate(); onClose() }}
+                        className="w-full py-2.5 rounded-xl bg-red-950/30 border border-red-800/25 hover:bg-red-950/50 text-red-400 text-[11px] font-semibold transition-colors cursor-pointer"
+                      >
+                        Disable Monitor Mode
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </>
       )}
-    </motion.div>
+    </AnimatePresence>
+  )
+}
+
+/* ─── Reusable sub-components ─── */
+
+function ToolCard({ icon, title, desc, expanded, onToggle, action, children }: {
+  icon: React.ReactNode
+  title: string
+  desc: string
+  expanded: boolean
+  onToggle: () => void
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-slate-700/30 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-2.5 px-3 py-2 bg-slate-900/30 hover:bg-slate-900/60 transition-colors cursor-pointer"
+      >
+        <div className="w-7 h-7 rounded-lg bg-slate-800/80 border border-slate-700/40 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <div className="text-left flex-1 min-w-0">
+          <span className="text-[11px] font-semibold text-slate-200 block">{title}</span>
+          <span className="text-[9px] text-slate-500">{desc}</span>
+        </div>
+        {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
+        <svg
+          width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className={`text-slate-500 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+        >
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.4 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 py-2 border-t border-slate-700/20">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function StatRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] text-slate-500">{label}</span>
+      <span className="text-[10px] text-slate-300 font-mono font-medium">{value}</span>
+    </div>
+  )
+}
+
+function PermBadge({ label, highlight }: { label: string; highlight?: boolean }) {
+  return (
+    <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
+      highlight
+        ? 'bg-amber-900/30 text-amber-300 border border-amber-700/30'
+        : 'bg-slate-800/80 text-slate-400 border border-slate-700/30'
+    }`}>
+      {label}
+    </span>
   )
 }
