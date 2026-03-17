@@ -1,7 +1,17 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-
-const SPRING_MODAL = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
+import { motion } from 'framer-motion'
+import { EyeIcon, EyeOffIcon } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 
 interface DevModeModalProps {
   open: boolean
@@ -46,118 +56,110 @@ export default function DevModeModal({
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={handleClose}
-        >
-          <motion.div
-            initial={{ scale: 0.85, y: 30, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.88, y: 20, opacity: 0 }}
-            transition={SPRING_MODAL}
-            className="bg-slate-800 border border-amber-600/40 rounded-2xl p-5 max-w-sm w-full shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🛠️</span>
-                <h3 className="text-lg font-bold text-amber-300">Developer Mode</h3>
-              </div>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose() }}>
+      <DialogContent
+        className="max-w-sm rounded-2xl border-amber-600/30 bg-slate-800/95 backdrop-blur-md shadow-2xl shadow-black/40 p-0 gap-0"
+        showCloseButton={false}
+      >
+        {/* Header */}
+        <DialogHeader className="px-5 pt-5 pb-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{'\u{1F6E0}\uFE0F'}</span>
+              <DialogTitle className="text-lg font-bold text-amber-300">
+                Developer Mode
+              </DialogTitle>
+            </div>
+            <button
+              onClick={handleClose}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-xs"
+            >
+              {'\u2715'}
+            </button>
+          </div>
+          <DialogDescription className="text-xs text-slate-400 mt-1">
+            Enter the developer access code to enable privileged features for your account only.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Separator className="bg-slate-700/40 mt-3" />
+
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="dev-code" className="text-xs text-slate-400">
+              Access Code
+            </Label>
+            <div className="relative">
+              <Input
+                id="dev-code"
+                type={showCode ? 'text' : 'password'}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Enter access code..."
+                autoFocus
+                disabled={loading || success}
+                className="h-10 pr-10 rounded-xl border-slate-600/60 bg-slate-900/60 text-white font-mono placeholder:text-slate-500 focus-visible:border-amber-500/60 focus-visible:ring-amber-500/20"
+              />
               <button
-                onClick={handleClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700/80 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-sm"
-                aria-label="Close"
+                type="button"
+                onClick={() => setShowCode((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                tabIndex={-1}
+                aria-label={showCode ? 'Hide code' : 'Show code'}
               >
-                &times;
+                {showCode ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
               </button>
             </div>
+          </div>
 
-            <p className="text-sm text-slate-400 mb-4">
-              Enter the developer access code to enable privileged features for your account only.
-            </p>
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-900/25 border border-red-700/30"
+            >
+              <span className="text-xs">{'\u274C'}</span>
+              <span className="text-xs text-red-300">{error}</span>
+            </motion.div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div className="relative">
-                <input
-                  type={showCode ? 'text' : 'password'}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="Enter access code..."
-                  autoFocus
-                  disabled={loading || success}
-                  className="w-full px-4 py-3 pr-11 rounded-xl bg-slate-900/60 border border-slate-600/50 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 disabled:opacity-50 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCode((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                  tabIndex={-1}
-                  aria-label={showCode ? 'Hide code' : 'Show code'}
-                >
-                  {showCode ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  )}
-                </button>
-              </div>
+          {/* Success */}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-900/25 border border-emerald-700/30"
+            >
+              <span className="text-xs">{'\u2705'}</span>
+              <span className="text-xs text-emerald-300 font-medium">Developer mode activated!</span>
+            </motion.div>
+          )}
 
-              {/* Error message */}
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-900/30 border border-red-700/40"
-                >
-                  <span className="text-xs">❌</span>
-                  <span className="text-xs text-red-300">{error}</span>
-                </motion.div>
-              )}
+          {/* Submit */}
+          <Button
+            type="submit"
+            disabled={!code.trim() || loading || success}
+            className="w-full h-10 rounded-xl bg-amber-600/80 hover:bg-amber-500/80 text-white font-semibold shadow-lg shadow-amber-600/10 cursor-pointer disabled:opacity-40"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Verifying...
+              </span>
+            ) : success ? (
+              '\u2705 Activated'
+            ) : (
+              '\u{1F513} Activate Developer Mode'
+            )}
+          </Button>
 
-              {/* Success message */}
-              {success && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-900/30 border border-emerald-700/40"
-                >
-                  <span className="text-xs">✅</span>
-                  <span className="text-xs text-emerald-300 font-medium">Developer mode activated!</span>
-                </motion.div>
-              )}
-
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                disabled={!code.trim() || loading || success}
-                className="w-full py-3 rounded-xl bg-amber-600/80 hover:bg-amber-500/80 text-white font-semibold text-sm transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Verifying...
-                  </>
-                ) : success ? (
-                  '✅ Activated'
-                ) : (
-                  '🔓 Activate Developer Mode'
-                )}
-              </motion.button>
-            </form>
-
-            <p className="mt-3 text-[10px] text-slate-500 text-center">
-              Access is tied to your player session only. Other players will not be affected.
-            </p>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <p className="text-[10px] text-slate-500 text-center">
+            Access is tied to your player session only. Other players will not be affected.
+          </p>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
