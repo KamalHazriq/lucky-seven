@@ -48,7 +48,7 @@ const StagingSlot = memo(forwardRef<HTMLDivElement, StagingSlotProps>(
 
     return (
       <div ref={ref} className={`text-center relative ${active && !perfMode ? 'staging-active' : ''}`} style={{ minWidth: '64px', borderRadius: '12px' }}>
-        <p className="text-[10px] text-slate-500 mb-1">In play</p>
+        <p className="text-[10px] text-muted-foreground mb-1">In play</p>
         <AnimatePresence mode="wait">
           {active ? (
             /* Shadow wrapper is static — keeps filter off the animated element */
@@ -85,9 +85,9 @@ const StagingSlot = memo(forwardRef<HTMLDivElement, StagingSlotProps>(
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={SPRING_EXIT}
-              className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700/30 flex items-center justify-center"
+              className="w-20 h-28 rounded-xl border-2 border-dashed border-border-subtle flex items-center justify-center"
             >
-              <span className="text-slate-700 text-[10px]" />
+              <span className="text-muted-foreground/30 text-[10px]" />
             </motion.div>
           )}
         </AnimatePresence>

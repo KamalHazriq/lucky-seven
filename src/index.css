@@ -226,15 +226,29 @@ body {
 
 /* ─── Table felt texture overlay ──────────────────────────── */
 .table-felt {
-  background: radial-gradient(
-    ellipse at center,
-    var(--felt-center) 0%,
-    var(--felt-mid) 40%,
-    var(--felt-edge) 70%,
-    transparent 100%
-  );
+  background:
+    /* Inner highlight — subtle sheen near center */
+    radial-gradient(ellipse 60% 45% at 50% 42%, rgba(255,255,255,0.018) 0%, transparent 100%),
+    /* Main felt gradient */
+    radial-gradient(ellipse at center, var(--felt-center) 0%, var(--felt-mid) 40%, var(--felt-edge) 70%, transparent 100%);
   border: 2px solid var(--felt-border);
-  box-shadow: inset 0 0 80px var(--felt-edge), inset 0 0 20px var(--felt-edge);
+  box-shadow:
+    /* Vignette — dark corners draw eye to center */
+    inset 0 0 120px 40px rgba(0,0,0,0.15),
+    /* Soft inner glow */
+    inset 0 0 60px var(--felt-edge),
+    inset 0 0 20px var(--felt-edge);
+}
+
+/* Vignette overlay on the table zone container */
+.table-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse 70% 60% at 50% 46%, transparent 40%, rgba(0,0,0,0.18) 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 ::-webkit-scrollbar {
@@ -268,7 +282,70 @@ body {
 .card-face-up {
   background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
+}
+
+/* ─── Pile zone — subtle ground shadow under center piles ── */
+.pile-zone {
+  position: relative;
+}
+.pile-zone::before {
+  content: '';
+  position: absolute;
+  inset: -12px -16px;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ─── Draw pile stack effect — layered cards underneath ───── */
+.pile-stack {
+  position: relative;
+}
+.pile-stack::before,
+.pile-stack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(30,58,95,0.6) 0%, rgba(30,58,95,0.8) 100%);
+  border: 1px solid rgba(96,165,250,0.12);
+  pointer-events: none;
+}
+.pile-stack::before {
+  transform: translate(3px, 3px) rotate(1.5deg);
+  opacity: 0.5;
+}
+.pile-stack::after {
+  transform: translate(1.5px, 1.5px) rotate(0.7deg);
+  opacity: 0.7;
+}
+
+/* ─── Pile hover lift — subtle rise for clickable piles ───── */
+.pile-interactive {
+  transition: transform 0.2s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.2s ease;
+}
+.pile-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+/* ─── Seat grounding — subtle radial shadow below panels ─── */
+.seat-ground {
+  position: relative;
+}
+.seat-ground::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -4px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.15) 0%, transparent 80%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* Theme select dropdown options — ensure readability */
@@ -300,15 +377,24 @@ select option {
   animation: slot-pulse 0.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) 3;
 }
 
-/* Turn glow animation — subtle breathing glow, low visual noise */
+/* Turn glow animation — breathing glow with outer halo */
 @keyframes turn-glow {
-  0% { box-shadow: 0 0 6px var(--turn-glow-color, rgba(16,185,129,0.20)); }
-  50% { box-shadow: 0 0 14px var(--turn-glow-color, rgba(16,185,129,0.35)), 0 0 24px var(--turn-glow-color, rgba(16,185,129,0.08)); }
-  100% { box-shadow: 0 0 6px var(--turn-glow-color, rgba(16,185,129,0.20)); }
+  0% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.20)), 0 0 2px var(--turn-glow-color, rgba(16,185,129,0.10)); }
+  50% { box-shadow: 0 0 18px var(--turn-glow-color, rgba(16,185,129,0.40)), 0 0 36px var(--turn-glow-color, rgba(16,185,129,0.10)), 0 2px 8px rgba(0,0,0,0.12); }
+  100% { box-shadow: 0 0 8px var(--turn-glow-color, rgba(16,185,129,0.20)), 0 0 2px var(--turn-glow-color, rgba(16,185,129,0.10)); }
 }
 
 .turn-glow {
   animation: turn-glow 3s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+/* Non-active player subtle dim — when game is in progress */
+.player-waiting {
+  opacity: 0.75;
+  transition: opacity 0.4s ease;
+}
+.player-waiting:hover {
+  opacity: 0.9;
 }
 
 /* Selection-mode slot pulse */
@@ -444,6 +530,14 @@ select option {
 
 .seat-breathe {
   animation: seat-breathe 3.5s ease-in-out infinite;
+}
+
+/* ─── Classic layout pile zone — subtle grounding ────────── */
+.classic-pile-zone {
+  background: radial-gradient(ellipse at center, var(--felt-center) 0%, transparent 80%);
+  border: 1px solid var(--felt-border);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
 }
 
 /* ─── Responsive layout fixes ───────────────────────────── */
@@ -630,6 +724,7 @@ input[type="range"].vol-slider::-moz-range-thumb {
   .action-success-flash { animation: none; }
   .action-error-shake { animation: none; }
   .card-interact-pulse { animation: none; }
+  .player-waiting { opacity: 1; transition: none; }
   [data-slot="button"]:not(:disabled):hover,
   [data-slot="button"]:not(:disabled):active {
     transform: none;

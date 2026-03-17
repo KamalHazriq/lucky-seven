@@ -610,9 +610,10 @@ export default function Game() {
                 />
 
                 {/* Center: Draw + Staging + Discard piles */}
-                <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
-                  <div className="text-center" ref={drawPileRef}>
-                    <p className="text-[10px] text-slate-500 mb-1">Draw</p>
+                <div className="pile-zone absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
+                  <div className={`text-center${canDraw ? ' pile-interactive' : ''}`} ref={drawPileRef}>
+                    <p className="text-[10px] text-muted-foreground mb-1">Draw</p>
+                    <div className="pile-stack">
                     <CardView
                       faceUp={false}
                       size="md"
@@ -621,6 +622,7 @@ export default function Game() {
                       highlight={canDraw}
                       label={`${game.drawPileCount}`}
                     />
+                    </div>
                   </div>
                   {/* Staging slot — shows local choreo or remote staging */}
                   {(() => {
@@ -641,8 +643,8 @@ export default function Game() {
                       />
                     )
                   })()}
-                  <div className="text-center relative" ref={discardPileRef}>
-                    <p className="text-[10px] text-slate-500 mb-1">Discard</p>
+                  <div className={`text-center relative${canTakeDiscard ? ' pile-interactive' : ''}`} ref={discardPileRef}>
+                    <p className="text-[10px] text-muted-foreground mb-1">Discard</p>
                     {game.discardTop && privateState?.drawnCardSource !== 'discard' ? (
                       <div className="relative">
                         <CardView
@@ -657,8 +659,8 @@ export default function Game() {
                         <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                       </div>
                     ) : (
-                      <div className="w-20 h-28 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
-                        <span className="text-slate-600 text-[10px]">Empty</span>
+                      <div className="w-20 h-28 rounded-xl border-2 border-dashed border-border-subtle flex items-center justify-center" title="Discard is empty">
+                        <span className="text-muted-foreground text-[10px]">Empty</span>
                       </div>
                     )}
                   </div>
@@ -667,11 +669,12 @@ export default function Game() {
                 {/* Other players arranged around the table */}
                 {otherPlayers.map((pid, idx) => {
                   const pos = seatPositions[idx]
+                  const isTheirTurn = game.currentTurnPlayerId === pid
                   return (
                     <div
                       key={pid}
                       ref={(el) => { otherPanelRefs.current[pid] = el }}
-                      className="absolute z-10"
+                      className={`absolute z-10 seat-ground${!isTheirTurn && game.currentTurnPlayerId ? ' player-waiting' : ''}`}
                       style={{
                         left: `${pos.left}%`,
                         top: `${pos.top}%`,
@@ -787,15 +790,18 @@ export default function Game() {
                 otherPlayers.length <= 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
                 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3'
               }`}>
-                {otherPlayers.map((pid) => (
+                {otherPlayers.map((pid) => {
+                  const isTheirTurn = game.currentTurnPlayerId === pid
+                  return (
                   <div
                     key={pid}
                     ref={(el) => { otherPanelRefs.current[pid] = el }}
+                    className={!isTheirTurn && game.currentTurnPlayerId ? 'player-waiting' : ''}
                   >
                     <PlayerPanel
                       playerId={pid}
                       displayName={players[pid]?.displayName ?? 'Unknown'}
-                      isCurrentTurn={game.currentTurnPlayerId === pid}
+                      isCurrentTurn={isTheirTurn}
                       isLocalPlayer={false}
                       seatIndex={players[pid]?.seatIndex ?? 0}
                       colorKey={players[pid]?.colorKey}
@@ -812,20 +818,22 @@ export default function Game() {
                       devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                       {...selectionProps}
                     />
-                    {game.currentTurnPlayerId === pid && turnTimer.remaining !== null && (
+                    {isTheirTurn && turnTimer.remaining !== null && (
                       <div className="mt-1 px-1">
                         <TurnTimer remaining={turnTimer.remaining} total={turnTimer.total} isMyTurn={false} />
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
             {/* Table area: Draw + Staging + Discard */}
-            <div className="flex items-center justify-center gap-5 sm:gap-6 mb-4 py-4" aria-busy={busy} aria-label="Card piles">
-              <div className="text-center" ref={drawPileRef}>
-                <p className="text-xs text-slate-500 mb-2">Draw Pile</p>
+            <div className="classic-pile-zone flex items-center justify-center gap-5 sm:gap-6 mb-4" aria-busy={busy} aria-label="Card piles">
+              <div className={`text-center${canDraw ? ' pile-interactive' : ''}`} ref={drawPileRef}>
+                <p className="text-xs text-muted-foreground mb-2">Draw Pile</p>
+                <div className="pile-stack">
                 <CardView
                   faceUp={false}
                   size="lg"
@@ -834,6 +842,7 @@ export default function Game() {
                   highlight={canDraw}
                   label={`${game.drawPileCount} left`}
                 />
+                </div>
               </div>
 
               {/* Staging slot — shows local choreo or remote staging */}
@@ -855,8 +864,8 @@ export default function Game() {
                 )
               })()}
 
-              <div className="text-center relative" ref={discardPileRef}>
-                <p className="text-xs text-slate-500 mb-2">Discard</p>
+              <div className={`text-center relative${canTakeDiscard ? ' pile-interactive' : ''}`} ref={discardPileRef}>
+                <p className="text-xs text-muted-foreground mb-2">Discard</p>
                 {game.discardTop && privateState?.drawnCardSource !== 'discard' ? (
                   <div className="relative">
                     <CardView
@@ -871,8 +880,8 @@ export default function Game() {
                     <DiscardFlip discardTop={game.discardTop} reduced={reduced} />
                   </div>
                 ) : (
-                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center" title="Discard is empty">
-                    <span className="text-slate-600 text-xs">Empty</span>
+                  <div className="w-24 h-34 rounded-xl border-2 border-dashed border-border-subtle flex items-center justify-center" title="Discard is empty">
+                    <span className="text-muted-foreground text-xs">Empty</span>
                   </div>
                 )}
               </div>
