@@ -67,7 +67,7 @@ export default function PatchNotesModal({ open, onClose, onOpenFeedback }: Patch
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
+      <DialogContent className="sm:max-w-md max-h-[70vh] flex flex-col">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-0 shrink-0">
           <div className="flex items-center justify-between">
