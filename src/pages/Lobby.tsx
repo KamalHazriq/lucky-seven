@@ -15,6 +15,19 @@ import { useChat } from '../hooks/useChat'
 import { getJoinLink, getInviteMessage, copyToClipboard } from '../lib/share'
 import { LOBBY_COLORS } from '../lib/playerColors'
 import type { PlayerDoc } from '../lib/types'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
 const springBounce = { type: 'spring' as const, stiffness: 400, damping: 20 }
@@ -214,15 +227,10 @@ export default function Lobby() {
           transition={springEntry}
           className="text-center"
         >
-          <p className="text-slate-400 text-lg mb-4">Game not found</p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/')}
-            className="text-indigo-400 hover:text-indigo-300 cursor-pointer"
-          >
+          <p className="text-muted-foreground text-lg mb-4">Game not found</p>
+          <Button variant="ghost" onClick={() => navigate('/')} className="text-indigo-400 hover:text-indigo-300">
             Go Home
-          </motion.button>
+          </Button>
         </motion.div>
       </div>
     )
@@ -242,11 +250,11 @@ export default function Lobby() {
           transition={{ delay: 0.1, ...springEntry }}
           className="text-center mb-6"
         >
-          <h1 className="text-3xl font-bold text-amber-300 mb-1">Game Lobby</h1>
+          <h1 className="text-3xl font-bold text-primary mb-1">Game Lobby</h1>
           <motion.p
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-            className="text-slate-400 text-sm"
+            className="text-muted-foreground text-sm"
           >
             Waiting for players...
           </motion.p>
@@ -256,437 +264,435 @@ export default function Lobby() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, ...springEntry }}
-          className="backdrop-blur-sm border rounded-2xl p-6 shadow-2xl shadow-black/20"
-          style={{ background: 'var(--panel-elevated)', borderColor: 'var(--border)' }}
         >
-          {/* Join Code + Share */}
-          <div className="text-center mb-6">
-            <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Join Code</p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={springBounce}
-              onClick={handleCopyCode}
-              className="text-3xl font-mono font-bold text-emerald-400 tracking-[0.3em] hover:text-emerald-300 transition-colors cursor-pointer"
-              title="Click to copy code"
-            >
-              {game.joinCode}
-            </motion.button>
-            <p className="text-xs text-slate-500 mt-1">Click to copy code</p>
-
-            {/* Share buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, ...springEntry }}
-              className="flex items-center justify-center gap-2 mt-3"
-            >
+          <Card className="p-6 border-border-subtle bg-surface-overlay backdrop-blur-sm shadow-2xl shadow-black/20 rounded-2xl">
+            {/* Join Code + Share */}
+            <div className="text-center mb-5">
+              <Label className="uppercase tracking-wider mb-1 justify-center">Join Code</Label>
               <motion.button
-                whileHover={{ scale: 1.05, y: -1 }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleCopyLink}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-900/30 border border-indigo-600/40 text-indigo-400 rounded-lg text-xs font-medium hover:bg-indigo-900/50 transition-colors cursor-pointer"
+                transition={springBounce}
+                onClick={handleCopyCode}
+                className="block mx-auto text-3xl font-mono font-bold text-emerald-400 tracking-[0.3em] hover:text-emerald-300 transition-colors cursor-pointer"
+                title="Click to copy code"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-                Copy Link
+                {game.joinCode}
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05, y: -1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleCopyInvite}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/30 border border-emerald-600/40 text-emerald-400 rounded-lg text-xs font-medium hover:bg-emerald-900/50 transition-colors cursor-pointer"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                Invite Friends
-              </motion.button>
-            </motion.div>
-          </div>
+              <p className="text-[10px] text-muted-foreground mt-1">Click to copy code</p>
 
-          {/* Your Profile — name edit + color picker */}
-          {myPlayer && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="border-t border-slate-700/50 pt-4 mb-4"
-            >
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Your Profile</p>
-              <div className="flex items-center gap-2 mb-2">
-                <AnimatePresence mode="wait">
-                  {editingName ? (
-                    <motion.div
-                      key="editing"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={springEntry}
-                      className="flex items-center gap-1.5 flex-1"
-                    >
-                      <input
-                        ref={nameRef}
-                        type="text"
-                        name="playerName"
-                        autoComplete="off"
-                        value={nameInput}
-                        onChange={(e) => setNameInput(e.target.value.slice(0, 12))}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false) }}
-                        maxLength={12}
-                        className="flex-1 px-2 py-1 bg-slate-900/80 border border-slate-600/60 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500/60"
-                      />
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleSaveName}
-                        disabled={!nameInput.trim()}
-                        className="px-2 py-1 bg-emerald-600/80 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg text-xs font-medium cursor-pointer transition-colors"
-                      >
-                        Save
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setEditingName(false)}
-                        className="px-2 py-1 bg-slate-700/60 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-medium cursor-pointer transition-colors"
-                      >
-                        Cancel
-                      </motion.button>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="display"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="font-medium text-slate-200 text-sm">{myPlayer.displayName}</span>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleStartEditName}
-                        className="px-2 py-0.5 bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-slate-200 rounded-md text-[10px] font-medium cursor-pointer transition-colors"
-                      >
-                        Edit
-                      </motion.button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="grid grid-cols-8 gap-1.5">
-                {LOBBY_COLORS.map((lc, idx) => {
-                  const isMine = displayedColorKey === idx
-                  const takenBy = !isMine
-                    ? Object.values(players).find((p: PlayerDoc) => p.colorKey === idx)
-                    : null
-                  const isTaken = !!takenBy
-                  return (
-                    <motion.button
-                      key={idx}
-                      whileHover={!isTaken ? { scale: 1.2 } : undefined}
-                      whileTap={!isTaken ? { scale: 0.85 } : undefined}
-                      transition={springBounce}
-                      onClick={() => !isTaken && handlePickColor(idx)}
-                      disabled={isTaken}
-                      className={`relative w-7 h-7 rounded-full border-2 transition-all ${
-                        isMine
-                          ? 'border-white scale-110 ring-2 ring-white/30 cursor-pointer'
-                          : isTaken
-                            ? 'border-transparent opacity-50 cursor-not-allowed'
-                            : 'border-transparent cursor-pointer'
-                      }`}
-                      style={{ backgroundColor: lc.hex }}
-                      title={isTaken ? `Taken by ${takenBy.displayName}` : lc.name}
-                    >
-                      {isTaken && (
-                        <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs pointer-events-none" style={{ textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>✕</span>
-                      )}
-                    </motion.button>
-                  )
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          <div className="border-t border-slate-700/50 pt-4 mb-4">
-            <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">
-              Players ({playerList.length}/{game.maxPlayers})
-            </p>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="show"
-              className="space-y-2"
-            >
-              {playerList.map((p) => (
-                <motion.div
-                  key={p.id}
-                  variants={staggerItem}
-                  layout
-                  className="flex items-center gap-3 bg-slate-900/40 rounded-xl p-3"
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 25, delay: 0.1 }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md"
-                    style={{
-                      // Use optimistic color for own avatar while Supabase confirms
-                      backgroundColor: (() => {
-                        const ck = p.id === user?.uid ? (displayedColorKey ?? p.colorKey) : p.colorKey
-                        return ck != null && ck >= 0 && ck < LOBBY_COLORS.length
-                          ? LOBBY_COLORS[ck].hex
-                          : '#6366f1'
-                      })(),
-                    }}
-                  >
-                    {p.displayName?.[0]?.toUpperCase() ?? '?'}
-                  </motion.div>
-                  <span className="font-medium text-slate-200">
-                    {p.displayName ?? 'Unknown'}
-                  </span>
-                  {p.id === game.hostId && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={springBounce}
-                      className="ml-auto text-xs bg-amber-600/20 text-amber-400 px-2 py-0.5 rounded-full font-medium"
-                    >
-                      Host
-                    </motion.span>
-                  )}
-                  {p.id === user?.uid && p.id !== game.hostId && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={springBounce}
-                      className="ml-auto text-xs bg-indigo-600/20 text-indigo-400 px-2 py-0.5 rounded-full font-medium"
-                    >
-                      You
-                    </motion.span>
-                  )}
-                </motion.div>
-              ))}
-
-              {/* Empty seats — animated pulse */}
-              {Array.from({ length: game.maxPlayers - playerList.length }).map((_, i) => (
-                <motion.div
-                  key={`empty-${i}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: playerList.length * 0.06 + i * 0.1 }}
-                  className="flex items-center gap-3 bg-slate-900/20 rounded-xl p-3 border border-dashed border-slate-700"
-                >
-                  <motion.div
-                    animate={{ opacity: [0.3, 0.6, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
-                    className="w-9 h-9 rounded-full bg-slate-700/50 flex items-center justify-center"
-                  >
-                    <span className="text-slate-500 text-sm">?</span>
-                  </motion.div>
-                  <motion.span
-                    animate={{ opacity: [0.4, 0.7, 0.4] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
-                    className="text-slate-500 text-sm"
-                  >
-                    Waiting...
-                  </motion.span>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* ─── Game Settings (host only) ─── */}
-          {isHost && game.settings && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, ...springEntry }}
-              className="border-t border-slate-700/50 pt-4 mb-4"
-            >
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-3">Game Settings</p>
-              <div className="space-y-3">
-
-                {/* Deck Size */}
-                <div>
-                  <p className="text-xs text-slate-500 mb-1.5">Deck Size</p>
-                  <div className="flex gap-2">
-                    {([1, 1.5, 2] as (1 | 1.5 | 2)[]).map((d) => (
-                      <motion.button
-                        key={d}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSetDeckSize(d)}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                          game.settings.deckSize === d
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {d === 1 ? '1×' : d === 1.5 ? '1.5×' : '2×'}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {game.settings.deckSize === 1
-                      ? '54 cards (standard)'
-                      : game.settings.deckSize === 1.5
-                        ? '~81 cards (1 full + 27 extra)'
-                        : '~108 cards (double deck)'}
-                  </p>
-                </div>
-
-                {/* Turn Timer */}
-                <div>
-                  <p className="text-xs text-slate-500 mb-1.5">Turn Timer</p>
-                  <div className="flex gap-1.5">
-                    {([0, 30, 60, 90, 120] as TurnSeconds[]).map((s) => (
-                      <motion.button
-                        key={s}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSetTurnSeconds(s)}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                          game.settings.turnSeconds === s
-                            ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {s === 0 ? 'Off' : `${s}s`}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {game.settings.turnSeconds === 0
-                      ? 'No time limit per turn'
-                      : `${game.settings.turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
-                  </p>
-                </div>
-
-                {/* Power Settings accordion */}
-                <div className="border border-slate-700/50 rounded-xl overflow-hidden">
-                  <motion.button
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setShowPowerSettings(!showPowerSettings)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-900/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
-                  >
-                    <span className="text-xs font-medium text-slate-300">Power Settings</span>
-                    <motion.span
-                      animate={{ rotate: showPowerSettings ? 180 : 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="text-slate-500 text-xs"
-                    >
-                      ▼
-                    </motion.span>
-                  </motion.button>
-
-                  <AnimatePresence initial={false}>
-                    {showPowerSettings && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 28, mass: 0.6 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="p-3 space-y-3 border-t border-slate-700/50">
-                          {/* Per-rank power selects */}
-                          {RANK_ROWS.map((row) => (
-                            <div key={row.key}>
-                              <label className={`block text-xs font-medium ${row.color} mb-1`}>
-                                {row.label} Power
-                              </label>
-                              <select
-                                value={game.settings.powerAssignments[row.key]}
-                                onChange={(e) =>
-                                  handleSetPowerAssignment(row.key, e.target.value as PowerEffectType)
-                                }
-                                className="w-full px-3 py-1.5 bg-slate-900/80 border border-slate-600 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-                              >
-                                {ALL_EFFECT_TYPES.map((o) => (
-                                  <option key={o.value} value={o.value}>{o.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                          ))}
-
-                          {/* Jokers in deck */}
-                          <div>
-                            <label className="block text-xs font-medium text-fuchsia-300 mb-1">
-                              Jokers in Deck
-                            </label>
-                            <div className="flex gap-2">
-                              {[1, 2, 3, 4].map((n) => (
-                                <motion.button
-                                  key={n}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => handleSetJokerCount(n)}
-                                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                                    game.settings.jokerCount === n
-                                      ? 'bg-fuchsia-600 text-white'
-                                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                  }`}
-                                >
-                                  {n}
-                                </motion.button>
-                              ))}
-                            </div>
-                            <p className="text-[10px] text-slate-500 mt-1">Default: 2 (standard deck)</p>
-                          </div>
-
-                          <div className="bg-slate-900/40 rounded-lg p-2">
-                            <p className="text-[10px] text-amber-400/80 font-medium">
-                              Powers trigger every time you draw that card rank. Any rank can have any effect!
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-              </div>
-            </motion.div>
-          )}
-
-          {isHost && (
-            <motion.button
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, ...springEntry }}
-              whileHover={playerList.length >= 2 ? { scale: 1.02, y: -2 } : undefined}
-              whileTap={playerList.length >= 2 ? { scale: 0.98 } : undefined}
-              onClick={handleStart}
-              disabled={playerList.length < 2}
-              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-lg transition-all cursor-pointer shadow-lg shadow-emerald-600/15"
-            >
-              {playerList.length < 2 ? 'Need at least 2 players' : 'Start Game'}
-            </motion.button>
-          )}
-
-          {!isHost && (
-            <div className="text-center py-3">
+              {/* Share buttons */}
               <motion.div
-                animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="flex items-center justify-center gap-2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, ...springEntry }}
+                className="flex items-center justify-center gap-2 mt-3"
               >
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full"
-                />
-                <span className="text-slate-400 text-sm">
-                  Waiting for host to start the game...
-                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLink}
+                  className="text-xs border-indigo-600/40 text-indigo-400 hover:bg-indigo-900/30"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  Copy Link
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyInvite}
+                  className="text-xs border-emerald-600/40 text-emerald-400 hover:bg-emerald-900/30"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  Invite Friends
+                </Button>
               </motion.div>
             </div>
-          )}
+
+            {/* Your Profile — name edit + color picker */}
+            {myPlayer && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25 }}
+              >
+                <Separator className="mb-4" />
+                <div className="mb-4">
+                  <Label className="uppercase tracking-wider mb-2 block">Your Profile</Label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AnimatePresence mode="wait">
+                      {editingName ? (
+                        <motion.div
+                          key="editing"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={springEntry}
+                          className="flex items-center gap-1.5 flex-1"
+                        >
+                          <Input
+                            ref={nameRef}
+                            type="text"
+                            name="playerName"
+                            autoComplete="off"
+                            value={nameInput}
+                            onChange={(e) => setNameInput(e.target.value.slice(0, 12))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditingName(false) }}
+                            maxLength={12}
+                            className="flex-1 h-8 text-sm"
+                          />
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={handleSaveName}
+                            disabled={!nameInput.trim()}
+                            className="rounded-lg text-xs"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingName(false)}
+                            className="rounded-lg text-xs"
+                          >
+                            Cancel
+                          </Button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="display"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center gap-2"
+                        >
+                          <span className="font-medium text-foreground text-sm">{myPlayer.displayName}</span>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={handleStartEditName}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Edit
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <div className="grid grid-cols-8 gap-1.5">
+                    {LOBBY_COLORS.map((lc, idx) => {
+                      const isMine = displayedColorKey === idx
+                      const takenBy = !isMine
+                        ? Object.values(players).find((p: PlayerDoc) => p.colorKey === idx)
+                        : null
+                      const isTaken = !!takenBy
+                      return (
+                        <motion.button
+                          key={idx}
+                          whileHover={!isTaken ? { scale: 1.2 } : undefined}
+                          whileTap={!isTaken ? { scale: 0.85 } : undefined}
+                          transition={springBounce}
+                          onClick={() => !isTaken && handlePickColor(idx)}
+                          disabled={isTaken}
+                          className={`relative w-7 h-7 rounded-full border-2 transition-all ${
+                            isMine
+                              ? 'border-white scale-110 ring-2 ring-white/30 cursor-pointer'
+                              : isTaken
+                                ? 'border-transparent opacity-50 cursor-not-allowed'
+                                : 'border-transparent cursor-pointer'
+                          }`}
+                          style={{ backgroundColor: lc.hex }}
+                          title={isTaken ? `Taken by ${takenBy.displayName}` : lc.name}
+                        >
+                          {isTaken && (
+                            <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs pointer-events-none" style={{ textShadow: '0 0 3px rgba(0,0,0,0.9)' }}>{'\u2715'}</span>
+                          )}
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            <Separator className="mb-4" />
+
+            {/* Player List */}
+            <div className="mb-4">
+              <Label className="uppercase tracking-wider mb-3 block">
+                Players ({playerList.length}/{game.maxPlayers})
+              </Label>
+
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+                className="space-y-2"
+              >
+                {playerList.map((p) => (
+                  <motion.div
+                    key={p.id}
+                    variants={staggerItem}
+                    layout
+                    className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-panel p-3"
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 25, delay: 0.1 }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-md shrink-0"
+                      style={{
+                        // Use optimistic color for own avatar while Supabase confirms
+                        backgroundColor: (() => {
+                          const ck = p.id === user?.uid ? (displayedColorKey ?? p.colorKey) : p.colorKey
+                          return ck != null && ck >= 0 && ck < LOBBY_COLORS.length
+                            ? LOBBY_COLORS[ck].hex
+                            : '#6366f1'
+                        })(),
+                      }}
+                    >
+                      {p.displayName?.[0]?.toUpperCase() ?? '?'}
+                    </motion.div>
+                    <span className="font-medium text-foreground">
+                      {p.displayName ?? 'Unknown'}
+                    </span>
+                    {p.id === game.hostId && (
+                      <Badge variant="outline" className="ml-auto border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px] px-1.5 py-0">
+                        Host
+                      </Badge>
+                    )}
+                    {p.id === user?.uid && p.id !== game.hostId && (
+                      <Badge variant="outline" className="ml-auto border-indigo-500/30 bg-indigo-500/10 text-indigo-400 text-[10px] px-1.5 py-0">
+                        You
+                      </Badge>
+                    )}
+                  </motion.div>
+                ))}
+
+                {/* Empty seats — animated pulse */}
+                {Array.from({ length: game.maxPlayers - playerList.length }).map((_, i) => (
+                  <motion.div
+                    key={`empty-${i}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: playerList.length * 0.06 + i * 0.1 }}
+                    className="flex items-center gap-3 rounded-xl border border-dashed border-border-subtle p-3"
+                  >
+                    <motion.div
+                      animate={{ opacity: [0.3, 0.6, 0.3] }}
+                      transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+                      className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center shrink-0"
+                    >
+                      <span className="text-muted-foreground text-sm">?</span>
+                    </motion.div>
+                    <motion.span
+                      animate={{ opacity: [0.4, 0.7, 0.4] }}
+                      transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
+                      className="text-muted-foreground text-sm"
+                    >
+                      Waiting...
+                    </motion.span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* ─── Game Settings (host only) ─── */}
+            {isHost && game.settings && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35, ...springEntry }}
+              >
+                <Separator className="mb-4" />
+                <div className="mb-4">
+                  <Label className="uppercase tracking-wider mb-3 block">Game Settings</Label>
+                  <div className="space-y-3">
+
+                    {/* Deck Size */}
+                    <div className="ls-form-group">
+                      <Label className="text-muted-foreground">Deck Size</Label>
+                      <div className="flex gap-2">
+                        {([1, 1.5, 2] as (1 | 1.5 | 2)[]).map((d) => (
+                          <motion.button
+                            key={d}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleSetDeckSize(d)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                              game.settings.deckSize === d
+                                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
+                          >
+                            {d === 1 ? '1\u00d7' : d === 1.5 ? '1.5\u00d7' : '2\u00d7'}
+                          </motion.button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {game.settings.deckSize === 1
+                          ? '54 cards (standard)'
+                          : game.settings.deckSize === 1.5
+                            ? '~81 cards (1 full + 27 extra)'
+                            : '~108 cards (double deck)'}
+                      </p>
+                    </div>
+
+                    {/* Turn Timer */}
+                    <div className="ls-form-group">
+                      <Label className="text-muted-foreground">Turn Timer</Label>
+                      <div className="flex gap-1.5">
+                        {([0, 30, 60, 90, 120] as TurnSeconds[]).map((s) => (
+                          <motion.button
+                            key={s}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleSetTurnSeconds(s)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                              game.settings.turnSeconds === s
+                                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
+                          >
+                            {s === 0 ? 'Off' : `${s}s`}
+                          </motion.button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {game.settings.turnSeconds === 0
+                          ? 'No time limit per turn'
+                          : `${game.settings.turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
+                      </p>
+                    </div>
+
+                    {/* Power Settings accordion */}
+                    <div className="rounded-xl border border-border-subtle overflow-hidden">
+                      <motion.button
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => setShowPowerSettings(!showPowerSettings)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 bg-surface-panel hover:bg-secondary/80 transition-colors cursor-pointer"
+                      >
+                        <span className="text-xs font-medium text-foreground">Power Settings</span>
+                        <motion.span
+                          animate={{ rotate: showPowerSettings ? 180 : 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                          className="text-muted-foreground text-xs"
+                        >
+                          {'\u25BC'}
+                        </motion.span>
+                      </motion.button>
+
+                      <AnimatePresence initial={false}>
+                        {showPowerSettings && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 28, mass: 0.6 }}
+                            className="overflow-hidden"
+                          >
+                            <Separator />
+                            <div className="p-3 space-y-3">
+                              {/* Per-rank power selects */}
+                              {RANK_ROWS.map((row) => (
+                                <div key={row.key} className="ls-form-group">
+                                  <Label className={row.color}>
+                                    {row.label} Power
+                                  </Label>
+                                  <Select
+                                    value={game.settings.powerAssignments[row.key]}
+                                    onValueChange={(v) =>
+                                      handleSetPowerAssignment(row.key, v as PowerEffectType)
+                                    }
+                                  >
+                                    <SelectTrigger className="h-9 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {ALL_EFFECT_TYPES.map((o) => (
+                                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))}
+
+                              {/* Jokers in deck */}
+                              <div className="ls-form-group">
+                                <Label className="text-fuchsia-300">
+                                  Jokers in Deck
+                                </Label>
+                                <div className="flex gap-2">
+                                  {[1, 2, 3, 4].map((n) => (
+                                    <motion.button
+                                      key={n}
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleSetJokerCount(n)}
+                                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                                        game.settings.jokerCount === n
+                                          ? 'bg-fuchsia-600 text-white'
+                                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                      }`}
+                                    >
+                                      {n}
+                                    </motion.button>
+                                  ))}
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">Default: 2 (standard deck)</p>
+                              </div>
+
+                              <div className="bg-surface-panel rounded-lg p-2">
+                                <p className="text-[10px] text-amber-400/80 font-medium">
+                                  Powers trigger every time you draw that card rank. Any rank can have any effect!
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {isHost && (
+              <Button
+                variant="success"
+                onClick={handleStart}
+                disabled={playerList.length < 2}
+                className="w-full h-12 rounded-xl text-lg"
+              >
+                {playerList.length < 2 ? 'Need at least 2 players' : 'Start Game'}
+              </Button>
+            )}
+
+            {!isHost && (
+              <div className="text-center py-3">
+                <motion.div
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="flex items-center justify-center gap-2"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                    className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full"
+                  />
+                  <span className="text-muted-foreground text-sm">
+                    Waiting for host to start the game...
+                  </span>
+                </motion.div>
+              </div>
+            )}
+          </Card>
         </motion.div>
 
         <motion.div
@@ -695,8 +701,9 @@ export default function Lobby() {
           transition={{ delay: 0.5 }}
           className="flex items-center justify-center gap-4 mt-4 flex-wrap"
         >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={async () => {
               if (!confirm('Leave this lobby?')) return
               try {
@@ -706,10 +713,10 @@ export default function Lobby() {
               }
               navigate('/')
             }}
-            className="text-sm text-red-400 hover:text-red-300 cursor-pointer"
+            className="text-red-400 hover:text-red-300 text-sm"
           >
             Leave Lobby
-          </motion.button>
+          </Button>
           <span className="text-slate-700">|</span>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -728,21 +735,23 @@ export default function Lobby() {
             )}
           </motion.button>
           <span className="text-slate-700">|</span>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowPatchNotes(true)}
-            className="text-sm text-slate-400 hover:text-slate-200 cursor-pointer"
+            className="text-muted-foreground hover:text-foreground text-sm"
           >
             Patch Notes
-          </motion.button>
+          </Button>
           <span className="text-slate-700">|</span>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowFeedback(true)}
-            className="text-sm text-amber-600 hover:text-amber-400 cursor-pointer"
+            className="text-amber-600 hover:text-amber-400 text-sm"
           >
             Send Feedback
-          </motion.button>
+          </Button>
         </motion.div>
       </motion.div>
 

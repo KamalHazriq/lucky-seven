@@ -13,6 +13,18 @@ import StrategyTips from '../components/StrategyTips'
 import { trackEvent } from '../lib/analytics'
 import type { PowerAssignments, PowerEffectType, PowerRankKey, DeckSize, TurnSeconds } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS, ALL_EFFECT_TYPES, DEFAULT_POWER_ASSIGNMENTS } from '../lib/types'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
 
 const RANK_ROWS: { key: PowerRankKey; label: string; color: string }[] = [
   { key: '10', label: '10', color: 'text-cyan-300' },
@@ -200,330 +212,326 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, ...springEntry }}
-          className="backdrop-blur-sm border rounded-2xl p-6 shadow-2xl shadow-black/20"
-          style={{ background: 'var(--panel-elevated)', borderColor: 'var(--border)' }}
         >
-          <AnimatePresence mode="wait">
-            {mode === 'menu' && (
-              <motion.div
-                key="menu"
-                variants={staggerContainer}
-                initial="hidden"
-                animate="show"
-                exit={{ opacity: 0, y: -10, transition: { duration: 0.15 } }}
-                className="space-y-3"
-              >
-                <motion.div variants={staggerItem}>
-                  <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    onClick={() => setMode('create')}
-                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-semibold text-lg transition-all shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <span className="text-xl">{'\u{1F3B4}'}</span>
-                    Create Game
-                  </motion.button>
-                </motion.div>
-                <motion.div variants={staggerItem}>
-                  <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    onClick={() => setMode('join')}
-                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl font-semibold text-lg transition-all shadow-lg shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <span className="text-xl">{'\u{1F91D}'}</span>
-                    Join Game
-                  </motion.button>
-                </motion.div>
-                <motion.div variants={staggerItem}>
-                  <HowToPlay variant="large" />
-                </motion.div>
-              </motion.div>
-            )}
-
-            {mode === 'create' && (
-              <motion.div
-                key="create"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30, transition: { duration: 0.15 } }}
-                transition={springEntry}
-                className="space-y-4"
-              >
-                <motion.button
-                  whileHover={{ x: -4 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                  onClick={() => setMode('menu')}
-                  className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer flex items-center gap-1"
+          <Card className="p-6 border-border-subtle bg-surface-overlay backdrop-blur-sm shadow-2xl shadow-black/20 rounded-2xl">
+            <AnimatePresence mode="wait">
+              {mode === 'menu' && (
+                <motion.div
+                  key="menu"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                  exit={{ opacity: 0, y: -10, transition: { duration: 0.15 } }}
+                  className="space-y-3"
                 >
-                  {'\u2190'} Back
-                </motion.button>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Your Name</label>
-                  <input
-                    type="text"
-                    name="playerName"
-                    autoComplete="off"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
-                    maxLength={20}
-                    className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Max Players</label>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                      <motion.button
-                        key={n}
-                        whileHover={{ scale: 1.08 }}
-                        whileTap={{ scale: 0.92 }}
-                        onClick={() => {
-                          setMaxPlayers(n)
-                          if (n >= 7 && deckSize === 1) {
-                            toast('Tip: 7+ players work best with 1.5\u00d7 or 2\u00d7 deck!', { icon: '\u{1F4A1}' })
-                          } else if (n >= 5 && deckSize === 1) {
-                            toast('Tip: 5+ players may run low on cards. Consider 1.5\u00d7 deck.', { icon: '\u{1F4A1}' })
-                          }
-                        }}
-                        className={`flex-1 min-w-[40px] py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                          maxPlayers === n
-                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {n}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Deck Size</label>
-                  <div className="flex gap-2">
-                    {([1, 1.5, 2] as DeckSize[]).map((ds) => (
-                      <motion.button
-                        key={ds}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setDeckSize(ds)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                          deckSize === ds
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {ds === 1 ? '1\u00d7' : ds === 1.5 ? '1.5\u00d7' : '2\u00d7'}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {deckSize === 1 ? '54 cards (standard)' : deckSize === 1.5 ? '~81 cards (1 full + 27 extra)' : '~108 cards (double deck)'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Turn Timer</label>
-                  <div className="flex gap-1.5">
-                    {([0, 30, 60, 90, 120] as TurnSeconds[]).map((ts) => (
-                      <motion.button
-                        key={ts}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setTurnSeconds(ts)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                          turnSeconds === ts
-                            ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                        }`}
-                      >
-                        {ts === 0 ? 'Off' : `${ts}s`}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    {turnSeconds === 0 ? 'No time limit per turn' : `${turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
-                  </p>
-                </div>
-
-                {/* Power Settings accordion */}
-                <div className="border border-slate-700/50 rounded-xl overflow-hidden">
-                  <motion.button
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setShowSettings(!showSettings)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-900/40 hover:bg-slate-900/60 transition-colors cursor-pointer"
-                  >
-                    <span className="text-sm font-medium text-slate-300">Power Settings</span>
-                    <motion.span
-                      animate={{ rotate: showSettings ? 180 : 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="text-slate-500"
+                  <motion.div variants={staggerItem}>
+                    <Button
+                      onClick={() => setMode('create')}
+                      variant="success"
+                      className="w-full h-12 text-lg rounded-xl"
                     >
-                      {'\u25BC'}
-                    </motion.span>
-                  </motion.button>
+                      <span className="text-xl">{'\u{1F3B4}'}</span>
+                      Create Game
+                    </Button>
+                  </motion.div>
+                  <motion.div variants={staggerItem}>
+                    <Button
+                      onClick={() => setMode('join')}
+                      className="w-full h-12 text-lg rounded-xl bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/15"
+                    >
+                      <span className="text-xl">{'\u{1F91D}'}</span>
+                      Join Game
+                    </Button>
+                  </motion.div>
+                  <motion.div variants={staggerItem}>
+                    <HowToPlay variant="large" />
+                  </motion.div>
+                </motion.div>
+              )}
 
-                  <AnimatePresence initial={false}>
-                    {showSettings && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 28, mass: 0.6 }}
-                        className="overflow-hidden"
+              {mode === 'create' && (
+                <motion.div
+                  key="create"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30, transition: { duration: 0.15 } }}
+                  transition={springEntry}
+                  className="space-y-4"
+                >
+                  <Button
+                    variant="ghost"
+                    onClick={() => setMode('menu')}
+                    className="h-auto px-0 text-muted-foreground hover:text-foreground text-sm"
+                  >
+                    {'\u2190'} Back
+                  </Button>
+
+                  <div className="ls-form-group">
+                    <Label htmlFor="create-name">Your Name</Label>
+                    <Input
+                      id="create-name"
+                      type="text"
+                      name="playerName"
+                      autoComplete="off"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      maxLength={20}
+                    />
+                  </div>
+
+                  <div className="ls-form-group">
+                    <Label>Max Players</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                        <motion.button
+                          key={n}
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.92 }}
+                          onClick={() => {
+                            setMaxPlayers(n)
+                            if (n >= 7 && deckSize === 1) {
+                              toast('Tip: 7+ players work best with 1.5\u00d7 or 2\u00d7 deck!', { icon: '\u{1F4A1}' })
+                            } else if (n >= 5 && deckSize === 1) {
+                              toast('Tip: 5+ players may run low on cards. Consider 1.5\u00d7 deck.', { icon: '\u{1F4A1}' })
+                            }
+                          }}
+                          className={`flex-1 min-w-[40px] py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                            maxPlayers === n
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {n}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ls-form-group">
+                    <Label>Deck Size</Label>
+                    <div className="flex gap-2">
+                      {([1, 1.5, 2] as DeckSize[]).map((ds) => (
+                        <motion.button
+                          key={ds}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setDeckSize(ds)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                            deckSize === ds
+                              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {ds === 1 ? '1\u00d7' : ds === 1.5 ? '1.5\u00d7' : '2\u00d7'}
+                        </motion.button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {deckSize === 1 ? '54 cards (standard)' : deckSize === 1.5 ? '~81 cards (1 full + 27 extra)' : '~108 cards (double deck)'}
+                    </p>
+                  </div>
+
+                  <div className="ls-form-group">
+                    <Label>Turn Timer</Label>
+                    <div className="flex gap-1.5">
+                      {([0, 30, 60, 90, 120] as TurnSeconds[]).map((ts) => (
+                        <motion.button
+                          key={ts}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setTurnSeconds(ts)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                            turnSeconds === ts
+                              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {ts === 0 ? 'Off' : `${ts}s`}
+                        </motion.button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {turnSeconds === 0 ? 'No time limit per turn' : `${turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
+                    </p>
+                  </div>
+
+                  {/* Power Settings accordion */}
+                  <div className="rounded-xl border border-border-subtle overflow-hidden">
+                    <motion.button
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setShowSettings(!showSettings)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 bg-surface-panel hover:bg-secondary/80 transition-colors cursor-pointer"
+                    >
+                      <span className="text-sm font-medium text-foreground">Power Settings</span>
+                      <motion.span
+                        animate={{ rotate: showSettings ? 180 : 0 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        className="text-muted-foreground"
                       >
-                        <div className="p-4 space-y-3 border-t border-slate-700/50">
-                          {RANK_ROWS.map((row) => (
-                            <div key={row.key}>
-                              <label className={`block text-xs font-medium ${row.color} mb-1`}>
-                                {row.label} Power
-                              </label>
-                              <select
-                                value={assignments[row.key]}
-                                onChange={(e) => updateAssignment(row.key, e.target.value as PowerEffectType)}
-                                className="w-full px-3 py-1.5 bg-slate-900/80 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500 cursor-pointer"
-                              >
-                                {ALL_EFFECT_TYPES.map((o) => (
-                                  <option key={o.value} value={o.value}>{o.label}</option>
+                        {'\u25BC'}
+                      </motion.span>
+                    </motion.button>
+
+                    <AnimatePresence initial={false}>
+                      {showSettings && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 28, mass: 0.6 }}
+                          className="overflow-hidden"
+                        >
+                          <Separator />
+                          <div className="p-4 space-y-3">
+                            {RANK_ROWS.map((row) => (
+                              <div key={row.key} className="ls-form-group">
+                                <Label className={row.color}>
+                                  {row.label} Power
+                                </Label>
+                                <Select
+                                  value={assignments[row.key]}
+                                  onValueChange={(v) => updateAssignment(row.key, v as PowerEffectType)}
+                                >
+                                  <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {ALL_EFFECT_TYPES.map((o) => (
+                                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+
+                            <div className="ls-form-group">
+                              <Label className="text-fuchsia-300">
+                                Jokers in Deck
+                              </Label>
+                              <div className="flex gap-2">
+                                {[1, 2, 3, 4].map((n) => (
+                                  <motion.button
+                                    key={n}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => setJokerCount(n)}
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                                      jokerCount === n
+                                        ? 'bg-fuchsia-600 text-white'
+                                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                    }`}
+                                  >
+                                    {n}
+                                  </motion.button>
                                 ))}
-                              </select>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">Default: 2 (standard deck)</p>
                             </div>
-                          ))}
 
-                          <div>
-                            <label className="block text-xs font-medium text-fuchsia-300 mb-1">
-                              Jokers in Deck
-                            </label>
-                            <div className="flex gap-2">
-                              {[1, 2, 3, 4].map((n) => (
-                                <motion.button
-                                  key={n}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => setJokerCount(n)}
-                                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                                    jokerCount === n
-                                      ? 'bg-fuchsia-600 text-white'
-                                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                  }`}
-                                >
-                                  {n}
-                                </motion.button>
-                              ))}
+                            <div className="ls-form-group">
+                              <Label className="text-amber-300">
+                                Peek Allows Opponent
+                              </Label>
+                              <div className="flex gap-2">
+                                {([false, true] as const).map((val) => (
+                                  <motion.button
+                                    key={String(val)}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => setPeekAllowsOpponent(val)}
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                                      peekAllowsOpponent === val
+                                        ? 'bg-amber-600 text-white'
+                                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                    }`}
+                                  >
+                                    {val ? 'Yes' : 'No'}
+                                  </motion.button>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">
+                                {peekAllowsOpponent ? 'Peek powers can target your cards OR opponent cards' : 'Peek powers only peek your own cards (default)'}
+                              </p>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-1">Default: 2 (standard deck)</p>
-                          </div>
 
-                          <div>
-                            <label className="block text-xs font-medium text-amber-300 mb-1">
-                              Peek Allows Opponent
-                            </label>
-                            <div className="flex gap-2">
-                              {([false, true] as const).map((val) => (
-                                <motion.button
-                                  key={String(val)}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => setPeekAllowsOpponent(val)}
-                                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                                    peekAllowsOpponent === val
-                                      ? 'bg-amber-600 text-white'
-                                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                  }`}
-                                >
-                                  {val ? 'Yes' : 'No'}
-                                </motion.button>
-                              ))}
+                            <div className="bg-surface-panel rounded-lg p-2">
+                              <p className="text-[10px] text-amber-400/80 font-medium">
+                                Powers can be used every time you draw that card type. Any rank can be assigned any effect!
+                              </p>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-1">
-                              {peekAllowsOpponent ? 'Peek powers can target your cards OR opponent cards' : 'Peek powers only peek your own cards (default)'}
-                            </p>
                           </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-                          <div className="bg-slate-900/40 rounded-lg p-2">
-                            <p className="text-[10px] text-amber-400/80 font-medium">
-                              Powers can be used every time you draw that card type. Any rank can be assigned any effect!
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                  <Button
+                    variant="success"
+                    onClick={handleCreate}
+                    disabled={busy}
+                    className="w-full h-11 rounded-xl text-base"
+                  >
+                    {busy ? 'Creating...' : 'Create Game'}
+                  </Button>
+                </motion.div>
+              )}
 
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleCreate}
-                  disabled={busy}
-                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all cursor-pointer shadow-lg shadow-emerald-600/15"
+              {mode === 'join' && (
+                <motion.div
+                  key="join"
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -30, transition: { duration: 0.15 } }}
+                  transition={springEntry}
+                  className="space-y-4"
                 >
-                  {busy ? 'Creating...' : 'Create Game'}
-                </motion.button>
-              </motion.div>
-            )}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setMode('menu')}
+                    className="h-auto px-0 text-muted-foreground hover:text-foreground text-sm"
+                  >
+                    {'\u2190'} Back
+                  </Button>
 
-            {mode === 'join' && (
-              <motion.div
-                key="join"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30, transition: { duration: 0.15 } }}
-                transition={springEntry}
-                className="space-y-4"
-              >
-                <motion.button
-                  whileHover={{ x: -4 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                  onClick={() => setMode('menu')}
-                  className="text-slate-400 hover:text-slate-200 text-sm cursor-pointer flex items-center gap-1"
-                >
-                  {'\u2190'} Back
-                </motion.button>
+                  <div className="ls-form-group">
+                    <Label htmlFor="join-name">Your Name</Label>
+                    <Input
+                      id="join-name"
+                      type="text"
+                      name="playerName"
+                      autoComplete="off"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      maxLength={20}
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Your Name</label>
-                  <input
-                    type="text"
-                    name="playerName"
-                    autoComplete="off"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
-                    maxLength={20}
-                    className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-                </div>
+                  <div className="ls-form-group">
+                    <Label htmlFor="join-code">Join Code</Label>
+                    <Input
+                      id="join-code"
+                      type="text"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. ABC123"
+                      maxLength={6}
+                      className="uppercase tracking-widest text-center text-lg font-mono"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Join Code</label>
-                  <input
-                    type="text"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    placeholder="e.g. ABC123"
-                    maxLength={6}
-                    className="w-full px-4 py-2.5 bg-slate-900/80 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors uppercase tracking-widest text-center text-lg"
-                  />
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.02, y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleJoin}
-                  disabled={busy}
-                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-all cursor-pointer shadow-lg shadow-indigo-600/15"
-                >
-                  {busy ? 'Joining...' : 'Join Game'}
-                </motion.button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <Button
+                    onClick={handleJoin}
+                    disabled={busy}
+                    className="w-full h-11 rounded-xl text-base bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/15"
+                  >
+                    {busy ? 'Joining...' : 'Join Game'}
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Card>
         </motion.div>
 
         <motion.div
@@ -532,7 +540,7 @@ export default function Home() {
           transition={{ delay: 0.6 }}
           className="text-center mt-6 space-y-1"
         >
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             2-8 players &middot; Lowest score wins &middot; Sevens are worth zero!
           </p>
           <div className="flex items-center justify-center gap-3">
