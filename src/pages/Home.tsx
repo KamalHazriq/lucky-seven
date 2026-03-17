@@ -10,6 +10,7 @@ import VersionLabel from '../components/VersionLabel'
 import PatchNotesModal from '../components/PatchNotesModal'
 import GameStats from '../components/GameStats'
 import StrategyTips from '../components/StrategyTips'
+import { trackEvent } from '../lib/analytics'
 import type { PowerAssignments, PowerEffectType, PowerRankKey, DeckSize, TurnSeconds } from '../lib/types'
 import { DEFAULT_GAME_SETTINGS, ALL_EFFECT_TYPES, DEFAULT_POWER_ASSIGNMENTS } from '../lib/types'
 
@@ -91,6 +92,7 @@ export default function Home() {
         turnSeconds,
         peekAllowsOpponent,
       })
+      trackEvent('create_game', { player_count: maxPlayers, deck_size: deckSize, turn_seconds: turnSeconds }, gameId)
       navigate(`/lobby/${gameId}`)
     } catch (e) {
       toast.error((e as Error).message)
@@ -112,6 +114,7 @@ export default function Home() {
         return
       }
       await joinGame(gameId, name.trim())
+      trackEvent('join_game', { join_code_used: true }, gameId)
       navigate(`/lobby/${gameId}`)
     } catch (e) {
       toast.error((e as Error).message)

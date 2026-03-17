@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
 import { findGameByCode, joinGame } from '../lib/supabaseGameService'
 import { LOBBY_COLORS } from '../lib/playerColors'
+import { trackEvent } from '../lib/analytics'
 import type { PlayerDoc } from '../lib/types'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
@@ -95,6 +96,7 @@ export default function Join() {
     setBusy(true)
     try {
       await joinGame(gameId, name.trim(), selectedColor ?? undefined)
+      trackEvent('join_game', { invite_link: true }, gameId)
       localStorage.setItem('lucky7_playerName', name.trim())
       navigate(`/lobby/${gameId}`, { replace: true })
     } catch (e) {

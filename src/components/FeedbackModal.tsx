@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { submitFeedback } from '../lib/supabaseGameService'
 import { CURRENT_VERSION } from '../constants/releases'
+import { trackEvent } from '../lib/analytics'
 
 const COOLDOWN_MS = 5000
 const DEV_MAX_ATTEMPTS = 5
@@ -80,6 +81,7 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
     })
     lastSubmitRef.current = Date.now()
     setSent(true)
+    trackEvent('feedback_submitted', { rating: rating || 3 })
     toast.success('Feedback sent! Thank you!')
   }
 

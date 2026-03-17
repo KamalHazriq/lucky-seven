@@ -71,10 +71,22 @@ export default function GameStats() {
           color="bg-slate-900/40 border-slate-700/40 hover:border-emerald-600/40"
         />
         <StatCard
+          emoji={'\u{1F3C6}'}
+          label="Games Finished"
+          value={stats.gamesFinished}
+          color="bg-slate-900/40 border-slate-700/40 hover:border-purple-600/40"
+        />
+        <StatCard
           emoji={'\u{1F440}'}
           label="Total Visits"
           value={stats.totalVisits}
           color="bg-slate-900/40 border-slate-700/40 hover:border-amber-600/40"
+        />
+        <StatCard
+          emoji={'\u{1F4C4}'}
+          label="Page Views"
+          value={stats.pageViews}
+          color="bg-slate-900/40 border-slate-700/40 hover:border-cyan-600/40"
         />
       </motion.div>
     </motion.div>

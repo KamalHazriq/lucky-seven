@@ -1,0 +1,50 @@
+name: Daily Maintenance
+
+# Runs daily at 03:00 UTC. Also triggerable manually.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      chat_days:
+        description: 'Chat message retention (days)'
+        default: '30'
+      history_days:
+        description: 'Game history retention (days)'
+        default: '30'
+      games_days:
+        description: 'Finished game retention (days)'
+        default: '90'
+
+jobs:
+  run-maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger maintenance Edge Function
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+        run: |
+          CHAT_DAYS="${{ github.event.inputs.chat_days || '30' }}"
+          HISTORY_DAYS="${{ github.event.inputs.history_days || '30' }}"
+          GAMES_DAYS="${{ github.event.inputs.games_days || '90' }}"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${SUPABASE_URL}/functions/v1/maintenance?chat_days=${CHAT_DAYS}&history_days=${HISTORY_DAYS}&games_days=${GAMES_DAYS}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "x-maintenance-secret: ${MAINTENANCE_SECRET}" \
+            -H "Content-Type: application/json")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Maintenance failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "✅ Maintenance completed successfully"
