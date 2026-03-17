@@ -811,20 +811,22 @@ export async function getGlobalStats(): Promise<{
   gamesPlayed: number
   totalVisits: number
   lastGameAt: number | null
-  pageViews: number
   gamesFinished: number
+  totalPlayers: number
+  uniquePlayers: number
 }> {
   const { data, error } = await supabase.rpc('get_global_stats')
-  if (error || !data) return { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, pageViews: 0, gamesFinished: 0 }
+  if (error || !data) return { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, gamesFinished: 0, totalPlayers: 0, uniquePlayers: 0 }
   // TABLE-returning RPCs return an array of rows
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined
-  if (!row) return { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, pageViews: 0, gamesFinished: 0 }
+  if (!row) return { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, gamesFinished: 0, totalPlayers: 0, uniquePlayers: 0 }
   return {
     gamesPlayed: (row.games_played as number) ?? 0,
     totalVisits: (row.total_visits as number) ?? 0,
     lastGameAt: (row.last_game_at as number) ?? null,
-    pageViews: (row.page_views as number) ?? 0,
     gamesFinished: (row.games_finished as number) ?? 0,
+    totalPlayers: (row.total_players as number) ?? 0,
+    uniquePlayers: Number(row.unique_players) ?? 0,
   }
 }
 

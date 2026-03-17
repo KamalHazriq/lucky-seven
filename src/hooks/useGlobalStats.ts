@@ -6,11 +6,12 @@ export interface GlobalStats {
   gamesPlayed: number
   totalVisits: number
   lastGameAt: number | null
-  pageViews: number
   gamesFinished: number
+  totalPlayers: number
+  uniquePlayers: number
 }
 
-const INITIAL: GlobalStats = { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, pageViews: 0, gamesFinished: 0 }
+const INITIAL: GlobalStats = { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, gamesFinished: 0, totalPlayers: 0, uniquePlayers: 0 }
 
 /**
  * Fetch global game statistics from Supabase (single read, no live listener).

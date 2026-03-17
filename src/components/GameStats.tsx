@@ -65,6 +65,12 @@ export default function GameStats() {
         className="grid grid-cols-2 gap-2"
       >
         <StatCard
+          emoji={'\u{1F440}'}
+          label="Total Visits"
+          value={stats.totalVisits}
+          color="bg-slate-900/40 border-slate-700/40 hover:border-amber-600/40"
+        />
+        <StatCard
           emoji={'\u{1F3AE}'}
           label="Games Played"
           value={stats.gamesPlayed}
@@ -77,16 +83,16 @@ export default function GameStats() {
           color="bg-slate-900/40 border-slate-700/40 hover:border-purple-600/40"
         />
         <StatCard
-          emoji={'\u{1F440}'}
-          label="Total Visits"
-          value={stats.totalVisits}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-amber-600/40"
+          emoji={'\u{1F465}'}
+          label="Total Players"
+          value={stats.totalPlayers}
+          color="bg-slate-900/40 border-slate-700/40 hover:border-cyan-600/40"
         />
         <StatCard
-          emoji={'\u{1F4C4}'}
-          label="Page Views"
-          value={stats.pageViews}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-cyan-600/40"
+          emoji={'\u{1F464}'}
+          label="Unique Players"
+          value={stats.uniquePlayers}
+          color="bg-slate-900/40 border-slate-700/40 hover:border-rose-600/40"
         />
       </motion.div>
     </motion.div>
