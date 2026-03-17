@@ -25,9 +25,18 @@
   --color-accent: var(--ui-accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--ui-border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Lucky Seven surface tokens — for shadcn component defaults */
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-border-subtle: var(--border-subtle);
 
   /* shadcn/ui radius token */
   --radius-sm: calc(var(--radius) - 4px);
@@ -77,9 +86,18 @@
   --ui-accent: #334155;
   --accent-foreground: #e2e8f0;
   --destructive: #ef4444;
+  --success: #10b981;
+  --success-foreground: #0f172a;
+  --warning: #f59e0b;
+  --warning-foreground: #0f172a;
   --ui-border: #334155;
   --input: #334155;
   --ring: #f59e0b;
+
+  /* Lucky Seven surface tokens */
+  --surface-panel: rgba(15, 23, 42, 0.60);
+  --surface-overlay: rgba(30, 41, 59, 0.95);
+  --border-subtle: rgba(51, 65, 85, 0.40);
 }
 
 /* ─── Theme variables ─────────────────────────────────────── */
@@ -137,6 +155,13 @@
   --accent-foreground: #e4e4e7;
   --ui-border: #3f3f46;
   --input: #3f3f46;
+  --success: #10b981;
+  --success-foreground: #09090b;
+  --warning: #f59e0b;
+  --warning-foreground: #09090b;
+  --surface-panel: rgba(24, 24, 27, 0.60);
+  --surface-overlay: rgba(39, 39, 42, 0.95);
+  --border-subtle: rgba(63, 63, 70, 0.40);
 }
 
 [data-theme="light"] {
@@ -173,9 +198,16 @@
   --ui-accent: #f1f5f9;
   --accent-foreground: #1e293b;
   --destructive: #ef4444;
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
   --ui-border: #cbd5e1;
   --input: #cbd5e1;
   --ring: #d97706;
+  --surface-panel: rgba(241, 245, 249, 0.60);
+  --surface-overlay: rgba(255, 255, 255, 0.95);
+  --border-subtle: rgba(203, 213, 225, 0.40);
 }
 
 body {
@@ -431,6 +463,70 @@ select option {
   .table-zone {
     min-height: max(520px, calc(100dvh - var(--top-offset, 56px) - 4rem)) !important;
   }
+}
+
+/* ─── Lucky Seven UI helper classes ──────────────────────── */
+/* Reusable patterns for shadcn-powered UI screens          */
+
+/* Panel container — frosted glass surface for dialog/card sections */
+.ls-panel {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: var(--space-md);
+}
+
+/* Section header — uppercase label for grouping controls */
+.ls-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+/* Settings row — clickable row with icon + label + control */
+.ls-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.ls-settings-row:hover {
+  background: var(--panel-elevated);
+}
+
+/* Form group — vertical stack for label + input pairs */
+.ls-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Close button — small round X button for modal headers */
+.ls-close-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--secondary);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+  border: none;
+}
+.ls-close-btn:hover {
+  background: var(--ui-accent);
+  color: var(--text);
 }
 
 /* Respect prefers-reduced-motion at CSS level */
