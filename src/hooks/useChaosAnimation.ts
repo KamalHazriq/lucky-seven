@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LogEntry, PlayerDoc } from '../lib/types'
+import { playSfx } from '../lib/sfx'
 
 /**
  * Detects chaos/rearrange power usage and returns a map of player IDs
@@ -42,7 +43,8 @@ export function useChaosAnimation(
     }
     if (!targetId) return
 
-    // Trigger animation
+    // Trigger animation + sound
+    playSfx('shuffle')
     setAnimating((prev) => ({ ...prev, [targetId!]: true }))
 
     // Clear after animation duration (~900ms)

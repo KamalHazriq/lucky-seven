@@ -529,6 +529,27 @@ select option {
   color: var(--text);
 }
 
+/* ─── Button micro-interactions ────────────────────────── */
+/* Subtle scale on hover/press for all shadcn buttons       */
+[data-slot="button"]:not(:disabled) {
+  transition: transform 0.12s cubic-bezier(0.34, 1.2, 0.64, 1), background 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+[data-slot="button"]:not(:disabled):hover {
+  transform: scale(1.02);
+}
+[data-slot="button"]:not(:disabled):active {
+  transform: scale(0.97);
+}
+/* Ghost/link buttons get a lighter effect */
+[data-slot="button"][data-variant="ghost"]:not(:disabled):hover,
+[data-slot="button"][data-variant="link"]:not(:disabled):hover {
+  transform: scale(1.01);
+}
+
+/* ─── Dialog/modal open animation ─────────────────────── */
+/* shadcn Dialog already handles this via Radix + Tailwind  */
+/* animate-in/out classes — no additional CSS needed.       */
+
 /* Respect prefers-reduced-motion at CSS level */
 @media (prefers-reduced-motion: reduce) {
   .card-shimmer { animation: none; }
@@ -542,6 +563,10 @@ select option {
   .staging-active { animation: none; }
   .seat-breathe { animation: none; }
   .chaos-shuffle { animation: none; }
+  [data-slot="button"]:not(:disabled):hover,
+  [data-slot="button"]:not(:disabled):active {
+    transform: none;
+  }
 }
 
 /* Pause all CSS animations when the tab is hidden (set by visibilitychange listener in main.tsx) */
@@ -553,6 +578,7 @@ html[data-page-hidden] .slot-pulse-ring,
 html[data-page-hidden] .selection-pulse,
 html[data-page-hidden] .selection-pulse-panel,
 html[data-page-hidden] .staging-active,
-html[data-page-hidden] .seat-breathe {
+html[data-page-hidden] .seat-breathe,
+html[data-page-hidden] .chaos-shuffle {
   animation-play-state: paused;
 }
