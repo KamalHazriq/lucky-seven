@@ -10,6 +10,9 @@ import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
 import { playSfx } from '../lib/sfx'
 import { trackEvent } from '../lib/analytics'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import type { PlayerScore } from '../lib/types'
 
 // ─── Confetti (lightweight, no external deps) ──────────────────
@@ -161,7 +164,7 @@ export default function Results() {
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full"
+          className="w-8 h-8 border-2 border-muted-foreground border-t-transparent rounded-full"
         />
       </div>
     )
@@ -218,7 +221,7 @@ export default function Results() {
           <motion.h1
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
-            className="text-4xl font-bold text-amber-300 mb-2"
+            className="text-4xl font-bold text-primary mb-2"
           >
             Game Over!
           </motion.h1>
@@ -226,7 +229,7 @@ export default function Results() {
             <motion.p
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="text-slate-400 text-sm"
+              className="text-muted-foreground text-sm"
             >
               Waiting for all players to reveal... ({scores.length}/{totalPlayers})
             </motion.p>
@@ -238,18 +241,18 @@ export default function Results() {
               transition={{ delay: 0.3 }}
             >
               {isSharedWin ? (
-                <p className="text-amber-400 text-base font-semibold">
+                <p className="text-primary text-base font-semibold">
                   🏆 Shared Win! {winnerNames.join(' & ')} are the champions! 🏆
                 </p>
               ) : (
-                <p className="text-amber-400 text-base font-semibold">
+                <p className="text-primary text-base font-semibold">
                   🏆 {winnerNames[0]} wins! 🏆
                 </p>
               )}
             </motion.div>
           )}
           {allRevealed && game.endCalledBy && (
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1">
               Game ended by {players[game.endCalledBy]?.displayName ?? 'a player'}
             </p>
           )}
@@ -272,41 +275,40 @@ export default function Results() {
                     ? 'bg-amber-900/25 border-amber-500/40 shadow-lg shadow-amber-500/10'
                     : isYou
                       ? 'bg-amber-900/10 border-amber-500/25'
-                      : 'border'
+                      : 'bg-surface-panel border-border-subtle'
                   }
                 `}
-                style={!isWinner && !isYou ? { background: 'var(--panel)', borderColor: 'var(--border)' } : undefined}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold
                     ${isWinner
                       ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-amber-900'
-                      : 'bg-slate-700 text-slate-400'
+                      : 'bg-secondary text-muted-foreground'
                     }
                   `}>
                     {rank + 1}
                   </div>
                   <div>
-                    <span className={`font-semibold ${isYou ? 'text-amber-300' : 'text-slate-200'}`}>
+                    <span className={`font-semibold ${isYou ? 'text-primary' : 'text-foreground'}`}>
                       {score.displayName}
                       {isYou && (
-                        <span className="ml-1.5 inline-block px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold rounded-md align-middle">
+                        <Badge variant="outline" className="ml-1.5 px-1.5 py-0.5 bg-primary/20 border-primary/40 text-primary text-[10px] font-bold align-middle">
                           YOU
-                        </span>
+                        </Badge>
                       )}
                     </span>
                     {isWinner && (
-                      <span className="block text-xs text-amber-400 font-medium">
+                      <span className="block text-xs text-primary font-medium">
                         {isSharedWin ? 'Shared Win!' : 'Winner!'}
                       </span>
                     )}
                   </div>
                   <div className="ml-auto text-right">
-                    <span className={`text-2xl font-bold ${isWinner ? 'text-amber-300' : 'text-slate-300'}`}>
+                    <span className={`text-2xl font-bold ${isWinner ? 'text-primary' : 'text-foreground'}`}>
                       {score.total}
                     </span>
-                    <span className="block text-xs text-slate-500">
+                    <span className="block text-xs text-muted-foreground">
                       {score.sevens > 0 ? `${score.sevens} seven${score.sevens > 1 ? 's' : ''}` : 'no sevens'}
                     </span>
                   </div>
@@ -322,8 +324,11 @@ export default function Results() {
           })}
         </div>
 
-        <div className="text-center mt-6 flex items-center justify-center gap-3">
-          <button
+        <Separator className="my-6" />
+
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            variant="success"
             onClick={async () => {
               if (playAgainBusy || !gameId) return
               setPlayAgainBusy(true)
@@ -341,16 +346,17 @@ export default function Results() {
               }
             }}
             disabled={playAgainBusy}
-            className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 text-white rounded-xl font-semibold transition-all cursor-pointer"
+            className="px-8 h-12 rounded-xl text-base"
           >
             {playAgainBusy ? 'Joining...' : 'Play Again'}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => navigate('/')}
-            className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-semibold transition-all cursor-pointer"
+            className="px-6 h-12 rounded-xl text-base"
           >
             Home
-          </button>
+          </Button>
         </div>
       </motion.div>
 

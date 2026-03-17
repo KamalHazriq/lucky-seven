@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
 
@@ -23,10 +25,10 @@ export default function StrategyTips() {
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm">{'\u{1F4A1}'}</span>
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Strategy Tips</h3>
-        <span className="px-1.5 py-0.5 bg-amber-900/30 border border-amber-600/30 text-amber-400 rounded-full text-[9px] font-bold">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Strategy Tips</h3>
+        <Badge variant="outline" className="px-1.5 py-0.5 bg-amber-900/30 border-amber-600/30 text-amber-400 text-[9px] font-bold">
           Coming Soon
-        </span>
+        </Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -37,13 +39,14 @@ export default function StrategyTips() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.95 + i * 0.06, ...springEntry }}
             whileHover={{ scale: 1.03, y: -1 }}
-            className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-900/40 border border-slate-700/40"
           >
-            <span className="text-base shrink-0 mt-0.5">{tip.emoji}</span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold text-slate-200">{tip.title}</p>
-              <p className="text-[10px] text-slate-500 leading-snug">{tip.desc}</p>
-            </div>
+            <Card className="flex-row items-start gap-2 p-2.5">
+              <span className="text-base shrink-0 mt-0.5">{tip.emoji}</span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-foreground">{tip.title}</p>
+                <p className="text-[10px] text-muted-foreground leading-snug">{tip.desc}</p>
+              </div>
+            </Card>
           </motion.div>
         ))}
       </div>

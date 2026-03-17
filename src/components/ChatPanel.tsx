@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getSeatColor } from '../lib/playerColors'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import type { ChatMessage } from '../lib/types'
 
 const QUICK_EMOJIS = ['\u{1F44D}', '\u{1F44E}', '\u{1F602}', '\u{1F631}', '\u{1F525}', '\u{1F389}', '\u{1F60E}', '\u{1F914}']
@@ -195,7 +197,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 16, scale: 0.96 }}
           transition={{ type: 'spring', stiffness: 350, damping: 26, mass: 0.6 }}
-          className="fixed z-40 w-80 max-w-[calc(100vw-24px)] bg-slate-800/95 backdrop-blur-md border border-slate-600/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+          className="fixed z-40 w-80 max-w-[calc(100vw-24px)] bg-surface-overlay backdrop-blur-md border border-border-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           style={{
             maxHeight: 'min(420px, 60vh)',
             ...(isDesktop && pos
@@ -205,19 +207,21 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
         >
           {/* Header — draggable on desktop */}
           <div
-            className={`flex items-center justify-between px-3 py-2 border-b border-slate-700/50 ${isDesktop ? 'cursor-grab active:cursor-grabbing' : ''}`}
+            className={`flex items-center justify-between px-3 py-2 border-b border-border-subtle ${isDesktop ? 'cursor-grab active:cursor-grabbing' : ''}`}
             onPointerDown={isDesktop ? handlePointerDown : undefined}
             onPointerMove={isDesktop ? handlePointerMove : undefined}
             onPointerUp={isDesktop ? handlePointerUp : undefined}
             style={isDesktop ? { touchAction: 'none' } : undefined}
           >
-            <h3 className="text-sm font-semibold text-amber-300 select-none">Chat</h3>
-            <button
+            <h3 className="text-sm font-semibold text-primary select-none">Chat</h3>
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-xs"
+              className="rounded-full text-muted-foreground hover:text-foreground"
             >
               &times;
-            </button>
+            </Button>
           </div>
 
           {/* Messages */}
@@ -227,7 +231,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
             onScroll={handleScroll}
           >
             {messages.length === 0 && (
-              <p className="text-xs text-slate-500 text-center py-4">No messages yet. Say hi!</p>
+              <p className="text-xs text-muted-foreground text-center py-4">No messages yet. Say hi!</p>
             )}
             {messages.map((msg) => {
               const isLocal = msg.userId === localUserId
@@ -261,7 +265,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
                         max-w-[85%] px-3 py-1.5 rounded-2xl text-sm leading-snug break-words
                         ${isLocal
                           ? 'rounded-br-sm text-white'
-                          : 'rounded-bl-sm text-slate-100'
+                          : 'rounded-bl-sm text-foreground'
                         }
                       `}
                       style={{
@@ -289,7 +293,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.18 }}
                 onClick={scrollToBottom}
-                className="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-full shadow-lg cursor-pointer"
+                className="absolute left-1/2 -translate-x-1/2 z-50 px-3 py-1 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-full shadow-lg cursor-pointer"
                 style={{ bottom: '7.5rem' }}
               >
                 New messages &darr;
@@ -298,7 +302,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
           </AnimatePresence>
 
           {/* Quick emoji row */}
-          <div className="flex gap-1 px-2 py-1.5 border-t border-slate-700/30">
+          <div className="flex gap-1 px-2 py-1.5 border-t border-border-subtle">
             {QUICK_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
@@ -312,7 +316,7 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
 
           {/* Input */}
           <div className="flex gap-2 px-2 pb-2">
-            <input
+            <Input
               ref={inputRef}
               type="text"
               value={text}
@@ -320,15 +324,16 @@ export default function ChatPanel({ open, messages, localUserId, onSend, onClose
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               maxLength={300}
-              className="flex-1 px-3 py-2 bg-slate-900/80 border border-slate-600/60 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+              className="flex-1 h-9 rounded-xl text-sm"
             />
-            <button
+            <Button
               onClick={handleSend}
               disabled={!text.trim()}
-              className="px-3 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-colors cursor-pointer"
+              size="sm"
+              className="rounded-xl"
             >
               Send
-            </button>
+            </Button>
           </div>
         </motion.div>
       )}
