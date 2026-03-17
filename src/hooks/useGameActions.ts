@@ -195,6 +195,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
       await fn()
     } catch (e) {
       toast.error((e as Error).message)
+      playSfx('error'); vibrate(100)
     } finally {
       busyRef.current = false
       setBusy(false)
@@ -497,7 +498,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
       case 'anyLockedSlot':
         withBusy(async () => {
           await unlockCard(gameId!, first.playerId, first.slotIndex)
-          playSfx('unlock')
+          playSfx('unlock'); vibrate()
           if (!reduced) {
             setStampOverlays((prev) => ({ ...prev, [first.playerId]: 'unlock' }))
             setTimeout(() => setStampOverlays((prev) => ({ ...prev, [first.playerId]: null })), 800)
@@ -546,7 +547,7 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
 
   const handleUnlockSelect = (targetPlayerId: string, slotIndex: number) => {
     setModal({ type: 'none' })
-    withBusy(async () => { await unlockCard(gameId!, targetPlayerId, slotIndex); playSfx('unlock') })
+    withBusy(async () => { await unlockCard(gameId!, targetPlayerId, slotIndex); playSfx('unlock'); vibrate() })
   }
 
   const handleRearrangeSelect = (targetPlayerId: string) => {

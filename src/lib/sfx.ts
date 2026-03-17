@@ -28,7 +28,7 @@ function beep(freq: number, duration: number, type: OscillatorType = 'sine', vol
   const gain = c.createGain()
   osc.type = type
   osc.frequency.value = freq
-  gain.gain.value = volume
+  gain.gain.value = volume * getSfxVolume()
   gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + duration)
   osc.connect(gain)
   gain.connect(c.destination)
@@ -113,6 +113,7 @@ export const SFX = {
 const SFX_KEY    = 'lucky7_sfx_enabled'
 const HAPTIC_KEY = 'lucky7_haptic_enabled'
 const PERF_KEY   = 'lucky7_perf_mode'
+const VOL_KEY    = 'lucky7_sfx_volume'
 
 export function isSfxEnabled(): boolean {
   return localStorage.getItem(SFX_KEY) === 'true'
@@ -120,6 +121,18 @@ export function isSfxEnabled(): boolean {
 
 export function setSfxEnabled(v: boolean) {
   localStorage.setItem(SFX_KEY, v ? 'true' : 'false')
+}
+
+/** Volume 0–1, default 0.7 */
+export function getSfxVolume(): number {
+  const raw = localStorage.getItem(VOL_KEY)
+  if (raw === null) return 0.7
+  const n = parseFloat(raw)
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0.7
+}
+
+export function setSfxVolume(v: number) {
+  localStorage.setItem(VOL_KEY, String(Math.max(0, Math.min(1, v))))
 }
 
 export function isHapticEnabled(): boolean {

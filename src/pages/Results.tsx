@@ -8,7 +8,7 @@ import { revealHand, subscribeReveals } from '../lib/supabaseGameService'
 import { writeGameSummary, playAgain, joinGame } from '../lib/supabaseGameService'
 import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
-import { playSfx } from '../lib/sfx'
+import { playSfx, vibrate } from '../lib/sfx'
 import { trackEvent } from '../lib/analytics'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -192,7 +192,7 @@ export default function Results() {
   if (allRevealed && !celebratedRef.current) {
     celebratedRef.current = true
     // Small delay so the UI renders first
-    setTimeout(() => playSfx('celebrate'), 400)
+    setTimeout(() => { playSfx('celebrate'); vibrate(150) }, 400)
   }
 
   // Winner names for display

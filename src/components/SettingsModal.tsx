@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { isSfxEnabled, setSfxEnabled, isHapticEnabled, setHapticEnabled, isPerformanceModeEnabled, setPerformanceModeEnabled } from '../lib/sfx'
+import { isSfxEnabled, setSfxEnabled, isHapticEnabled, setHapticEnabled, isPerformanceModeEnabled, setPerformanceModeEnabled, getSfxVolume, setSfxVolume } from '../lib/sfx'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useTheme, type Theme } from '../hooks/useTheme'
 import { useState, useEffect } from 'react'
@@ -71,12 +71,14 @@ export default function SettingsModal({
   const [sfx, setSfxState] = useState(isSfxEnabled)
   const [haptic, setHapticState] = useState(isHapticEnabled)
   const [perfMode, setPerfModeState] = useState(isPerformanceModeEnabled)
+  const [volume, setVolumeState] = useState(getSfxVolume)
   const hasVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator
 
   useEffect(() => {
     setSfxState(isSfxEnabled())
     setHapticState(isHapticEnabled())
     setPerfModeState(isPerformanceModeEnabled())
+    setVolumeState(getSfxVolume())
   }, [open])
 
   const toggleSfx = () => {
@@ -168,6 +170,27 @@ export default function SettingsModal({
                     className="data-[state=checked]:bg-emerald-500"
                   />
                 </button>
+
+                {/* Volume slider — only visible when SFX is on */}
+                {sfx && (
+                  <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-border-subtle bg-surface-panel">
+                    <span className="text-xs text-muted-foreground shrink-0">Vol</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={volume}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value)
+                        setSfxVolume(v)
+                        setVolumeState(v)
+                      }}
+                      className="vol-slider flex-1"
+                    />
+                    <span className="text-xs text-muted-foreground w-8 text-right">{Math.round(volume * 100)}%</span>
+                  </div>
+                )}
 
                 {/* Haptics toggle */}
                 {hasVibrate && (
