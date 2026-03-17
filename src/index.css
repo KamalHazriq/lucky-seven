@@ -1,12 +1,39 @@
 @import 'tailwindcss';
 
 @theme {
+  /* Game-specific colors */
   --color-card-back: #1e3a5f;
   --color-card-front: #f8fafc;
   --color-felt: #0f4c2e;
   --color-felt-dark: #0a3520;
   --color-gold: #f59e0b;
   --color-gold-dim: #92400e;
+
+  /* shadcn/ui semantic colors — reference CSS variables below */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--ui-accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--ui-border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* shadcn/ui radius token */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 /* ─── Spacing tokens (consistent 8px grid) ────────────────── */
@@ -16,6 +43,30 @@
   --space-md: 16px;
   --space-lg: 24px;
   --space-xl: 40px;
+}
+
+/* ─── shadcn/ui design tokens ─────────────────────────────── */
+/* These power all shadcn components. Mapped to our game theme. */
+:root {
+  --radius: 0.75rem;
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --card: #1e293b;
+  --card-foreground: #e2e8f0;
+  --popover: #1e293b;
+  --popover-foreground: #e2e8f0;
+  --primary: #f59e0b;
+  --primary-foreground: #0f172a;
+  --secondary: #334155;
+  --secondary-foreground: #e2e8f0;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --ui-accent: #334155;
+  --accent-foreground: #e2e8f0;
+  --destructive: #ef4444;
+  --ui-border: #334155;
+  --input: #334155;
+  --ring: #f59e0b;
 }
 
 /* ─── Theme variables ─────────────────────────────────────── */
@@ -58,6 +109,21 @@
   --felt-mid: rgba(20, 60, 40, 0.15);
   --felt-edge: rgba(20, 60, 40, 0.04);
   --felt-border: rgba(20, 60, 40, 0.18);
+  /* shadcn overrides */
+  --background: #09090b;
+  --foreground: #e4e4e7;
+  --card: #27272a;
+  --card-foreground: #e4e4e7;
+  --popover: #27272a;
+  --popover-foreground: #e4e4e7;
+  --secondary: #3f3f46;
+  --secondary-foreground: #e4e4e7;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --ui-accent: #3f3f46;
+  --accent-foreground: #e4e4e7;
+  --ui-border: #3f3f46;
+  --input: #3f3f46;
 }
 
 [data-theme="light"] {
@@ -78,6 +144,25 @@
   --felt-mid: rgba(15, 76, 46, 0.06);
   --felt-edge: rgba(15, 76, 46, 0.02);
   --felt-border: rgba(15, 76, 46, 0.08);
+  /* shadcn overrides */
+  --background: #f8fafc;
+  --foreground: #1e293b;
+  --card: #ffffff;
+  --card-foreground: #1e293b;
+  --popover: #ffffff;
+  --popover-foreground: #1e293b;
+  --primary: #d97706;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --ui-accent: #f1f5f9;
+  --accent-foreground: #1e293b;
+  --destructive: #ef4444;
+  --ui-border: #cbd5e1;
+  --input: #cbd5e1;
+  --ring: #d97706;
 }
 
 body {
