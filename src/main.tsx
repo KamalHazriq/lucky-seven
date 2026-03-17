@@ -4,7 +4,12 @@ import { HashRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import App from './App.tsx'
+import ErrorBoundary from './components/ErrorBoundary'
+import { installGlobalErrorHandlers } from './lib/errorLogger'
 import './index.css'
+
+// Install global error/rejection listeners for crash reporting
+installGlobalErrorHandlers()
 
 // Apply stored theme immediately to avoid flash of wrong theme
 {
@@ -30,7 +35,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
       <TooltipProvider>
+      <ErrorBoundary>
       <App />
+      </ErrorBoundary>
       <Toaster
         position="bottom-center"
         toastOptions={{

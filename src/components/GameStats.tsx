@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
 import { useGlobalStats } from '../hooks/useGlobalStats'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }

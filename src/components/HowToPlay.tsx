@@ -107,7 +107,7 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
                     { rank: 'King', power: 'Lock', desc: 'Lock any card — prevents swapping', color: 'red', border: 'border-l-red-400' },
                     { rank: '10', power: 'Unlock', desc: 'Unlock a previously locked card', color: 'cyan', border: 'border-l-cyan-400' },
                     { rank: 'Joker', power: 'Chaos', desc: "Randomly shuffle an opponent's unlocked cards", color: 'fuchsia', border: 'border-l-fuchsia-400', span: true },
-                  ] as const).map((card) => (
+                  ] satisfies { rank: string; power: string; desc: string; color: string; border: string; span?: boolean }[]).map((card) => (
                     <Card
                       key={card.rank}
                       className={`p-3 border-l-[3px] ${card.border} ${card.span ? 'sm:col-span-2' : ''}`}
