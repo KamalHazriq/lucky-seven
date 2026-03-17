@@ -286,9 +286,7 @@ body {
 }
 
 /* ─── Pile zone — subtle ground shadow under center piles ── */
-.pile-zone {
-  position: relative;
-}
+/* NOTE: no position set here — the element uses Tailwind `absolute` in JSX */
 .pile-zone::before {
   content: '';
   position: absolute;
@@ -332,9 +330,7 @@ body {
 }
 
 /* ─── Seat grounding — subtle radial shadow below panels ─── */
-.seat-ground {
-  position: relative;
-}
+/* NOTE: no position set here — the element uses Tailwind `absolute` in JSX */
 .seat-ground::after {
   content: '';
   position: absolute;
