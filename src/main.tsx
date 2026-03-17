@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import App from './App.tsx'
 import './index.css'
 
@@ -28,6 +29,7 @@ document.addEventListener('visibilitychange', syncPageVisibility)
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
+      <TooltipProvider>
       <App />
       <Toaster
         position="bottom-center"
@@ -39,6 +41,7 @@ createRoot(document.getElementById('root')!).render(
           },
         }}
       />
+    </TooltipProvider>
     </HashRouter>
   </StrictMode>,
 )
