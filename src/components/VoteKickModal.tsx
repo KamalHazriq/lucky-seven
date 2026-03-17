@@ -40,7 +40,7 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
         <DialogHeader className="px-5 pt-5 pb-0">
           <div className="flex flex-col items-center text-center gap-2">
             <span className="text-3xl">{'\u{1F6AB}'}</span>
-            <DialogTitle className="text-red-400">
+            <DialogTitle className="text-destructive">
               Vote to Kick
             </DialogTitle>
             <DialogDescription className="text-foreground">
@@ -71,7 +71,7 @@ export default function VoteKickModal({ voteKick, localPlayerId, onVoteYes, onVo
             </div>
             <Progress
               value={progressPct}
-              className="h-2.5 bg-slate-700/50"
+              className="h-2.5 bg-secondary"
               indicatorClassName="bg-red-500"
             />
           </div>

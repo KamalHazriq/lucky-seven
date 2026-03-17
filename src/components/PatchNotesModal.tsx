@@ -169,7 +169,7 @@ export default function PatchNotesModal({ open, onClose, onOpenFeedback }: Patch
             <Button
               onClick={onOpenFeedback}
               variant="outline"
-              className="w-full h-9 rounded-xl text-xs"
+              className="w-full h-10 rounded-xl text-xs"
             >
               Send Feedback
             </Button>

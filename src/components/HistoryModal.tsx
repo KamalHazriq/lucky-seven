@@ -119,7 +119,7 @@ export default function HistoryModal({ open, onClose, gameId, players, history }
         <Separator />
 
         {/* Footer */}
-        <DialogFooter className="px-5 py-3 justify-center sm:justify-center">
+        <DialogFooter className="px-5 py-3 shrink-0 justify-center sm:justify-center">
           <DialogClose asChild>
             <Button variant="outline" className="h-10 px-8 rounded-xl">
               Close

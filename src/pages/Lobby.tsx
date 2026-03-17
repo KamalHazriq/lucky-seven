@@ -717,7 +717,7 @@ export default function Lobby() {
           >
             Leave Lobby
           </Button>
-          <span className="text-slate-700">|</span>
+          <span className="text-border-subtle">|</span>
           <motion.button
             whileHover={{ scale: 1.05 }}
             onClick={chat.toggleChat}
@@ -734,7 +734,7 @@ export default function Lobby() {
               </motion.span>
             )}
           </motion.button>
-          <span className="text-slate-700">|</span>
+          <span className="text-border-subtle">|</span>
           <Button
             variant="ghost"
             size="sm"
@@ -743,7 +743,7 @@ export default function Lobby() {
           >
             Patch Notes
           </Button>
-          <span className="text-slate-700">|</span>
+          <span className="text-border-subtle">|</span>
           <Button
             variant="ghost"
             size="sm"

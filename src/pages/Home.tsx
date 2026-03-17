@@ -166,7 +166,7 @@ export default function Home() {
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          className={`fixed ${suit.size} text-slate-300 pointer-events-none select-none`}
+          className={`fixed ${suit.size} text-muted-foreground/30 pointer-events-none select-none`}
           style={{ left: suit.x, top: suit.y }}
         >
           {suit.emoji}
@@ -194,7 +194,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, ...springEntry }}
-            className="text-slate-400 text-sm"
+            className="text-muted-foreground text-sm"
           >
             The card game where 7 means zero
           </motion.p>
@@ -551,7 +551,7 @@ export default function Home() {
             >
               Patch Notes
             </motion.button>
-            <span className="text-slate-700">|</span>
+            <span className="text-border-subtle">|</span>
             <motion.button
               whileHover={{ scale: 1.05 }}
               onClick={() => setShowFeedback(true)}
