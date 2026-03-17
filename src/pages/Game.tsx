@@ -88,6 +88,43 @@ export default function Game() {
   const bannerRef = useRef<HTMLDivElement>(null)
   const [, setHeaderH] = useState(0)
 
+  // Draggable center piles (table layout) — persisted in localStorage
+  const PILES_POS_KEY = 'lucky7_pilespos'
+  const [pilesOffset, setPilesOffset] = useState<{ x: number; y: number }>(() => {
+    try {
+      const raw = localStorage.getItem('lucky7_pilespos')
+      if (raw) return JSON.parse(raw) as { x: number; y: number }
+    } catch { /* ignore */ }
+    return { x: 0, y: 0 }
+  })
+  const pilesDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+
+  const handlePilesDragStart = (e: React.MouseEvent) => {
+    // Only drag on the handle area (not on clickable cards)
+    if ((e.target as HTMLElement).closest('[data-no-drag]')) return
+    e.preventDefault()
+    pilesDragRef.current = { startX: e.clientX, startY: e.clientY, origX: pilesOffset.x, origY: pilesOffset.y }
+    const onMove = (me: MouseEvent) => {
+      if (!pilesDragRef.current) return
+      const dx = me.clientX - pilesDragRef.current.startX
+      const dy = me.clientY - pilesDragRef.current.startY
+      setPilesOffset({ x: pilesDragRef.current.origX + dx, y: pilesDragRef.current.origY + dy })
+    }
+    const onUp = (me: MouseEvent) => {
+      if (!pilesDragRef.current) return
+      const dx = me.clientX - pilesDragRef.current.startX
+      const dy = me.clientY - pilesDragRef.current.startY
+      const final = { x: pilesDragRef.current.origX + dx, y: pilesDragRef.current.origY + dy }
+      setPilesOffset(final)
+      try { localStorage.setItem(PILES_POS_KEY, JSON.stringify(final)) } catch { /* ignore */ }
+      pilesDragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
   // Selection mode for actionbar power flows
   const {
     selection,
@@ -609,9 +646,24 @@ export default function Game() {
                   }}
                 />
 
-                {/* Center: Draw + Staging + Discard piles */}
-                <div className="pile-zone absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
-                  <div className={`text-center${canDraw ? ' pile-interactive' : ''}`} ref={drawPileRef}>
+                {/* Center: Draw + Staging + Discard piles — draggable */}
+                <div
+                  className="pile-zone absolute left-1/2 top-[46%] z-10"
+                  style={{
+                    transform: `translate(calc(-50% + ${pilesOffset.x}px), calc(-50% + ${pilesOffset.y}px))`,
+                    cursor: 'grab',
+                    userSelect: 'none',
+                  }}
+                  onMouseDown={handlePilesDragStart}
+                >
+                  {/* Drag handle strip */}
+                  <div className="flex justify-center mb-1 pointer-events-none">
+                    <div className="flex gap-[3px] opacity-30">
+                      {[0,1,2,3,4,5].map(d => <div key={d} className="w-1 h-1 rounded-full bg-slate-400" />)}
+                    </div>
+                  </div>
+                <div className="flex items-center gap-5" data-no-drag>
+                  <div className={`text-center${canDraw ? ' pile-interactive' : ''}`} ref={drawPileRef} data-no-drag>
                     <p className="text-[10px] text-muted-foreground mb-1">Draw</p>
                     <div className="pile-stack">
                     <CardView
@@ -664,7 +716,8 @@ export default function Game() {
                       </div>
                     )}
                   </div>
-                </div>
+                </div>{/* end flex items-center gap-5 */}
+                </div>{/* end draggable piles wrapper */}
 
                 {/* Other players arranged around the table */}
                 {otherPlayers.map((pid, idx) => {
@@ -743,6 +796,7 @@ export default function Game() {
                     swapLabels={swapLabels[user.uid] ?? null}
                     stampOverlay={stampOverlays[user.uid] ?? null}
                     chaosAnimation={!!chaosAnimations[user.uid]}
+                    devShowAllCards={devMode.isDevMode && (devMode.privileges?.canSeeAllCards ?? false)}
                     {...selectionProps}
                   />
                   {isMyTurn && turnTimer.remaining !== null && (
@@ -912,6 +966,7 @@ export default function Game() {
                 swapLabels={swapLabels[user.uid] ?? null}
                 stampOverlay={stampOverlays[user.uid] ?? null}
                 chaosAnimation={!!chaosAnimations[user.uid]}
+                devShowAllCards={devMode.isDevMode && (devMode.privileges?.canSeeAllCards ?? false)}
                 {...selectionProps}
               />
               {isMyTurn && turnTimer.remaining !== null && (

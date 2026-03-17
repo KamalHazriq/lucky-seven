@@ -515,8 +515,17 @@ export function useGameActions(params: UseGameActionsParams): UseGameActionsRetu
   }, [selection, confirmSelection, withBusy, gameId, reduced, setStampOverlays])
 
   const handleSelectionClick = useCallback((target: SelectedTarget) => {
+    // For swap (anyPlayerSlot two-pick), prevent selecting a second card from the same player
+    if (
+      selection.phase === 'choosingSecondTarget' &&
+      selection.constraint?.secondTargetType === 'anyPlayerSlot' &&
+      selection.firstTarget?.playerId === target.playerId
+    ) {
+      toast.error("Can't swap two cards from the same player")
+      return
+    }
     selectTarget(target)
-  }, [selectTarget])
+  }, [selectTarget, selection])
 
   const handlePlayerSelect = useCallback((playerId: string) => {
     selectTarget({ playerId, slotIndex: 0 })

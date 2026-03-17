@@ -41,6 +41,8 @@ const IDLE_STATE: SelectionModeState = {
 
 /**
  * Returns whether a given slot is selectable under the current constraint.
+ *
+ * @param firstTarget - Optional first-pick target already chosen (used to block same-player swap).
  */
 export function isSlotSelectable(
   targetType: SelectionTargetType,
@@ -48,6 +50,7 @@ export function isSlotSelectable(
   slotIndex: number,
   localPlayerId: string,
   players: Record<string, PlayerDoc>,
+  firstTarget?: SelectedTarget | null,
 ): boolean {
   const pd = players[playerId]
   if (!pd) return false
@@ -57,6 +60,8 @@ export function isSlotSelectable(
     case 'yourSlot':
       return playerId === localPlayerId && !locks[slotIndex]
     case 'anyPlayerSlot':
+      // When picking the second card for a swap, block slots from the same player as the first pick
+      if (firstTarget && firstTarget.playerId === playerId) return false
       return !locks[slotIndex]
     case 'anyLockedSlot':
       return locks[slotIndex]

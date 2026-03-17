@@ -56,6 +56,10 @@ interface PlayerPanelProps {
   colorKey?: number | null
   /** Dev mode: all players' private data — when present, remote cards shown face-up */
   devAllHands?: Record<string, PrivatePlayerDoc> | null
+  /** Dev mode: show local player's own cards face-up (canSeeAllCards permission) */
+  devShowAllCards?: boolean
+  /** Local player's private state — used to check opponent_known for this panel's player */
+  localPrivateState?: PrivatePlayerDoc | null
   /** Chaos shuffle animation — when true, cards do a lift-rotate-shuffle-settle animation */
   chaosAnimation?: boolean
 }
@@ -93,12 +97,16 @@ function PlayerPanel({
   stampOverlay,
   colorKey,
   devAllHands,
+  devShowAllCards = false,
+  localPrivateState,
   chaosAnimation = false,
 }: PlayerPanelProps) {
   const hand = privateState?.hand ?? []
   const known = privateState?.known ?? {}
   // Dev mode: use actual hand data for remote players if available
   const devHand = !isLocalPlayer ? devAllHands?.[playerId]?.hand : undefined
+  // Opponent knowledge: cards this local player has peeked from this opponent
+  const opponentKnown = !isLocalPlayer ? (localPrivateState?.opponent_known?.[playerId] ?? {}) : {}
   const lockInfos = lockedBy ?? EMPTY_LOCKED_BY
   const color = useMemo(() => getPlayerColor(seatIndex, colorKey), [seatIndex, colorKey])
   const perfMode = usePerformanceMode()
@@ -242,7 +250,13 @@ function PlayerPanel({
       <div className={`flex ${isLocalPlayer ? 'gap-3' : 'gap-1.5 sm:gap-2'} justify-center overflow-visible`}>
         {[0, 1, 2].map((i) => {
           const card = hand[i] as Card | undefined
-          const knownCard = known[String(i)]
+          // Own known: from game_private_state.known (self peek, swap)
+          // Dev visibility: show all own cards when dev canSeeAllCards is active
+          // Opponent known: from localPrivateState.opponent_known (peek opponent)
+          const ownKnownCard = known[String(i)]
+          const devKnownCard = isLocalPlayer && devShowAllCards ? privateState?.hand?.[i] : undefined
+          const oppKnownCard = !isLocalPlayer ? opponentKnown[String(i)] : undefined
+          const knownCard = ownKnownCard ?? devKnownCard ?? oppKnownCard
           const isKnown = !!knownCard
           const isLocked = locks[i]
           const lockInfo = lockInfos[i]
@@ -250,9 +264,10 @@ function PlayerPanel({
           const swapLabel = swapLabels?.[i]
 
           // Selection mode: is this slot selectable?
+          // Pass selectedTarget (first pick) so same-player swap is blocked for second pick.
           const slotSelectable = inSelectionMode && selectionTargetType !== 'anyPlayer'
             && localPlayerId && players
-            ? isSlotSelectable(selectionTargetType!, playerId, i, localPlayerId, players)
+            ? isSlotSelectable(selectionTargetType!, playerId, i, localPlayerId, players, selectedTarget)
             : false
 
           // Is this slot the currently selected first or second target?
@@ -339,6 +354,13 @@ function PlayerPanel({
                 <div className="absolute inset-0 rounded-xl bg-black/40 pointer-events-none z-10" />
               )}
 
+              {/* Lock badge — always at z-30 so it's visible above every overlay */}
+              {isLocked && (
+                <div className="absolute top-0.5 right-0.5 z-30 pointer-events-none w-5 h-5 bg-red-900/95 rounded-full flex items-center justify-center shadow-md border border-red-500/50">
+                  <span className="text-[10px] leading-none select-none">🔒</span>
+                </div>
+              )}
+
               {/* Known card badge for face-down cards (visible to all in selection) */}
               {isKnown && !isLocalPlayer && inSelectionMode && (
                 <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[8px] font-semibold px-1 py-0.5 rounded-full z-20">
@@ -348,7 +370,8 @@ function PlayerPanel({
             </div>
           )
 
-          if (isLocalPlayer && isKnown) {
+          // Show face-up if: local player knows own card, dev mode shows all, or local player peeked this opponent slot
+          if (isKnown && (isLocalPlayer || !!oppKnownCard)) {
             return slotWrapper(
               <CardView
                 card={knownCard}
@@ -356,11 +379,12 @@ function PlayerPanel({
                 known
                 locked={isLocked}
                 lockInfo={isLocked ? lockInfo : null}
-                size="md"
+                size={isLocalPlayer ? 'md' : 'sm'}
                 onClick={(slotClickable || (inSelectionMode && slotSelectable)) ? handleSlotClick : undefined}
                 highlight={(slotClickable && !isLocked && !inSelectionMode) || (inSelectionMode && slotSelectable) || isSelected || isSecondSelected}
                 disabled={(slotClickable && isLocked && !inSelectionMode) || (inSelectionMode && !slotSelectable && !isSelected && !isSecondSelected)}
-                label={`#${i + 1}`}
+                label={isLocalPlayer ? `#${i + 1}` : undefined}
+                ownerColor={!isLocalPlayer ? color.solid : undefined}
               />,
             )
           }
