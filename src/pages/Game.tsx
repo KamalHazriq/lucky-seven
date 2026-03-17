@@ -564,20 +564,20 @@ export default function Game() {
               transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.6 }}
               aria-live="polite"
               aria-atomic="true"
-              className={`flex items-center justify-center gap-2 py-2 px-5 rounded-xl mb-3 text-xs font-semibold tracking-wide ${
+              className={`flex items-center justify-center gap-2 py-2.5 px-5 rounded-xl mb-3 font-semibold tracking-wide ${
                 isMyTurn
-                  ? 'bg-emerald-900/30 border border-emerald-500/30 text-emerald-300 shadow-sm shadow-emerald-500/10'
-                  : 'bg-slate-800/30 border border-slate-700/40 text-slate-400'
+                  ? 'bg-emerald-900/30 border border-emerald-500/40 text-emerald-300 shadow-md shadow-emerald-500/10 text-sm'
+                  : 'bg-surface-panel border border-border-subtle text-muted-foreground text-xs'
               }`}
             >
               {isMyTurn ? (
-                <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-emerald-400 animate-pulse" />
+                <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-emerald-400 animate-pulse" />
               ) : curColor ? (
                 <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: curColor.solid }} />
               ) : null}
               {isMyTurn ? (
                 isDrawPhase
-                  ? 'Your turn — draw from the pile or discard'
+                  ? 'Your turn \u2014 draw from the pile or discard'
                   : hasDrawnCard ? 'Choose: swap a card, discard, or use a power' : 'Swap, discard, or use a power'
               ) : (
                 `Waiting for ${currentTurnName}...`

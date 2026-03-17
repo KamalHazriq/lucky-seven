@@ -35,8 +35,9 @@ interface ActionBarProps {
  * Inline "Action Bar" — a horizontal strip shown below the local player hand
  * when they have a drawn card. Replaces the modal for a smoother feel.
  *
- * v1.4: Supports selection mode overlay for power flows (peek, swap, lock, etc.)
- *       Shows keyboard hints on desktop [1][2][3] and [Esc]
+ * v1.5: Polished hierarchy — swap buttons are primary, discard is secondary,
+ *       power button stands out with color, selection mode has amber accent.
+ *       All buttons are 44px min-height for mobile touch targets.
  */
 function ActionBar({
   card,
@@ -82,10 +83,12 @@ function ActionBar({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 12, scale: 0.96 }}
           transition={{ type: 'spring', stiffness: 300, damping: 26, mass: 0.7 }}
-          className="mt-3 rounded-2xl border backdrop-blur-md p-3 shadow-xl"
+          className={`mt-3 rounded-2xl border backdrop-blur-md p-3 shadow-xl ${
+            isSelecting ? 'ring-1 ring-amber-500/40' : ''
+          }`}
           style={{
             background: 'color-mix(in srgb, var(--surface-solid) 90%, transparent)',
-            borderColor: 'var(--border-solid)',
+            borderColor: isSelecting ? 'rgba(251,191,36,0.3)' : 'var(--border-solid)',
           }}
         >
           <AnimatePresence mode="wait">
@@ -98,19 +101,25 @@ function ActionBar({
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 28, mass: 0.6 }}
               >
+                {/* Mode label */}
+                <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-[9px] uppercase tracking-wider font-bold text-amber-400/70">
+                    Power Active
+                  </span>
+                </div>
+
                 {/* Prompt */}
-                <p className="text-xs font-semibold text-amber-300 mb-2 text-center">
+                <p className="text-xs font-semibold text-primary mb-2.5 text-center">
                   {selection?.phase === 'confirming' ? (
                     <>
                       {selection.constraint?.secondTargetType ? (
-                        // Two-target confirm (queen swap)
                         <span>
-                          Swap {resolveTarget(selection.firstTarget)} ↔ {resolveTarget(selection.secondTarget)}?
+                          Swap {resolveTarget(selection.firstTarget)} {'\u2194'} {resolveTarget(selection.secondTarget)}?
                         </span>
                       ) : (
-                        // Single-target confirm
                         <span>
-                          {selection.constraint?.prompt?.replace('Pick', 'Confirm')} → {resolveTarget(selection.firstTarget)}
+                          {selection.constraint?.prompt?.replace('Pick', 'Confirm')} {'\u2192'} {resolveTarget(selection.firstTarget)}
                         </span>
                       )}
                     </>
@@ -124,11 +133,11 @@ function ActionBar({
                 </p>
 
                 {/* Action buttons */}
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   {selection?.phase === 'confirming' && (
                     <button
                       onClick={onSelectionConfirm}
-                      className="flex-1 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      className="flex-1 min-h-[40px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
                     >
                       {isDesktop && <Kbd>↵</Kbd>} Confirm
                     </button>
@@ -137,7 +146,7 @@ function ActionBar({
                   {selection?.phase === 'choosingSecondTarget' && (
                     <button
                       onClick={onSelectionGoBack}
-                      className="flex-1 py-1.5 bg-slate-600/70 hover:bg-slate-500/70 text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                      className="flex-1 min-h-[40px] bg-secondary hover:bg-secondary/80 text-foreground rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                     >
                       Back
                     </button>
@@ -145,7 +154,7 @@ function ActionBar({
 
                   <button
                     onClick={onSelectionCancel}
-                    className="flex-1 py-1.5 bg-rose-900/40 hover:bg-rose-900/60 border border-rose-700/30 text-rose-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    className="flex-1 min-h-[40px] bg-rose-900/40 hover:bg-rose-900/60 border border-rose-700/30 text-rose-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
                     {isDesktop && <Kbd>Esc</Kbd>} Cancel
                   </button>
@@ -163,38 +172,43 @@ function ActionBar({
                 <div className="flex items-start gap-3">
                   {/* Drawn card preview */}
                   <div className="shrink-0 flex flex-col items-center">
-                    <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">
+                    <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">
                       Drew
                     </p>
                     <CardView card={card} faceUp size="sm" />
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                    {/* Swap row */}
-                    <div className="flex gap-1.5">
-                      {[0, 1, 2].map((i) => (
-                        <button
-                          key={i}
-                          onClick={() => onSwap(i)}
-                          disabled={locks[i]}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                            locks[i]
-                              ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed opacity-50'
-                              : 'bg-indigo-600/80 hover:bg-indigo-500 text-white'
-                          }`}
-                        >
-                          {isDesktop && !locks[i] && <Kbd>{i + 1}</Kbd>}
-                          {locks[i] ? '\u{1F512}' : '\u{2194}'} #{i + 1}
-                        </button>
-                      ))}
+                  <div className="flex-1 min-w-0 flex flex-col gap-2">
+                    {/* Swap row — primary action */}
+                    <div>
+                      <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider mb-1">
+                        Swap with slot
+                      </p>
+                      <div className="flex gap-1.5">
+                        {[0, 1, 2].map((i) => (
+                          <button
+                            key={i}
+                            onClick={() => onSwap(i)}
+                            disabled={locks[i]}
+                            className={`flex-1 min-h-[38px] rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                              locks[i]
+                                ? 'bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50'
+                                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
+                            }`}
+                          >
+                            {isDesktop && !locks[i] && <Kbd>{i + 1}</Kbd>}
+                            {locks[i] ? '\u{1F512}' : '\u{2194}'} #{i + 1}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Discard + Power row */}
+                    {/* Discard + Power row — secondary actions */}
                     <div className="flex gap-1.5">
                       <button
                         onClick={onDiscard}
-                        className="flex-1 py-1.5 bg-slate-600/70 hover:bg-slate-500/70 text-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                        className="flex-1 min-h-[36px] bg-secondary hover:bg-secondary/80 text-foreground rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                       >
                         Discard
                       </button>
@@ -204,10 +218,10 @@ function ActionBar({
                           onClick={() => !isSpent && !isUnlockWithNoTargets && onUsePower(rankKey, effectType)}
                           disabled={isSpent || isUnlockWithNoTargets}
                           title={isSpent ? 'Power already used for this card' : isUnlockWithNoTargets ? 'No card is locked right now' : effectInfo.desc}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors text-white ${
+                          className={`flex-1 min-h-[36px] rounded-xl text-xs font-bold transition-colors text-white ${
                             isSpent || isUnlockWithNoTargets
-                              ? 'bg-slate-700/50 opacity-50 cursor-not-allowed'
-                              : `${effectInfo.color} cursor-pointer`
+                              ? 'bg-secondary/50 opacity-50 cursor-not-allowed text-muted-foreground'
+                              : `${effectInfo.color} cursor-pointer shadow-sm`
                           }`}
                         >
                           {isSpent ? `${rankLabel} (spent)` : isUnlockWithNoTargets ? `${rankLabel}: No locks` : `${rankLabel}: ${effectInfo.label}`}
@@ -219,7 +233,7 @@ function ActionBar({
                     {canCancel && (
                       <button
                         onClick={onClose}
-                        className="w-full py-1 bg-rose-900/25 hover:bg-rose-900/40 border border-rose-700/30 text-rose-300 rounded-lg text-[10px] font-medium transition-colors cursor-pointer"
+                        className="w-full min-h-[32px] bg-rose-900/25 hover:bg-rose-900/40 border border-rose-700/30 text-rose-300 rounded-xl text-[10px] font-medium transition-colors cursor-pointer"
                       >
                         {isDesktop && <Kbd>Esc</Kbd>} Cancel Take
                       </button>
@@ -240,7 +254,7 @@ export default memo(ActionBar)
 /** Tiny keyboard hint badge */
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center justify-center min-w-[18px] h-[16px] px-1 mr-1 bg-slate-900/60 border border-slate-600/50 rounded text-[9px] font-mono text-slate-400 align-middle leading-none">
+    <span className="inline-flex items-center justify-center min-w-[18px] h-[16px] px-1 mr-1 bg-background/60 border border-border-subtle rounded text-[9px] font-mono text-muted-foreground align-middle leading-none">
       {children}
     </span>
   )

@@ -24,12 +24,12 @@ export default function TurnTimer({ remaining, total, isMyTurn }: Props) {
     ? 'text-red-400'
     : urgent
       ? 'text-amber-400'
-      : 'text-slate-400'
+      : 'text-muted-foreground'
 
   return (
     <div className="flex items-center gap-2 w-full">
       {/* Progress bar — scaleX instead of width to stay on GPU compositor layer */}
-      <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
         <motion.div
           className={`h-full w-full rounded-full origin-left ${barColor}`}
           initial={false}

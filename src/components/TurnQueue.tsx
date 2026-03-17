@@ -49,7 +49,7 @@ function TurnQueue({
           return (
             <span key={pid} className="flex items-center gap-0.5 shrink-0">
               {i > 0 && (
-                <span className="text-slate-600 text-[9px] mx-0.5">›</span>
+                <span className="text-muted-foreground/40 text-[9px] mx-0.5">›</span>
               )}
               <span
                 className={`
@@ -89,7 +89,7 @@ function TurnQueue({
   /* ─── Full: below-header turn queue ─── */
   return (
     <div className="flex items-center gap-1.5 justify-center flex-wrap mb-3">
-      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mr-1">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mr-1">
         Turn
       </span>
       {queue.map(({ pid, queueNum }, i) => {
@@ -105,7 +105,7 @@ function TurnQueue({
         return (
           <span key={pid} className="flex items-center gap-1">
             {i > 0 && (
-              <span className="text-slate-600 text-[10px]">›</span>
+              <span className="text-muted-foreground/40 text-[10px]">›</span>
             )}
             <motion.span
               initial={isCurrent ? { scale: 0.9, opacity: 0 } : false}
