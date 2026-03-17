@@ -1,5 +1,8 @@
 import { motion } from 'framer-motion'
 import { useGlobalStats } from '../hooks/useGlobalStats'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 const springEntry = { type: 'spring' as const, stiffness: 300, damping: 24, mass: 0.7 }
 
@@ -19,20 +22,19 @@ interface StatCardProps {
   emoji: string
   label: string
   value: string | number
-  color: string
+  hoverColor: string
 }
 
-function StatCard({ emoji, label, value, color }: StatCardProps) {
+function StatCard({ emoji, label, value, hoverColor }: StatCardProps) {
   return (
-    <motion.div
-      variants={staggerItem}
-      whileHover={{ scale: 1.04, y: -2 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-      className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-colors ${color}`}
-    >
-      <span className="text-lg">{emoji}</span>
-      <span className="text-lg font-bold text-white tabular-nums">{value}</span>
-      <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{label}</span>
+    <motion.div variants={staggerItem}>
+      <Card
+        className={`flex flex-col items-center gap-1 p-3 rounded-xl border-slate-700/40 bg-slate-900/40 shadow-none transition-colors ${hoverColor}`}
+      >
+        <span className="text-lg">{emoji}</span>
+        <span className="text-lg font-bold text-white tabular-nums">{value}</span>
+        <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{label}</span>
+      </Card>
     </motion.div>
   )
 }
@@ -56,6 +58,7 @@ export default function GameStats() {
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm">{'\u{1F4CA}'}</span>
         <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Game Statistics</h3>
+        <Separator className="flex-1 bg-slate-700/40" />
       </div>
 
       <motion.div
@@ -68,31 +71,31 @@ export default function GameStats() {
           emoji={'\u{1F440}'}
           label="Total Visits"
           value={stats.totalVisits}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-amber-600/40"
+          hoverColor="hover:border-amber-600/40"
         />
         <StatCard
           emoji={'\u{1F3AE}'}
           label="Games Played"
           value={stats.gamesPlayed}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-emerald-600/40"
+          hoverColor="hover:border-emerald-600/40"
         />
         <StatCard
           emoji={'\u{1F3C6}'}
           label="Games Finished"
           value={stats.gamesFinished}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-purple-600/40"
+          hoverColor="hover:border-purple-600/40"
         />
         <StatCard
           emoji={'\u{1F465}'}
           label="Total Players"
           value={stats.totalPlayers}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-cyan-600/40"
+          hoverColor="hover:border-cyan-600/40"
         />
         <StatCard
           emoji={'\u{1F464}'}
           label="Unique Players"
           value={stats.uniquePlayers}
-          color="bg-slate-900/40 border-slate-700/40 hover:border-rose-600/40"
+          hoverColor="hover:border-rose-600/40"
         />
       </motion.div>
     </motion.div>
