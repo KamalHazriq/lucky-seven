@@ -29,11 +29,11 @@ function StatCard({ emoji, label, value, hoverColor }: StatCardProps) {
   return (
     <motion.div variants={staggerItem}>
       <Card
-        className={`flex flex-col items-center gap-1 p-3 rounded-xl border-slate-700/40 bg-slate-900/40 shadow-none transition-colors ${hoverColor}`}
+        className={`flex flex-col items-center gap-1 p-3 rounded-xl border-border-subtle bg-surface-panel shadow-none transition-colors ${hoverColor}`}
       >
         <span className="text-lg">{emoji}</span>
-        <span className="text-lg font-bold text-white tabular-nums">{value}</span>
-        <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-lg font-bold text-foreground tabular-nums">{value}</span>
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       </Card>
     </motion.div>
   )
@@ -57,8 +57,8 @@ export default function GameStats() {
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm">{'\u{1F4CA}'}</span>
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Game Statistics</h3>
-        <Separator className="flex-1 bg-slate-700/40" />
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Game Statistics</h3>
+        <Separator className="flex-1" />
       </div>
 
       <motion.div

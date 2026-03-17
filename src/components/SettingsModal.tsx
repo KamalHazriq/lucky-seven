@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -100,39 +101,33 @@ export default function SettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <DialogContent
-        className="max-w-sm rounded-2xl border-slate-700/60 bg-slate-800/95 backdrop-blur-md shadow-2xl shadow-black/40 p-0 gap-0 max-h-[85vh] flex flex-col"
-        showCloseButton={false}
-      >
+      <DialogContent className="sm:max-w-sm max-h-[85vh] flex flex-col">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-0 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">{'\u2699\uFE0F'}</span>
-              <DialogTitle className="text-lg font-bold text-amber-300">
-                Settings
-              </DialogTitle>
+              <DialogTitle>Settings</DialogTitle>
             </div>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-xs"
-            >
-              {'\u2715'}
-            </button>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm" className="ls-close-btn">
+                {'\u2715'}
+              </Button>
+            </DialogClose>
           </div>
           <DialogDescription className="sr-only">
             Game settings and preferences
           </DialogDescription>
         </DialogHeader>
 
-        <Separator className="bg-slate-700/40 mt-3" />
+        <Separator className="mt-3" />
 
         {/* Content */}
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-5 py-4 space-y-5">
             {/* ─── Theme ─── */}
             <section>
-              <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Theme</Label>
+              <Label className="ls-section-label">Theme</Label>
               <div className="grid grid-cols-3 gap-2">
                 {THEMES.map((t) => (
                   <motion.button
@@ -142,8 +137,8 @@ export default function SettingsModal({
                     onClick={() => setTheme(t.value)}
                     className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-colors cursor-pointer ${
                       theme === t.value
-                        ? 'bg-amber-600/20 border-amber-500/60 text-white'
-                        : 'bg-slate-900/40 border-slate-700/40 text-slate-400 hover:border-slate-600'
+                        ? 'bg-primary/15 border-primary/60 text-foreground'
+                        : 'bg-surface-panel border-border-subtle text-muted-foreground hover:border-muted-foreground/40'
                     }`}
                   >
                     <span className="text-xl">{t.icon}</span>
@@ -155,16 +150,16 @@ export default function SettingsModal({
 
             {/* ─── Audio & Haptics ─── */}
             <section>
-              <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Audio & Feedback</Label>
+              <Label className="ls-section-label">Audio & Feedback</Label>
               <div className="space-y-2">
                 {/* SFX toggle */}
                 <button
                   onClick={toggleSfx}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">{sfx ? '\u{1F50A}' : '\u{1F507}'}</span>
-                    <span className="text-sm font-medium text-slate-200">Sound Effects</span>
+                    <span className="text-sm font-medium text-foreground">Sound Effects</span>
                   </div>
                   <Switch
                     checked={sfx}
@@ -178,11 +173,11 @@ export default function SettingsModal({
                 {hasVibrate && (
                   <button
                     onClick={toggleHaptic}
-                    className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-base">{haptic ? '\u{1F4F3}' : '\u{1F4F4}'}</span>
-                      <span className="text-sm font-medium text-slate-200">Vibration</span>
+                      <span className="text-sm font-medium text-foreground">Vibration</span>
                     </div>
                     <Switch
                       checked={haptic}
@@ -196,16 +191,16 @@ export default function SettingsModal({
                 {/* Motion toggle */}
                 <button
                   onClick={cycle}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">{reduced ? '\u{23F8}\uFE0F' : '\u{25B6}\uFE0F'}</span>
                     <div className="text-left">
-                      <span className="text-sm font-medium text-slate-200 block">Motion</span>
-                      <span className="text-[10px] text-slate-500">{motionLabel}</span>
+                      <span className="text-sm font-medium text-foreground block">Motion</span>
+                      <span className="text-[10px] text-muted-foreground">{motionLabel}</span>
                     </div>
                   </div>
-                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-800 px-2 py-1 rounded-lg">
+                  <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-1 rounded-lg">
                     Tap to cycle
                   </span>
                 </button>
@@ -213,13 +208,13 @@ export default function SettingsModal({
                 {/* Performance mode toggle */}
                 <button
                   onClick={togglePerfMode}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">{perfMode ? '\u26A1' : '\u2728'}</span>
                     <div className="text-left">
-                      <span className="text-sm font-medium text-slate-200 block">Performance Mode</span>
-                      <span className="text-[10px] text-slate-500">Disables shimmer, glow & float effects</span>
+                      <span className="text-sm font-medium text-foreground block">Performance Mode</span>
+                      <span className="text-[10px] text-muted-foreground">Disables shimmer, glow & float effects</span>
                     </div>
                   </div>
                   <Switch
@@ -235,21 +230,21 @@ export default function SettingsModal({
             {/* ─── Layout & Display ─── */}
             {(showLayoutToggle || showUiModeToggle || showLogToggle) && (
               <section>
-                <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Layout & Display</Label>
+                <Label className="ls-section-label">Layout & Display</Label>
                 <div className="space-y-2">
                   {showLayoutToggle && onToggleLayout && (
                     <button
                       onClick={onToggleLayout}
-                      className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base">{layout === 'table' ? '\u{1FA91}' : '\u{1F4CB}'}</span>
-                        <span className="text-sm font-medium text-slate-200">
+                        <span className="text-sm font-medium text-foreground">
                           {layout === 'table' ? 'Table Layout' : 'Classic Layout'}
                         </span>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
-                        layout === 'table' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-700 text-slate-400'
+                        layout === 'table' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-secondary text-muted-foreground'
                       }`}>
                         {layout === 'table' ? 'Table' : 'Classic'}
                       </span>
@@ -259,16 +254,16 @@ export default function SettingsModal({
                   {showUiModeToggle && onToggleUiMode && (
                     <button
                       onClick={onToggleUiMode}
-                      className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base">{uiMode === 'actionbar' ? '\u{2261}' : '\u{25A1}'}</span>
-                        <span className="text-sm font-medium text-slate-200">
+                        <span className="text-sm font-medium text-foreground">
                           {uiMode === 'actionbar' ? 'Action Bar Mode' : 'Modal Mode'}
                         </span>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
-                        uiMode === 'actionbar' ? 'bg-teal-900/50 text-teal-400' : 'bg-slate-700 text-slate-400'
+                        uiMode === 'actionbar' ? 'bg-teal-900/50 text-teal-400' : 'bg-secondary text-muted-foreground'
                       }`}>
                         {uiMode === 'actionbar' ? 'Action Bar' : 'Modal'}
                       </span>
@@ -278,14 +273,14 @@ export default function SettingsModal({
                   {showLogToggle && onToggleLogPosition && (
                     <button
                       onClick={onToggleLogPosition}
-                      className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-panel hover:bg-surface-panel/80 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="text-base">{logPosition === 'left' ? '\u{2190}' : '\u{2193}'}</span>
-                        <span className="text-sm font-medium text-slate-200">Game Log Position</span>
+                        <span className="text-sm font-medium text-foreground">Game Log Position</span>
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
-                        logPosition === 'left' ? 'bg-orange-900/50 text-orange-400' : 'bg-slate-700 text-slate-400'
+                        logPosition === 'left' ? 'bg-orange-900/50 text-orange-400' : 'bg-secondary text-muted-foreground'
                       }`}>
                         {logPosition === 'left' ? 'Sidebar' : 'Bottom'}
                       </span>
@@ -298,7 +293,7 @@ export default function SettingsModal({
             {/* ─── Vote Kick — only available with 3+ players ─── */}
             {onVoteKick && otherPlayers && otherPlayers.length >= 2 && (
               <section>
-                <Label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Vote to Kick</Label>
+                <Label className="ls-section-label">Vote to Kick</Label>
                 <div className="space-y-1.5">
                   {otherPlayers.map((p) => (
                     <button
@@ -309,9 +304,9 @@ export default function SettingsModal({
                         onVoteKick(p.id)
                       }}
                       disabled={voteKickActive}
-                      className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-700/40 bg-slate-900/40 hover:bg-red-900/20 hover:border-red-700/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl border border-border-subtle bg-surface-panel hover:bg-red-900/20 hover:border-red-700/30 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      <span className="text-sm text-slate-200">{p.name}</span>
+                      <span className="text-sm text-foreground">{p.name}</span>
                       <span className="text-[10px] font-bold text-red-400 bg-red-900/30 px-2 py-0.5 rounded-lg">
                         {voteKickActive ? 'Vote active' : 'Kick'}
                       </span>
@@ -324,12 +319,12 @@ export default function SettingsModal({
             {/* ─── Leave Game ─── */}
             {onLeaveGame && (
               <>
-                <Separator className="bg-slate-700/40" />
+                <Separator />
                 <section>
                   <Button
                     onClick={onLeaveGame}
-                    variant="ghost"
-                    className="w-full h-11 rounded-xl bg-red-900/20 border border-red-700/30 hover:bg-red-900/40 text-red-400 hover:text-red-300 font-medium cursor-pointer"
+                    variant="danger"
+                    className="w-full h-10 rounded-xl"
                   >
                     <span className="text-base mr-2">{'\u{1F6AA}'}</span>
                     Leave Game

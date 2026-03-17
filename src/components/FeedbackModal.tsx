@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -111,29 +112,23 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose() }}>
-      <DialogContent
-        className="max-w-sm rounded-2xl border-slate-700/60 bg-slate-800/95 backdrop-blur-md shadow-2xl shadow-black/40 p-0 gap-0"
-        showCloseButton={false}
-      >
+      <DialogContent className="sm:max-w-sm">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold text-amber-300">
-              Send Feedback
-            </DialogTitle>
-            <button
-              onClick={handleClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-xs"
-            >
-              {'\u2715'}
-            </button>
+            <DialogTitle>Send Feedback</DialogTitle>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm" className="ls-close-btn">
+                {'\u2715'}
+              </Button>
+            </DialogClose>
           </div>
-          <DialogDescription className="text-xs text-slate-400">
+          <DialogDescription>
             Help us improve Lucky Seven
           </DialogDescription>
         </DialogHeader>
 
-        <Separator className="bg-slate-700/40 mt-3" />
+        <Separator className="mt-3" />
 
         {/* Body */}
         <div className="px-5 py-4">
@@ -144,13 +139,14 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
               className="text-center py-6"
             >
               <p className="text-3xl mb-3">{'\u2705'}</p>
-              <p className="text-slate-200 font-semibold">Thank you!</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-foreground font-semibold">Thank you!</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Your feedback helps improve Lucky Seven.
               </p>
               <Button
                 onClick={handleClose}
-                className="mt-5 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl h-10"
+                variant="outline"
+                className="mt-5 w-full h-10 rounded-xl"
               >
                 Close
               </Button>
@@ -159,7 +155,7 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
             <div className="space-y-4">
               {/* Rating */}
               <div className="space-y-2">
-                <Label className="text-xs text-slate-400">Rating</Label>
+                <Label>Rating</Label>
                 <div className="flex gap-1.5 justify-center">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <motion.button
@@ -170,8 +166,8 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
                       className={cn(
                         'w-10 h-10 rounded-full text-lg transition-all cursor-pointer',
                         rating >= n
-                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
-                          : 'bg-slate-700/60 text-slate-500 hover:bg-slate-600/80 hover:text-slate-400'
+                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
+                          : 'bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
                       )}
                     >
                       {'\u2605'}
@@ -182,8 +178,8 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
 
               {/* Name */}
               <div className="space-y-1.5">
-                <Label htmlFor="feedback-name" className="text-xs text-slate-400">
-                  Name <span className="text-slate-600">(optional)</span>
+                <Label htmlFor="feedback-name">
+                  Name <span className="text-muted-foreground/50">(optional)</span>
                 </Label>
                 <Input
                   id="feedback-name"
@@ -192,17 +188,17 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Anonymous"
                   maxLength={30}
-                  className="h-10 rounded-xl border-slate-600/60 bg-slate-900/60 text-white placeholder:text-slate-500 focus-visible:border-amber-500/60 focus-visible:ring-amber-500/20"
+                  className="h-10"
                 />
               </div>
 
               {/* Message */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="feedback-message" className="text-xs text-slate-400">
+                  <Label htmlFor="feedback-message">
                     Message
                   </Label>
-                  <span className="text-[10px] text-slate-600 tabular-nums">
+                  <span className="text-[10px] text-muted-foreground/50 tabular-nums">
                     {message.length}/500
                   </span>
                 </div>
@@ -213,7 +209,7 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
                   placeholder="What do you think? Any bugs or suggestions?"
                   maxLength={500}
                   rows={3}
-                  className="rounded-xl border-slate-600/60 bg-slate-900/60 text-white placeholder:text-slate-500 focus-visible:border-amber-500/60 focus-visible:ring-amber-500/20 resize-none min-h-[80px]"
+                  className="resize-none min-h-[80px]"
                 />
               </div>
 
@@ -221,7 +217,8 @@ export default function FeedbackModal({ open, onClose, onDevActivate }: Feedback
               <Button
                 onClick={handleSubmit}
                 disabled={busy}
-                className="w-full h-10 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold shadow-lg shadow-amber-600/15 cursor-pointer"
+                variant="success"
+                className="w-full h-10 rounded-xl"
               >
                 {busy ? 'Sending...' : 'Send Feedback'}
               </Button>

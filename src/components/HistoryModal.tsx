@@ -47,12 +47,12 @@ export default function HistoryModal({ open, onClose, gameId, players, history }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="sm:max-w-[480px] max-h-[80vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-0">
           <div className="flex items-center justify-center gap-2">
             <span className="text-base">&#128336;</span>
-            <DialogTitle className="text-base">Full Game History</DialogTitle>
+            <DialogTitle>Full Game History</DialogTitle>
             {entries.length > 0 && (
               <Badge
                 variant="outline"

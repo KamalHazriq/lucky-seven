@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -57,37 +58,31 @@ export default function DevModeModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) handleClose() }}>
-      <DialogContent
-        className="max-w-sm rounded-2xl border-amber-600/30 bg-slate-800/95 backdrop-blur-md shadow-2xl shadow-black/40 p-0 gap-0"
-        showCloseButton={false}
-      >
+      <DialogContent className="sm:max-w-sm">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">{'\u{1F6E0}\uFE0F'}</span>
-              <DialogTitle className="text-lg font-bold text-amber-300">
-                Developer Mode
-              </DialogTitle>
+              <DialogTitle>Developer Mode</DialogTitle>
             </div>
-            <button
-              onClick={handleClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-700/60 hover:bg-slate-600 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-xs"
-            >
-              {'\u2715'}
-            </button>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm" className="ls-close-btn" onClick={handleClose}>
+                {'\u2715'}
+              </Button>
+            </DialogClose>
           </div>
-          <DialogDescription className="text-xs text-slate-400 mt-1">
+          <DialogDescription className="mt-1">
             Enter the developer access code to enable privileged features for your account only.
           </DialogDescription>
         </DialogHeader>
 
-        <Separator className="bg-slate-700/40 mt-3" />
+        <Separator className="mt-3" />
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="dev-code" className="text-xs text-slate-400">
+            <Label htmlFor="dev-code">
               Access Code
             </Label>
             <div className="relative">
@@ -99,12 +94,12 @@ export default function DevModeModal({
                 placeholder="Enter access code..."
                 autoFocus
                 disabled={loading || success}
-                className="h-10 pr-10 rounded-xl border-slate-600/60 bg-slate-900/60 text-white font-mono placeholder:text-slate-500 focus-visible:border-amber-500/60 focus-visible:ring-amber-500/20"
+                className="h-10 pr-10 font-mono"
               />
               <button
                 type="button"
                 onClick={() => setShowCode((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 tabIndex={-1}
                 aria-label={showCode ? 'Hide code' : 'Show code'}
               >
@@ -121,7 +116,7 @@ export default function DevModeModal({
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-900/25 border border-red-700/30"
             >
               <span className="text-xs">{'\u274C'}</span>
-              <span className="text-xs text-red-300">{error}</span>
+              <span className="text-xs text-red-400">{error}</span>
             </motion.div>
           )}
 
@@ -141,7 +136,8 @@ export default function DevModeModal({
           <Button
             type="submit"
             disabled={!code.trim() || loading || success}
-            className="w-full h-10 rounded-xl bg-amber-600/80 hover:bg-amber-500/80 text-white font-semibold shadow-lg shadow-amber-600/10 cursor-pointer disabled:opacity-40"
+            variant="success"
+            className="w-full h-10 rounded-xl"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -155,7 +151,7 @@ export default function DevModeModal({
             )}
           </Button>
 
-          <p className="text-[10px] text-slate-500 text-center">
+          <p className="text-[10px] text-muted-foreground text-center">
             Access is tied to your player session only. Other players will not be affected.
           </p>
         </form>
