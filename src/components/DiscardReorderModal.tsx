@@ -78,21 +78,13 @@ export default function DrawPileReorderModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={onClose}
+          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 16 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+          className="fixed z-[60] left-1/2 -translate-x-1/2 bottom-[80px] w-full max-w-md max-h-[70vh] bg-slate-900/98 backdrop-blur-xl border border-slate-700/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           onAnimationComplete={handleOpen}
         >
-          <motion.div
-            initial={{ scale: 0.9, y: 20, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.9, y: 20, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-            className="bg-slate-800 border border-amber-600/40 rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
             {/* Header */}
             <div className="px-4 py-3 bg-amber-900/20 border-b border-amber-600/20">
               <div className="flex items-center justify-between">
@@ -205,7 +197,6 @@ export default function DrawPileReorderModal({
                 {applying ? 'Applying...' : 'Apply Order'}
               </button>
             </div>
-          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

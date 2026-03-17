@@ -1,12 +1,31 @@
-import { useState, useMemo } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import CardView from './CardView'
 import type { DevPrivileges, PrivatePlayerDoc, Card, GameDoc, PlayerDoc } from '../lib/types'
 import { getPlayerColor } from '../lib/playerColors'
-import { Card as UICard } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+
+const STORAGE_KEY = 'lucky7_devpanel_pos'
+const DEFAULT_POS = { x: window.innerWidth - 376, y: 80 }
+
+function clampPos(x: number, y: number, w = 360, h = 500) {
+  return {
+    x: Math.max(0, Math.min(x, window.innerWidth - w)),
+    y: Math.max(0, Math.min(y, window.innerHeight - h)),
+  }
+}
+
+function loadPos() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (typeof p.x === 'number' && typeof p.y === 'number') {
+        return clampPos(p.x, p.y)
+      }
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_POS
+}
 
 interface DevPanelProps {
   open: boolean
@@ -20,6 +39,8 @@ interface DevPanelProps {
   onOpenReorder?: () => void
 }
 
+type Section = 'visibility' | 'state' | 'session'
+
 export default function DevPanel({
   open,
   onClose,
@@ -31,19 +52,69 @@ export default function DevPanel({
   onDeactivate,
   onOpenReorder,
 }: DevPanelProps) {
+  const [activeSection, setActiveSection] = useState<Section>('visibility')
   const [expandedCards, setExpandedCards] = useState(false)
   const [expandedPile, setExpandedPile] = useState(false)
+  const [pos, setPos] = useState(loadPos)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
 
-  // Turn queue info
+  // ESC to close
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open, onClose])
+
+  // Focus panel on open
+  useEffect(() => {
+    if (open && panelRef.current) panelRef.current.focus()
+  }, [open])
+
+  // Drag handlers
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragState.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+
+    const onMove = (me: MouseEvent) => {
+      if (!dragState.current) return
+      const dx = me.clientX - dragState.current.startX
+      const dy = me.clientY - dragState.current.startY
+      setPos(clampPos(dragState.current.origX + dx, dragState.current.origY + dy))
+    }
+
+    const onUp = () => {
+      setPos((p) => {
+        const clamped = clampPos(p.x, p.y)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(clamped))
+        return clamped
+      })
+      dragState.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }, [pos.x, pos.y])
+
+  const sections: { key: Section; label: string; icon: string }[] = [
+    { key: 'visibility', label: 'Visibility', icon: '👁' },
+    { key: 'state', label: 'State', icon: '🧭' },
+    { key: 'session', label: 'Session', icon: '🧪' },
+  ]
+
   const turnInfo = useMemo(() => {
     if (!game) return null
     const currentPlayer = game.currentTurnPlayerId
     const currentName = currentPlayer ? players[currentPlayer]?.displayName ?? '?' : 'None'
     const phase = game.turnPhase ?? 'idle'
-    return { currentName, phase, round: game.playerOrder.length > 0 ? Math.floor((game.actionVersion ?? 0) / game.playerOrder.length) + 1 : 1 }
+    return { currentName, phase }
   }, [game, players])
 
-  // Card distribution
   const cardDistribution = useMemo(() => {
     if (!game) return null
     return {
@@ -58,188 +129,245 @@ export default function DevPanel({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 16, scale: 0.96 }}
-          transition={{ type: 'spring', stiffness: 350, damping: 26, mass: 0.6 }}
-          className="fixed z-40 w-80 max-w-[calc(100vw-24px)] bg-surface-overlay backdrop-blur-md border border-border-subtle rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-          style={{
-            maxHeight: 'min(520px, 70vh)',
-            top: '4rem',
-            left: '0.75rem',
-          }}
+          ref={panelRef}
+          tabIndex={-1}
+          initial={{ scale: 0.92, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.92, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 28, mass: 0.5 }}
+          className="fixed z-[46] w-[360px] max-w-[92vw] max-h-[80vh] bg-slate-900/98 backdrop-blur-xl border border-slate-700/40 shadow-2xl rounded-2xl flex flex-col outline-none overflow-hidden"
+          style={{ left: pos.x, top: pos.y }}
         >
-          {/* ─── Header ─── */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-900/40 border border-emerald-600/30 flex items-center justify-center">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <line x1="8" y1="21" x2="16" y2="21" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
+          {/* ─── Header (drag handle) ─── */}
+          <div
+            className="px-4 py-3 border-b border-slate-800/80 shrink-0 cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={onDragStart}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {/* Drag indicator dots */}
+                <div className="flex flex-col gap-[3px] opacity-30 mr-0.5">
+                  {[0,1,2].map((r) => (
+                    <div key={r} className="flex gap-[3px]">
+                      {[0,1].map((c) => <div key={c} className="w-[3px] h-[3px] rounded-full bg-slate-400" />)}
+                    </div>
+                  ))}
+                </div>
+                <div className="w-7 h-7 rounded-lg bg-emerald-900/40 border border-emerald-600/30 flex items-center justify-center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-100 tracking-tight">Game Monitor</h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[9px] text-emerald-400/80 font-medium tracking-wide uppercase">Monitor Active</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={onClose}
+                className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                aria-label="Close monitor"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-emerald-400 leading-none">Game Monitor</h3>
-                <span className="flex items-center gap-1 text-[8px] text-emerald-400/70 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Active
-                </span>
-              </div>
+              </button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={onClose}
-              className="rounded-full text-muted-foreground hover:text-foreground"
-            >
-              &times;
-            </Button>
+          </div>
+
+          {/* ─── Section tabs ─── */}
+          <div className="flex px-3 pt-2 pb-0 gap-1 shrink-0">
+            {sections.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setActiveSection(s.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-t-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                  activeSection === s.key
+                    ? 'text-slate-100 bg-slate-800/80 border border-slate-700/50 border-b-transparent'
+                    : 'text-slate-500 hover:text-slate-400 bg-transparent border border-transparent'
+                }`}
+              >
+                <span>{s.icon}</span>
+                {s.label}
+              </button>
+            ))}
           </div>
 
           {/* ─── Content ─── */}
-          <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-2 min-h-[100px]">
-            {/* Turn info + card distribution */}
-            {turnInfo && (
-              <UICard className="p-2.5">
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">Current Turn</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-foreground font-medium">{turnInfo.currentName}</span>
-                  <Badge variant="secondary" className="text-[9px] font-mono">{turnInfo.phase}</Badge>
-                </div>
-              </UICard>
-            )}
+          <div className="flex-1 overflow-y-auto px-3 pb-3 min-h-0">
+            <div className="bg-slate-800/50 rounded-b-xl rounded-tr-xl border border-slate-700/40 border-t-0 p-3">
+              <AnimatePresence mode="wait">
+                {/* ══════ VISIBILITY ══════ */}
+                {activeSection === 'visibility' && (
+                  <motion.div key="vis" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
 
-            {cardDistribution && (
-              <UICard className="p-2.5">
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">Card Distribution</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <StatRow label="Draw stack" value={cardDistribution.drawPile} />
-                  <StatRow label="Discard top" value={cardDistribution.discardTop} />
-                  <StatRow label="In hands" value={cardDistribution.inHands} />
-                  <StatRow label="Players" value={cardDistribution.players} />
-                </div>
-              </UICard>
-            )}
-
-            {/* Inspect player cards */}
-            {privileges.canSeeAllCards && (
-              <ToolCard
-                icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-                title="Inspect Player Cards"
-                desc="View all players' current hands"
-                expanded={expandedCards}
-                onToggle={() => setExpandedCards(!expandedCards)}
-              >
-                <div className="space-y-2.5 pt-1">
-                  {Object.entries(allPlayerHands).map(([pid, priv]) => {
-                    const player = players[pid]
-                    if (!player) return null
-                    const color = getPlayerColor(player.seatIndex, player.colorKey)
-                    return (
-                      <div key={pid}>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.solid }} />
-                          <span className="text-[10px] font-semibold" style={{ color: color.text }}>{player.displayName}</span>
-                          <Badge
-                            variant="outline"
-                            className={`text-[8px] px-1.5 py-0 ${player.connected ? 'text-emerald-400 border-emerald-600/30' : 'text-red-400 border-red-600/30'}`}
-                          >
-                            {player.connected ? 'online' : 'offline'}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-1.5 pl-3.5">
-                          {priv.hand.map((card, i) => (
-                            <CardView key={card?.id ?? i} card={card} faceUp size="sm" label={`#${i + 1}`} />
-                          ))}
-                          {priv.drawnCard && (
-                            <div className="relative">
-                              <CardView card={priv.drawnCard} faceUp size="sm" label="Drawn" />
-                              <Badge className="absolute -top-1 -right-1 h-3.5 w-3.5 p-0 text-[7px] justify-center bg-amber-500 text-white">D</Badge>
-                            </div>
+                    {privileges.canSeeAllCards && (
+                      <ToolCard
+                        icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+                        title="Inspect Player Cards"
+                        desc="View all players' current hands"
+                        expanded={expandedCards}
+                        onToggle={() => setExpandedCards(!expandedCards)}
+                      >
+                        <div className="space-y-2.5 pt-1">
+                          {Object.entries(allPlayerHands).map(([pid, priv]) => {
+                            const player = players[pid]
+                            if (!player) return null
+                            const color = getPlayerColor(player.seatIndex, player.colorKey)
+                            return (
+                              <div key={pid}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color.solid }} />
+                                  <span className="text-[10px] font-semibold" style={{ color: color.text }}>{player.displayName}</span>
+                                  {player.connected ? (
+                                    <span className="text-[8px] text-emerald-500">online</span>
+                                  ) : (
+                                    <span className="text-[8px] text-red-500">offline</span>
+                                  )}
+                                </div>
+                                <div className="flex gap-1.5 pl-3.5">
+                                  {priv.hand.map((card, i) => (
+                                    <CardView key={card?.id ?? i} card={card} faceUp size="sm" label={`#${i + 1}`} />
+                                  ))}
+                                  {priv.drawnCard && (
+                                    <div className="relative">
+                                      <CardView card={priv.drawnCard} faceUp size="sm" label="Drawn" />
+                                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center text-[7px] font-bold text-white">D</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          {Object.keys(allPlayerHands).length === 0 && (
+                            <p className="text-[10px] text-slate-500 text-center py-2">No player data available.</p>
                           )}
                         </div>
+                      </ToolCard>
+                    )}
+
+                    {privileges.canPeekDrawPile && (
+                      <ToolCard
+                        icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 3H8l-2 4h12l-2-4z"/></svg>}
+                        title="Inspect Draw Stack"
+                        desc={`${drawPileCards.length} cards remaining`}
+                        expanded={expandedPile}
+                        onToggle={() => setExpandedPile(!expandedPile)}
+                      >
+                        <div className="space-y-0.5 pt-1">
+                          {drawPileCards.slice(0, 12).map((card, i) => (
+                            <div key={card.id} className={`flex items-center gap-2 px-2 py-1 rounded-lg ${i === 0 ? 'bg-amber-900/15 border border-amber-700/20' : 'bg-slate-900/20'}`}>
+                              <span className="text-[9px] text-slate-500 w-4 text-right font-mono">{i + 1}.</span>
+                              <CardView card={card} faceUp size="sm" />
+                              <span className="text-[10px] text-slate-400 flex-1">{card.isJoker ? 'Joker' : `${card.rank} of ${card.suit}`}</span>
+                              {i === 0 && <span className="text-[7px] px-1.5 py-0.5 bg-amber-600/25 text-amber-300 rounded-full font-bold">NEXT</span>}
+                            </div>
+                          ))}
+                          {drawPileCards.length > 12 && (
+                            <p className="text-[9px] text-slate-500 text-center pt-1">...and {drawPileCards.length - 12} more</p>
+                          )}
+                          {drawPileCards.length === 0 && (
+                            <p className="text-[10px] text-slate-500 text-center py-2">Stack is empty.</p>
+                          )}
+                        </div>
+                      </ToolCard>
+                    )}
+
+                    {!privileges.canSeeAllCards && !privileges.canPeekDrawPile && (
+                      <p className="text-[10px] text-slate-500 text-center py-6">No visibility tools available.</p>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ══════ STATE ══════ */}
+                {activeSection === 'state' && (
+                  <motion.div key="state" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2">
+
+                    {turnInfo && (
+                      <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                        <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2">Current Turn</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-200 font-medium">{turnInfo.currentName}</span>
+                          <span className="text-[9px] px-2 py-0.5 rounded-full bg-slate-700/60 text-slate-400 font-mono">{turnInfo.phase}</span>
+                        </div>
                       </div>
-                    )
-                  })}
-                  {Object.keys(allPlayerHands).length === 0 && (
-                    <p className="text-[10px] text-muted-foreground text-center py-2">No player data available.</p>
-                  )}
-                </div>
-              </ToolCard>
-            )}
+                    )}
 
-            {/* Inspect draw stack */}
-            {privileges.canPeekDrawPile && (
-              <ToolCard
-                icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 3H8l-2 4h12l-2-4z"/></svg>}
-                title="Inspect Draw Stack"
-                desc={`${drawPileCards.length} cards remaining`}
-                expanded={expandedPile}
-                onToggle={() => setExpandedPile(!expandedPile)}
-              >
-                <div className="space-y-0.5 pt-1">
-                  {drawPileCards.slice(0, 12).map((card, i) => (
-                    <div key={card.id} className={`flex items-center gap-2 px-2 py-1 rounded-lg ${i === 0 ? 'bg-amber-900/15 border border-amber-700/20' : 'bg-surface-panel'}`}>
-                      <span className="text-[9px] text-muted-foreground w-4 text-right font-mono">{i + 1}.</span>
-                      <CardView card={card} faceUp size="sm" />
-                      <span className="text-[10px] text-foreground/80 flex-1">{card.isJoker ? 'Joker' : `${card.rank} of ${card.suit}`}</span>
-                      {i === 0 && <Badge className="text-[7px] px-1.5 py-0 bg-amber-600/25 text-amber-300 border-amber-700/20" variant="outline">NEXT</Badge>}
+                    {cardDistribution && (
+                      <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                        <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2">Card Distribution</p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                          <StatRow label="Draw stack" value={cardDistribution.drawPile} />
+                          <StatRow label="Discard top" value={cardDistribution.discardTop} />
+                          <StatRow label="In hands" value={cardDistribution.inHands} />
+                          <StatRow label="Players" value={cardDistribution.players} />
+                        </div>
+                      </div>
+                    )}
+
+                    {privileges.canReorderDiscardPile && onOpenReorder && (
+                      <button
+                        onClick={() => { onOpenReorder(); onClose() }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-amber-900/10 border border-amber-700/20 hover:bg-amber-900/20 transition-colors cursor-pointer group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-900/30 border border-amber-600/20 flex items-center justify-center shrink-0">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                            <polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/>
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <span className="text-[11px] font-semibold text-amber-300 block">Reorder Draw Stack</span>
+                          <span className="text-[9px] text-amber-500/50">Rearrange card positions</span>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 group-hover:text-amber-400 ml-auto transition-colors shrink-0">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ══════ SESSION ══════ */}
+                {activeSection === 'session' && (
+                  <motion.div key="session" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2.5">
+
+                    <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                      <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold mb-2.5">Active Permissions</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {privileges.canSeeAllCards && <PermBadge label="Inspect Cards" />}
+                        {privileges.canPeekDrawPile && <PermBadge label="Draw Stack" />}
+                        {privileges.canInspectGameState && <PermBadge label="Game State" />}
+                        {privileges.canUseCheatActions && <PermBadge label="Actions" />}
+                        {privileges.canReorderDiscardPile && <PermBadge label="Reorder" highlight />}
+                      </div>
                     </div>
-                  ))}
-                  {drawPileCards.length > 12 && (
-                    <p className="text-[9px] text-muted-foreground text-center pt-1">...and {drawPileCards.length - 12} more</p>
-                  )}
-                  {drawPileCards.length === 0 && (
-                    <p className="text-[10px] text-muted-foreground text-center py-2">Stack is empty.</p>
-                  )}
-                </div>
-              </ToolCard>
-            )}
 
-            {/* Reorder draw stack — opens separate modal */}
-            {privileges.canReorderDiscardPile && onOpenReorder && (
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2.5 h-auto px-2.5 py-2 rounded-xl border-amber-700/20 bg-amber-900/10 hover:bg-amber-900/20 text-left group"
-                onClick={() => { onOpenReorder(); onClose() }}
-              >
-                <div className="w-6 h-6 rounded-lg bg-amber-900/30 border border-amber-600/20 flex items-center justify-center shrink-0">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                    <polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] font-semibold text-amber-300 block">Reorder Draw Stack</span>
-                  <span className="text-[8px] text-amber-500/50">Opens modal</span>
-                </div>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground group-hover:text-amber-400 ml-auto transition-colors shrink-0">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </Button>
-            )}
+                    <div className="rounded-xl bg-slate-900/40 border border-slate-700/30 p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="text-[11px] font-semibold text-emerald-300">Session Active</span>
+                      </div>
+                      <p className="text-[9px] text-slate-500 pl-4">
+                        Monitor mode is bound to this game session.
+                      </p>
+                    </div>
 
-            {!privileges.canSeeAllCards && !privileges.canPeekDrawPile && (
-              <p className="text-[10px] text-muted-foreground text-center py-4">No visibility tools available.</p>
-            )}
-
-            <Separator />
-
-            {/* Permissions + deactivate */}
-            <div className="flex flex-wrap gap-1">
-              {privileges.canSeeAllCards && <Badge variant="outline" className="text-[8px] border-border-subtle text-muted-foreground">Cards</Badge>}
-              {privileges.canPeekDrawPile && <Badge variant="outline" className="text-[8px] border-border-subtle text-muted-foreground">Stack</Badge>}
-              {privileges.canUseCheatActions && <Badge variant="outline" className="text-[8px] border-border-subtle text-muted-foreground">Actions</Badge>}
-              {privileges.canReorderDiscardPile && <Badge variant="outline" className="text-[8px] border-amber-700/30 text-amber-300 bg-amber-900/20">Reorder</Badge>}
+                    <button
+                      onClick={() => { onDeactivate(); onClose() }}
+                      className="w-full py-2.5 rounded-xl bg-red-950/30 border border-red-800/25 hover:bg-red-950/50 text-red-400 text-[11px] font-semibold transition-colors cursor-pointer"
+                    >
+                      Disable Monitor Mode
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-
-            <Button
-              variant="danger"
-              className="w-full h-8 rounded-xl text-[10px] font-semibold"
-              onClick={() => { onDeactivate(); onClose() }}
-            >
-              Disable Monitor
-            </Button>
           </div>
         </motion.div>
       )}
@@ -258,21 +386,21 @@ function ToolCard({ icon, title, desc, expanded, onToggle, children }: {
   children: React.ReactNode
 }) {
   return (
-    <UICard className="p-0 overflow-hidden">
+    <div className="rounded-xl border border-slate-700/30 overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-surface-panel/80 transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2.5 px-3 py-2 bg-slate-900/30 hover:bg-slate-900/60 transition-colors cursor-pointer"
       >
-        <div className="w-6 h-6 rounded-lg bg-surface-panel border border-border-subtle flex items-center justify-center shrink-0">
+        <div className="w-7 h-7 rounded-lg bg-slate-800/80 border border-slate-700/40 flex items-center justify-center shrink-0">
           {icon}
         </div>
         <div className="text-left flex-1 min-w-0">
-          <span className="text-[10px] font-semibold text-foreground block">{title}</span>
-          <span className="text-[8px] text-muted-foreground">{desc}</span>
+          <span className="text-[11px] font-semibold text-slate-200 block">{title}</span>
+          <span className="text-[9px] text-slate-500">{desc}</span>
         </div>
         <svg
           width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          className={`text-muted-foreground shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          className={`text-slate-500 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
         >
           <polyline points="6 9 12 15 18 9"/>
         </svg>
@@ -286,22 +414,33 @@ function ToolCard({ icon, title, desc, expanded, onToggle, children }: {
             transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.4 }}
             className="overflow-hidden"
           >
-            <Separator />
-            <div className="px-2.5 py-2">
+            <div className="px-3 py-2 border-t border-slate-700/20">
               {children}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </UICard>
+    </div>
   )
 }
 
 function StatRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[10px] text-muted-foreground">{label}</span>
-      <span className="text-[10px] text-foreground font-mono font-medium">{value}</span>
+      <span className="text-[10px] text-slate-500">{label}</span>
+      <span className="text-[10px] text-slate-300 font-mono font-medium">{value}</span>
     </div>
+  )
+}
+
+function PermBadge({ label, highlight }: { label: string; highlight?: boolean }) {
+  return (
+    <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
+      highlight
+        ? 'bg-amber-900/30 text-amber-300 border border-amber-700/30'
+        : 'bg-slate-800/80 text-slate-400 border border-slate-700/30'
+    }`}>
+      {label}
+    </span>
   )
 }

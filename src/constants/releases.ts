@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.8.3'
+export const CURRENT_VERSION = 'v1.0.0'
 
 export interface ReleaseNote {
   version: string
@@ -7,63 +7,52 @@ export interface ReleaseNote {
   sections: { heading: string; items: string[] }[]
 }
 
+// ─── Official releases (v1.x.x) ─────────────────────────────
 export const RELEASES: ReleaseNote[] = [
   {
-    version: 'v1.8.3',
-    title: 'Supabase Migration',
-    date: '17 March 2026',
+    version: 'v1.0.0',
+    title: 'Official Launch',
+    date: '18 March 2026',
     sections: [
       {
-        heading: 'Backend',
+        heading: 'Launch',
         items: [
-          'Full backend migration from Firebase to Supabase (Postgres + Realtime)',
-          'Row Level Security (RLS) on all tables — identity-scoped reads, server-side writes',
-          'All game actions handled via SECURITY DEFINER RPCs (no direct table writes from client)',
-          'Anonymous authentication preserved — no sign-up required',
-          'Realtime subscriptions via Postgres Changes for live game updates',
-        ],
-      },
-      {
-        heading: 'Security',
-        items: [
-          'Hidden cards (draw pile + opponent hands) are invisible to clients via RLS policies',
-          'Dev mode access gated by server-side code verification',
-          'All write operations validated server-side with auth checks',
-        ],
-      },
-      {
-        heading: 'Performance',
-        items: [
-          'Auth race condition fixed — subscriptions wait for JWT before fetching',
-          'iOS safe-area support enabled (viewport-fit=cover)',
-          'Social meta tags added for invite link previews',
+          'Lucky Seven is now officially live at luckyseven.site',
+          'After extensive beta testing, the game is stable and ready for public play',
+          'Real-time multiplayer for 2–8 players, no account needed',
+          'Power cards, turn timer, vote-kick, AFK system, and full mobile support',
         ],
       },
     ],
   },
+]
+
+// ─── Beta history (v0.x.x) ──────────────────────────────────
+// All pre-launch development versions. Grouped under "Beta History" in the UI.
+export const BETA_RELEASES: ReleaseNote[] = [
   {
-    version: 'v1.8.2',
-    title: 'Jack Rework',
+    version: 'v0.10.0',
+    title: 'Jack Rework & Dev Tools',
     date: '16 March 2026',
     sections: [
       {
         heading: 'Gameplay',
         items: [
-          'Jack power rework: peek all 3 cards of a selected opponent (instead of your own cards)',
+          'Jack power rework: peek all 3 cards of a selected opponent',
           'Player selection step added when using Jack with Peek Opponent enabled',
-          'Locked cards on opponent are shown as locked during peek',
         ],
       },
       {
         heading: 'UI / UX',
         items: [
+          'Dev tools panel redesigned with grouped sections: Visibility, State, Session',
           'Feedback button added to Patch Notes modal footer',
         ],
       },
     ],
   },
   {
-    version: 'v1.8.1',
+    version: 'v0.9.1',
     title: 'Card Polish & Chaos Animation',
     date: '15 March 2026',
     sections: [
@@ -71,32 +60,20 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Card Redesign',
         items: [
           'Premium tabletop card style: large centered suit icon with rank below',
-          'Top-left and bottom-right mirrored corner indicators (rank + suit)',
-          'Clean white background for face-up cards with subtle border',
-          'Joker cards display centered emoji with JOKER label',
+          'Mirrored corner indicators (rank + suit), clean white background',
         ],
       },
       {
         heading: 'Chaos Animation',
         items: [
-          'Chaos/rearrange power now triggers a shuffle animation on the target player\'s cards',
-          'Cards lift, rotate, and shuffle before settling back (~900ms)',
-          'Staggered animation delay per card slot for organic feel',
-          'New shuffle sound effect: rapid card-riffle with settle tone',
-        ],
-      },
-      {
-        heading: 'Bug Fixes',
-        items: [
-          'Fixed patch notes showing v1.8.0 in all version categories (grouping logic)',
-          'Peek opponent setting now enabled by default',
-          'Chaos highlight now highlights the entire player panel instead of individual cards',
+          'Cards lift, rotate, and shuffle before settling (~900ms) when chaos is used',
+          'New shuffle sound effect with card-riffle tone',
         ],
       },
     ],
   },
   {
-    version: 'v1.8.0',
+    version: 'v0.9.0',
     title: 'Premium UI Redesign',
     date: '15 March 2026',
     sections: [
@@ -104,140 +81,101 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Visual Overhaul',
         items: [
           'Premium felt-table aesthetic with themed CSS variables across all 3 themes',
-          'Redesigned card faces: separate rank and suit display with corner indicators',
-          'Subtler animations: reduced glow (3s cycle), gentler shimmer (7s cycle), softer card flight shadows',
-          'Table felt surface uses radial gradient with theme-aware colors',
+          'Subtler animations, softer glow, gentler shimmer',
+          'All modals themed consistently using CSS variables',
         ],
       },
       {
         heading: 'Layout Stability',
         items: [
-          'Seat positions inset for 5-7 players to prevent panel edge clipping',
-          'Tighter card gaps and reduced padding on remote player panels',
-          'Minimum panel widths raised for 6+ players so 3 cards always fit',
-          'Table zone height constraints refined to prevent action bar push-off',
-          'Card container overflow set to visible so selection badges are never clipped',
-        ],
-      },
-      {
-        heading: 'Game Flow Clarity',
-        items: [
-          'Selection confirm banner now shows specific swap summary (e.g. "Confirm swap: Kamal\'s #1 \u2194 Sara\'s #2")',
-          'Peek reveal duration increased from 1.2s to 2s for better readability',
-          'Turn indicator shows pulsing green dot when it\'s your turn',
-          'Action phase text is now context-aware based on held card state',
-          '"FINAL ROUND" banner appears when a player calls end \u2014 shows who called it',
-          'Action highlight labels larger and more readable on table layout',
-        ],
-      },
-      {
-        heading: 'Theme Consistency',
-        items: [
-          'All modals themed: Drawn Card, Vote Kick, Settings, Patch Notes use CSS variables',
-          'Home, Lobby, and Results pages use themed containers',
-          'Game log newest entry highlight uses theme variable instead of hardcoded color',
-          'Selection pulse uses dedicated CSS keyframe instead of generic animate-pulse',
-        ],
-      },
-      {
-        heading: 'Performance',
-        items: [
-          'GameLog wrapped in React.memo to prevent re-renders on unrelated state changes',
-          'hasAnyLocks computation memoized to avoid recalculating every render',
-          'All animations GPU-accelerated via transform/opacity \u2014 no layout thrashing',
+          'Seat positions inset for 5–7 players to prevent edge clipping',
+          'Table zone height constraints refined to prevent action bar overlap',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.7',
+    version: 'v0.8.7',
     title: 'Card Overflow, Timer & Celebration',
     date: '15 March 2026',
     sections: [
       {
         heading: 'Bug Fixes',
         items: [
-          'Fixed 7-player card overflow: reduced gaps, removed forced minWidth, cards now shrink-to-fit in narrow panels',
-          'Fixed game log not auto-scrolling: tracks last entry content instead of log.length (bounded log replaces entries without changing length)',
-          'Fixed timer randomly skipping/kicking players: immediately resets remaining time on turn change to prevent stale-zero expiry; added 3-second grace buffer for client clock-skew',
-          'Fixed name input showing bank card autocomplete: added autoComplete="off" to all name inputs in Home and Lobby',
+          'Fixed 7-player card overflow — cards now shrink-to-fit in narrow panels',
+          'Fixed game log not auto-scrolling after bounded log replacement',
+          'Fixed timer randomly skipping players due to stale expiry values',
         ],
       },
       {
         heading: 'Results Celebration',
         items: [
-          'Canvas confetti burst when all players reveal \u2014 two bursts from left/right with 160 particles',
-          'New celebrate SFX: ascending 5-tone fanfare with harmonics',
-          'Improved winner display: "Shared Win! X & Y are the champions!" for ties, "X wins!" for solo winner',
-          'Tiebreaker: most sevens wins among tied players; if still tied, shared win',
+          'Canvas confetti burst when all players reveal — two bursts from left/right',
+          'New celebrate SFX: ascending 5-tone fanfare',
+          'Tiebreaker: most sevens wins; if still tied, shared win',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.6',
+    version: 'v0.8.6',
     title: 'Lobby Color Instant Feedback',
     date: '14 March 2026',
     sections: [
       {
         heading: 'Lobby',
         items: [
-          'Color picker now shows ring highlight and avatar color instantly on pick \u2014 no waiting for round-trip',
-          'Optimistic pendingColorKey state: updates UI immediately, cleared when server confirms, reverted on conflict',
-          'Auto-assign first available color on lobby entry with instant visual feedback',
+          'Color picker shows ring highlight and avatar color instantly on pick',
+          'Optimistic state: updates UI immediately, reverted on conflict',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.5',
+    version: 'v0.8.5',
     title: 'Log, Swap Highlight & Lock Blur',
     date: '13 March 2026',
     sections: [
       {
         heading: 'Bug Fixes',
         items: [
-          'Fixed game log entries being invisible: removed framer-motion opacity conflict that overrode CSS style',
-          'Fixed lobby color not auto-assigning on entry: added useEffect to pick first available color',
-          'Fixed locked face-up cards being unreadable: known locked cards now show small corner lock badge instead of full blur overlay',
+          'Fixed game log entries being invisible due to framer-motion opacity conflict',
+          'Fixed locked face-up cards being unreadable — now show small corner badge',
         ],
       },
       {
         heading: 'Swap Selection',
         items: [
-          'Both swap targets now highlighted: first pick shows amber "1" badge, second pick shows emerald "2" badge',
-          'Opponent cards pulse and highlight on hover during swap selection',
-          'Non-selectable slots dimmed during selection mode for clarity',
+          'Both swap targets highlighted: amber "1" badge and emerald "2" badge',
+          'Non-selectable slots dimmed during selection mode',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.4',
+    version: 'v0.8.4',
     title: 'Vote Kick Rework & Per-Player Timer',
     date: '12 March 2026',
     sections: [
       {
         heading: 'Vote Kick',
         items: [
-          'Vote kick now requires 3+ players (hidden for 2-player games)',
-          'Timer pauses during active vote kick \u2014 resumes with remaining time when vote resolves',
-          'actionVersion increments on vote start/resolve to prevent timer race conditions',
-          'Kicked player sees a dedicated "You\'ve been kicked!" screen',
+          'Vote kick requires 3+ players — hidden for 2-player games',
+          'Timer pauses during active vote kick, resumes with remaining time',
+          'Kicked player sees a dedicated screen',
         ],
       },
       {
         heading: 'Timer',
         items: [
-          'Timer now shown per-player under each panel instead of a single global bar',
+          'Timer shown per-player under each panel instead of a global bar',
           'Skip guard prevents auto-skip during active vote kick',
-          'turnStartAt restored with vote duration when vote resolves',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.3',
+    version: 'v0.8.3',
     title: 'Vote Kick, Staging & Settings Fixes',
     date: '12 March 2026',
     sections: [
@@ -245,620 +183,227 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Bug Fixes',
         items: [
           'Fixed vote kick auto-kicking in 2-player games',
-          'Fixed staging animation inconsistency with double rAF before getBoundingClientRect',
+          'Fixed staging animation inconsistency',
           'Fixed lobby settings not syncing between host and players',
-          'Fixed player color not showing in classic layout',
-          'Fixed timer not resetting on turn change in some edge cases',
-          'Fixed AFK system firing during lobby phase',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.2',
+    version: 'v0.8.2',
     title: 'Rematch, AFK & Color Fixes',
     date: '11 March 2026',
     sections: [
       {
         heading: 'Play Again',
         items: [
-          'All players are now auto-redirected to the new lobby when anyone clicks Play Again',
-          'No more having to independently click Play Again \u2014 the whole group stays together',
+          'All players auto-redirect to the new lobby when anyone clicks Play Again',
         ],
       },
       {
-        heading: 'AFK System',
+        heading: 'AFK & Lobby',
         items: [
-          'Fixed a bug where the AFK timer could fire twice in one turn, causing premature kicks',
-          'Skip-fired flag now resets only on actual turn change, not on every mid-turn action',
-        ],
-      },
-      {
-        heading: 'Lobby Color Picker',
-        items: [
-          'Taken colors now show a clear \u2715 overlay instead of just dimming',
-          'Makes unavailable colors immediately obvious at a glance',
+          'Fixed AFK timer firing twice per turn',
+          'Taken colors now show a ✕ overlay in the color picker',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.1',
+    version: 'v0.8.1',
     title: 'Turn Timer & Moderation',
     date: '11 March 2026',
     sections: [
       {
         heading: 'Turn Timer',
         items: [
-          'Configurable turn timer: Off, 30s, 60s, 90s, or 120s \u2014 set when creating a game',
-          'Live countdown bar below the turn indicator (green \u2192 amber \u2192 red)',
-          'Critical pulse animation on the timer when \u22645 seconds remain',
-          'Timer resets when the turn advances to the next player',
+          'Configurable turn timer: Off, 30s, 60s, 90s, or 120s',
+          'Live countdown bar: green → amber → red with critical pulse at ≤5s',
         ],
       },
       {
-        heading: 'AFK System',
+        heading: 'AFK & Vote-Kick',
         items: [
-          'If the timer expires, the turn is auto-skipped and the player gets 1 AFK strike',
-          'Drawn cards are auto-discarded when a turn is skipped',
-          'On 2 consecutive AFK strikes, the player is kicked from the game',
-          'AFK strikes reset whenever a player takes any action (draw from pile or discard)',
-        ],
-      },
-      {
-        heading: 'Vote-Kick',
-        items: [
-          'Any player can initiate a vote to kick another player via the Settings menu',
-          'All players see a modal with vote progress \u2014 majority required to kick',
-          'Voting "No" immediately cancels the vote to prevent griefing',
-          'Kicked player is removed, turn advances if needed, host transfers if needed',
-        ],
-      },
-      {
-        heading: 'Technical',
-        items: [
-          'Auto-skip uses actionVersion guard so only one client triggers the skip',
-          'All timer operations are client-side with Date.now() \u2014 no server timestamps needed',
-          'Vote-kick data stored on game doc \u2014 real-time updates for all players',
+          'Auto-skip on timer expiry with AFK strike system (2 strikes = kick)',
+          'Vote-kick: any player can initiate, majority required, voting No cancels',
         ],
       },
     ],
   },
   {
-    version: 'v1.7.0',
+    version: 'v0.8.0',
     title: 'Identity & Lobby',
     date: '11 March 2026',
     sections: [
       {
-        heading: 'Unique Player Colors',
+        heading: 'Player Identity',
         items: [
-          '16 high-contrast colors in the lobby picker \u2014 readable on dark felt UI',
-          'Colors are "booked" \u2014 no two players can pick the same color',
-          'Taken colors appear dimmed with tooltip showing who took them',
-          'Color selection uses server-side validation to prevent race conditions',
-        ],
-      },
-      {
-        heading: 'Unique Player Names',
-        items: [
-          'No duplicate names allowed in a lobby (case-insensitive)',
-          '"Azam" and "azam" are treated as the same name',
-          'Validated at join time and when editing name in the lobby',
-          'Clear error toast: "Name already taken in this lobby"',
-        ],
-      },
-      {
-        heading: 'Invite Link Flow',
-        items: [
-          'Invite links now show a name + color picker modal before joining',
-          'See lobby player count, taken colors, and name conflicts in real-time',
-          'Full/started lobbies show a clear message instead of auto-joining',
-          'Cancel button returns to the Home page',
-        ],
-      },
-      {
-        heading: 'Security',
-        items: [
-          'Server-side rules restrict player doc updates to safe fields only',
-          'Players can only modify: displayName, colorKey, connected, locks, lockedBy',
-          'Prevents overwriting other players\' data through direct API calls',
+          '16 unique lobby colors — no two players share the same color',
+          'No duplicate names allowed (case-insensitive)',
+          'Invite link shows name + color picker before joining',
         ],
       },
     ],
   },
   {
-    version: 'v1.6.0',
+    version: 'v0.7.0',
     title: 'Premium Polish',
     date: '11 March 2026',
     sections: [
       {
-        heading: 'Premium Animations',
+        heading: 'Animations & Feel',
         items: [
-          'Slower, floaty flying card arcs (1.4\u20131.7s) for a luxurious poker-table feel',
-          'Enhanced arc height, mid-flight scale lift (1.08x), and organic rotation tilt',
-          'Softer springs across StagingSlot, DiscardFlip, and CardView for buttery motion',
-          'Deeper 3D perspective (800px) and longer reveal on discard flip (1.5s)',
-          'Card hover lift enhanced: scale 1.07, y -5, subtle rotate',
-        ],
-      },
-      {
-        heading: 'Leave Game & Auto-End',
-        items: [
-          'End Game button removed \u2014 game ends automatically when the draw pile is empty',
-          'FINAL badge when \u22643 cards remain; LAST TURN badge when pile hits 0',
-          'Leave Game button in Settings \u2014 exit mid-game with confirmation',
-          'Leave Lobby button \u2014 exit before the game starts',
-          'Transaction-safe leave: host transfers, turn advances, drawn cards cleared',
-          'Game continues with remaining players (2+) when someone leaves',
+          'Slower, floaty flying card arcs (1.4–1.7s) for a luxurious feel',
+          'Leave Game button in Settings — exit mid-game with confirmation',
+          'Game ends automatically when the draw pile is empty',
         ],
       },
       {
         heading: 'Home Screen',
         items: [
-          'Game Statistics section: Games Played and Total Visits \u2014 universal across all devices',
-          'Strategy Tips placeholder section with 4 tips (Coming Soon)',
-          'More floating background card suits with higher visibility',
-        ],
-      },
-      {
-        heading: 'Game Feel',
-        items: [
-          'Golden glow pulse on staging slot when a card is in play',
-          'Button hover glow effect across the UI',
-          'Responsive table-zone breakpoints for large screens (1024/1280/1440px)',
-          'Settings icon no longer rotates on hover \u2014 cleaner look',
-          'Improved tooltip positioning for right-aligned buttons',
-          'More card padding for opponent panels in classic layout',
-        ],
-      },
-      {
-        heading: 'Bug Fixes',
-        items: [
-          'Fixed remote discard-take animation timing in classic layout',
-          'Fixed unused import build errors (SPRING_TAP, setDoc, getSeatColor)',
-          'Fixed leaveGame redundant ternary and missing read-before-write',
-          'Selection mode and choreography properly reset on leave',
+          'Game Statistics section: Games Played and Total Visits',
         ],
       },
     ],
   },
   {
-    version: 'v1.5.0',
+    version: 'v0.6.0',
     title: 'Production Readiness',
     date: '10 March 2026',
     sections: [
       {
-        heading: 'Top Bar Redesign',
+        heading: 'UI & Layout',
         items: [
-          'Professional 3-zone layout: game info (left), turn strip (center), controls (right)',
-          'Copyable room code in the top bar \u2014 click to copy instantly',
-          'Compact turn queue in the top bar on desktop, full version below on mobile',
-          'Consistent icon button sizing with the new topbar-btn class',
-          'No wrap, no overlap, no layout shift \u2014 fixed height header',
+          'Professional 3-zone top bar: game info, turn strip, controls',
+          'Table layout engine rewritten with pile-zone avoidance',
+          'Mobile forces classic layout, desktop uses poker table by default',
         ],
       },
       {
-        heading: 'Table Layout Engine',
+        heading: 'Performance',
         items: [
-          'Rewritten getSeatPositions with pile-zone avoidance and spacing validation',
-          'Table zone uses 70-80% viewport height (no more fixed pixel heights)',
-          'Safe layout stack: banners/announcements push content down instead of overlapping',
-          'Table layout disabled on mobile (<768px) \u2014 forced to classic',
-          'Validated seat spacing: dev warnings if seats are too close',
-        ],
-      },
-      {
-        heading: 'Premium Card Motion',
-        items: [
-          'Slow, floaty flying cards \u2014 1.4-1.7s arcs with gentle easing and 1.03x scale peak',
-          'GPU-optimized transforms (translate x/y offsets, willChange: transform)',
-          'Subtle rotation tilt during flight for organic feel',
-          'Enhanced staging slot: gentler float (2.8s cycle), drop shadow, smoother entry',
-          'Discard flip: longer 600ms reveal with scale overshoot (1.06x)',
-          'Reduced motion fallback: clean 250ms fade + slide',
-        ],
-      },
-      {
-        heading: 'Swap Visibility',
-        items: [
-          'Queen swap highlights both involved slots with actor-color pulse rings',
-          'Swap labels show swap partner near each slot (e.g. "\u2194 Kamal #2")',
-          'Labels and highlights auto-clear after 2 seconds',
-          'No card identity leaks \u2014 labels show position only, not card values',
-        ],
-      },
-      {
-        heading: 'Card-Back Polish',
-        items: [
-          'Richer 4-stop owner-color gradient for more depth and dimension',
-          'Subtle inner highlight border for glass-like premium feel',
-          'Refined center emblem with softer translucent background',
-          'Gentler shimmer sweep (5s diagonal cycle, 6% opacity)',
-          'Colored outer glow shadow matching owner seat color',
-        ],
-      },
-      {
-        heading: 'Shareability',
-        items: [
-          'Copy Link button in the lobby \u2014 share a direct room URL',
-          'Invite Friends button \u2014 copies a formatted message with code + link',
-          'Room code is still copyable by clicking in both lobby and game',
-          'Clipboard utility with fallback for older browsers',
-        ],
-      },
-      {
-        heading: 'Game Log',
-        items: [
-          'Cleaner log layout with consistent row height and tighter spacing',
-          'Latest entry highlighted with subtle background',
-          'Older entries fade progressively for visual hierarchy',
-          'Name chips with consistent min-width for short names',
-          'Additional power keyword mappings for edge cases',
-        ],
-      },
-      {
-        heading: 'Quota Protection',
-        items: [
-          'Game log bounded at 50 entries \u2014 older entries auto-pruned',
-          'Chat queries limited to last 50 messages',
+          'Game log bounded at 50 entries, chat limited to 50 messages',
           'Presence writes throttled to once per 60 seconds',
-          'Lazy chat subscription (mobile: on open, desktop: after first render)',
-          'Game finish summary analytics (one write per game)',
-        ],
-      },
-      {
-        heading: 'Branding',
-        items: [
-          'Consistent Lucky Seven\u2122 title across all screens',
-          'Updated watermark: Built by Kamal Hazriq',
-          'Patch notes accessible from Home, Lobby, and in-game',
         ],
       },
     ],
   },
   {
-    version: 'v1.4.3',
+    version: 'v0.5.3',
     title: 'UI Stabilization',
     date: '10 March 2026',
     sections: [
       {
-        heading: 'Toolbar & Controls',
+        heading: 'Fixes',
         items: [
-          'All toolbar buttons now show descriptive tooltips on hover',
-          'Active state styling for Layout, UI Mode, and Log Position toggles',
-          'Proper aria-labels on all toggle buttons for accessibility',
-        ],
-      },
-      {
-        heading: 'Table Layout',
-        items: [
-          'Wider seat spacing for 5-7 player games \u2014 no more card overlap',
-          'Better two-row seat strategy: sides + top arc',
-          'Taller table container with proportional heights per player count',
-          'Reduced panel widths for 6+ players to prevent collision',
-        ],
-      },
-      {
-        heading: 'Card Styling',
-        items: [
-          'Premium card backs: full owner-color gradient fill, no heavy outline',
-          'Subtle neutral border (border-white/6%) replaces thick colored ring',
-          'White border highlight only appears on hover (desktop)',
-          'Softer shimmer animation (8% opacity, 4s cycle)',
-        ],
-      },
-      {
-        heading: 'Game Log',
-        items: [
-          'Cleaner log layout with consistent row structure and vertical spacing',
-          'Older entries fade out (opacity dimming) for visual hierarchy',
-          'Compact uniform chip sizing for names, powers, and card references',
-          'Left sidebar log with tighter padding and proper sticky positioning',
-        ],
-      },
-      {
-        heading: 'Patch Notes',
-        items: [
-          'Sub-versions (v1.4.1, v1.4.2, v1.4.3) grouped under v1.4 tab',
-          'Expandable accordion for sub-version details',
-          'Cleaner version navigation with +N badge for sub-version count',
+          'Wider seat spacing for 5–7 player games',
+          'All toolbar buttons show descriptive tooltips',
+          'Sub-versions grouped under v0.5 tab in patch notes',
         ],
       },
     ],
   },
   {
-    version: 'v1.4.2',
+    version: 'v0.5.2',
     title: 'Premium Choreography',
     date: '10 March 2026',
     sections: [
       {
-        heading: 'Animation Engine',
+        heading: 'Animations',
         items: [
-          'Floaty, premium flying card motion \u2014 1.4\u20131.8s gentle arcs with subtle rotation',
-          'Gentle cubic-bezier easing (0.22, 1, 0.36, 1) for a slow, poker-table feel',
-          '20-step bezier curves with scale lift and organic tilt during flight',
-          'Enhanced drop shadows for depth during flight',
-        ],
-      },
-      {
-        heading: 'Staging Area',
-        items: [
+          'Floaty flying card motion — 1.4–1.8s gentle arcs with subtle rotation',
           'New "In play" staging slot between Draw and Discard piles',
-          'Discard takes fly to staging area first, then to your hand on swap',
-          'Staged card floats gently with a subtle hover animation',
-          'Staging is purely visual \u2014 no server writes, reconstructs on refresh',
-        ],
-      },
-      {
-        heading: 'Card Choreography',
-        items: [
-          'Multi-step animation sequences: discard \u2192 staging \u2192 slot \u2192 discard',
-          'Draw pile draws fly face-down to your panel (no identity leaks)',
-          'Swapped-out cards fly to discard pile with flip reveal',
-          '3D discard flip animation when a new card becomes the discard top',
-        ],
-      },
-      {
-        heading: 'Visual Clarity',
-        items: [
-          'Selected slots now show player name + slot number label ("Kamal #2")',
-          'Card references in log messages highlighted with suit colors',
-          'Source keywords (DISCARD, PILE) displayed as colored labels in logs',
-          'Enhanced selection mode with clearer targeting indicators',
+          '3D discard flip animation when a card becomes the discard top',
         ],
       },
     ],
   },
   {
-    version: 'v1.4.1',
+    version: 'v0.5.1',
     title: 'Premium Polish',
     date: '10 March 2026',
     sections: [
       {
-        heading: 'Flying Cards',
+        heading: 'Fixes & Polish',
         items: [
-          'Smoother, more premium flying card animation with higher-res bezier arc (16 steps)',
-          'Enhanced easing curve with subtle overshoot settle at the end',
-          'Stronger drop shadow during flight for depth',
-          'Reduced motion: clean fade + short slide (250ms) instead of arc',
-        ],
-      },
-      {
-        heading: 'Table Layout',
-        items: [
-          'Hand-tuned seat positions for 1\u20137 opponents with no overlaps',
-          'Better spacing with safe-area clamping (header, sides, local player zone)',
-          'Improved height scaling per player count',
-        ],
-      },
-      {
-        heading: 'Game Log',
-        items: [
-          'Fixed short player names (like "a") being incorrectly highlighted inside words',
-          'Power names now display as bold uppercase badges (PEEK, SWAP, LOCK, UNLOCK, CHAOS)',
-          'New log position toggle: Bottom (default) or Left sidebar on wide screens',
-          'Log position persists in localStorage and forces bottom on mobile',
+          'Smoother flying card animation with enhanced easing curve',
+          'Power names displayed as bold uppercase badges in game log',
+          'Log position toggle: Bottom or Left sidebar (persists in localStorage)',
         ],
       },
     ],
   },
   {
-    version: 'v1.4',
+    version: 'v0.5.0',
     title: 'Action Bar & Choreography',
     date: '10 March 2026',
     sections: [
       {
         heading: 'Action Bar',
         items: [
-          'Inline Action Bar replaces the drawn-card modal on desktop \u2014 swap, discard, and use powers without leaving the board',
-          'Keyboard hints [1][2][3] and [Esc] shown on desktop for quick actions',
-          'Selection mode: power flows (peek, swap, lock, unlock, rearrange) work inline with slot highlighting',
-          'Toggle between Action Bar and Modal UI modes via the top bar',
-        ],
-      },
-      {
-        heading: 'Selection Mode',
-        items: [
-          'Selectable slots glow with an amber pulse ring; non-selectable slots are dimmed',
-          'Selected targets get a checkmark badge for clear visual feedback',
-          'Two-step selection for Queen Swap: pick first card, then second card',
-          'Player-level selection for Chaos/Rearrange: click an opponent\'s panel directly',
-          'Cancel anytime with Esc, or use the Back button to revert a pick',
-        ],
-      },
-      {
-        heading: 'Choreography',
-        items: [
-          'Lock/Unlock stamp overlay: a brief animated stamp appears on the affected player\'s panel',
-          'Peek UX: temporary card reveal (1.2s flip-back) when using Peek in Action Bar mode',
-          'All choreography animations respect reduced motion preferences',
-        ],
-      },
-      {
-        heading: 'Keyboard Shortcuts (Desktop)',
-        items: [
-          'Press [1], [2], or [3] to swap with that slot when you have a drawn card',
-          'Press [Esc] to cancel a discard draw',
-          'Press [Enter] to confirm a selection during power flows',
-          'Shortcuts are disabled when chat input is focused',
+          'Inline Action Bar — swap, discard, and use powers without leaving the board',
+          'Keyboard hints [1][2][3] and [Esc] on desktop',
+          'Selection mode: power flows work inline with slot highlighting',
         ],
       },
     ],
   },
   {
-    version: 'v1.3',
+    version: 'v0.4.0',
     title: 'Table & Effects Update',
     date: '10 March 2026',
     sections: [
       {
-        heading: 'Table Layout',
+        heading: 'Layout & Visual',
         items: [
-          'New poker-table layout: toggle between Classic and Table views during gameplay',
-          'Players arranged in a circular formation around the table with your hand at the bottom',
-          'Draw and discard piles centered on the table surface',
-          'Flying card animations travel accurately to seat positions in both layouts',
-        ],
-      },
-      {
-        heading: 'Visual Effects',
-        items: [
-          'Card back shimmer now uses the card owner\'s seat color',
-          'Active player panels glow softly with their assigned color during their turn',
-          'Slot-level effect overlays: swapped, locked, and unlocked cards pulse briefly with the actor\'s color',
-          'Discarded/swapped cards animate face-up to the discard pile for all viewers',
-        ],
-      },
-      {
-        heading: 'Gameplay',
-        items: [
-          'Pile draws can now be dismissed \u2014 minimize the modal and resume via the banner',
-          'Discard draws show an explicit "Cancel Take" button to return the card',
-          'Chat opens by default on desktop; preference saved in localStorage',
-          'Chat rate limit enforced at 1 message per 2 seconds',
-        ],
-      },
-      {
-        heading: 'Quality of Life',
-        items: [
-          'Layout preference persists across sessions via localStorage',
-          'Chat text limit aligned to 300 characters (matching security rules)',
-          'All new animations respect reduced motion preferences',
+          'New poker-table layout: players in circular formation, toggle with classic',
+          'Slot-level effect overlays: swapped, locked, and unlocked cards pulse briefly',
+          'Pile draws can be dismissed — resume via banner',
         ],
       },
     ],
   },
   {
-    version: 'v1.2',
+    version: 'v0.3.0',
     title: 'Polish & Presence Update',
     date: '10 March 2026',
     sections: [
       {
-        heading: 'Animations',
-        items: [
-          'Flying cards now travel along smooth curved arcs with drop shadows',
-          'Enhanced action highlights: stronger glow with expanding pulse ring effect',
-          'All motion effects respect reduced motion preferences',
-        ],
-      },
-      {
         heading: 'Chat & Social',
         items: [
-          'Chat bubbles: see other players\' latest messages floating above their panels',
-          'Bubbles auto-fade after 4 seconds \u2014 no extra database usage',
-          'Hardened chat security: messages validated server-side (userId + text length)',
-        ],
-      },
-      {
-        heading: 'Gameplay Clarity',
-        items: [
-          'Queue numbers (#1, #2, #3...) now shown beside each player\'s name',
-          '"Pile draw \u2014 no undo" label on drawn card modal for pile draws',
-          'Resume banner: tap to return to your drawn card after using a power',
-        ],
-      },
-      {
-        heading: 'Quality of Life',
-        items: [
-          'Feedback form now available on the Home screen (was lobby only)',
-          '5-second cooldown between feedback submissions to prevent spam',
-          'Strengthened security rules across all collections',
+          'Chat bubbles float above player panels, auto-fade after 4 seconds',
+          'Queue numbers shown beside each player\'s name',
         ],
       },
     ],
   },
   {
-    version: 'v1.1',
+    version: 'v0.2.0',
     title: 'Signal & Flow Update',
     date: '10 March 2026',
     sections: [
       {
         heading: 'Gameplay',
         items: [
-          'Support for 5-8 players with deck multiplier (1x, 1.5x, 2x decks)',
-          'Cards drawn from the pile can no longer be undone \u2014 commit to your draw!',
-          'Power guide: tap the ? button to see what each power card does this game',
-          'Cancel flow fix: pressing "Back" on a power modal returns to your drawn card without wasting it',
-        ],
-      },
-      {
-        heading: 'Visuals & Animations',
-        items: [
-          'Player colors: each seat gets a unique color shown on card backs, panels, and log names',
-          'Flying card animations: watch cards move between piles and players in real time',
-          'Action highlights: a temporary glow appears on player panels after they take an action',
-          'Improved game log with colored player name chips for easy scanning',
-        ],
-      },
-      {
-        heading: 'Social',
-        items: [
-          'In-game chat with quick emoji buttons and player-colored message bubbles',
-          'Chat available in both the lobby and during gameplay',
-          'Unread message badge on the chat button',
-          'Turn queue: see the full turn order and who\'s up next at a glance',
-        ],
-      },
-      {
-        heading: 'Quality of Life',
-        items: [
-          'Feedback form: send feedback directly from the lobby with star ratings',
-          'Patch notes viewer: tap the version label to see what\'s new',
-          'Performance improvements: bounded logs, throttled presence writes, lazy chat subscription',
-          'Game-end analytics for win tracking',
+          'Support for 5–8 players with deck multiplier (1x, 1.5x, 2x)',
+          'Player colors — unique color per seat shown on cards, panels, and log',
+          'In-game chat with quick emoji buttons',
         ],
       },
     ],
   },
   {
-    version: 'v1.0',
-    title: 'Lucky Seven \u2014 Launch',
+    version: 'v0.1.0',
+    title: 'Lucky Seven — First Build',
     date: '9 March 2026',
     sections: [
       {
         heading: 'Core Game',
         items: [
-          'Draw from the pile or discard, swap with your hand, or discard to end your turn',
-          'Call "End Game" to trigger the final round \u2014 every other player gets one more turn',
-          'Lowest total score wins, with bonus recognition for holding 7s',
-        ],
-      },
-      {
-        heading: 'Power Cards',
-        items: [
-          '6 customizable powers assigned to 10, J, Q, K, and Joker',
-          'Peek: look at one of your face-down cards',
-          'Peek All: reveal all three of your cards to yourself',
-          'Swap: exchange any two players\' unlocked cards',
-          'Lock: protect any card from being swapped',
-          'Unlock: free a locked card',
-          'Rearrange: randomly shuffle another player\'s unlocked cards',
-        ],
-      },
-      {
-        heading: 'Multiplayer',
-        items: [
-          'Real-time multiplayer powered by Supabase',
-          'Lobby system with 6-character join codes \u2014 share and play instantly',
-          '2-8 players per game',
-        ],
-      },
-      {
-        heading: 'Interface',
-        items: [
-          'Mobile-first responsive design with touch-friendly tap targets',
-          'Three themes: Blue, Dark, and Light',
-          'Sound effects and haptic vibration feedback',
-          'Reduced motion support (follows system preference, or toggle manually)',
-          'Results screen with podium display and multi-winner tie handling',
-        ],
-      },
-      {
-        heading: 'Credits',
-        items: [
-          'Created by Kamal Hazriq',
-          'Idea by Imaduddin',
-          'Deployed on GitHub Pages with automated CI/CD',
-          'Anonymous authentication \u2014 no sign-up required',
+          'Draw from pile or discard, swap with hand, or discard to end turn',
+          '6 customizable power cards: Peek, Peek All, Swap, Lock, Unlock, Rearrange',
+          'Real-time multiplayer, 2–8 players, lobby with 6-character join codes',
+          'Three themes: Blue, Dark, Light. Mobile-first design.',
         ],
       },
     ],

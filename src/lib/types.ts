@@ -148,6 +148,8 @@ export interface PrivatePlayerDoc {
   /** Where the drawn card came from — used for cancel-draw rollback */
   drawnCardSource: DrawnCardSource
   known: Record<string, Card>
+  /** Opponent cards known to this player: { targetPlayerId: { slotIndex: Card } } */
+  opponent_known?: Record<string, Record<string, Card>>
 }
 
 export interface PlayerScore {

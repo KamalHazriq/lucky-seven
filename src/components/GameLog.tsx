@@ -11,19 +11,24 @@ interface GameLogProps {
   position?: LogPosition
 }
 
-function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+function formatTimestamp(ts: number): string {
+  const d = new Date(ts)
+  const h = d.getHours().toString().padStart(2, '0')
+  const m = d.getMinutes().toString().padStart(2, '0')
+  return `${h}:${m}`
+}
 
-  // Track the actual last entry (not just length) — bounded log replaces entries
-  // at cap so length stays at 50 while content changes.
+function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
   const lastLogKey = log.length > 0 ? `${log[log.length - 1].ts}-${log[log.length - 1].msg.slice(0, 24)}` : ''
 
   useEffect(() => {
     if (document.hidden) return
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [lastLogKey])
 
-  // Build player info list for name matching
   const playerInfos = useMemo(() =>
     Object.values(players).map((p) => ({
       displayName: p.displayName,
@@ -34,56 +39,64 @@ function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
   )
 
   const isLeft = position === 'left'
-  // Sidebar shows all 50 kept entries; bottom panel shows last 30
-  const entries = isLeft ? log.slice(-50) : log.slice(-30)
+  // Show all available entries (server now keeps up to 100)
+  const entries = log.slice(-100)
   const totalEntries = entries.length
 
   return (
     <div
-      className={`rounded-xl border overflow-y-auto ${
-        isLeft
-          ? 'h-full p-2.5'
-          : 'max-h-48 p-3'
-      }`}
-      style={{
-        background: 'var(--panel)',
-        borderColor: 'var(--border)',
-      }}
+      className={`rounded-xl border flex flex-col overflow-hidden ${isLeft ? 'h-full' : 'max-h-48'}`}
+      style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
     >
-      <div className="mb-2 px-1 flex items-center gap-2">
+      {/* Sticky header */}
+      <div
+        className="shrink-0 px-3 py-1.5 flex items-center gap-2 border-b"
+        style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
+      >
         <h3 className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--text-dim)' }}>
           Game Log
         </h3>
         <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+        <span className="text-[9px] font-mono" style={{ color: 'var(--text-dim)' }}>{totalEntries}</span>
       </div>
-      <div className="flex flex-col gap-px">
-        <AnimatePresence initial={false}>
-          {entries.map((entry, i) => {
-            const key = `${entry.ts}-${entry.msg.slice(0, 24)}`
-            const recency = totalEntries - i
-            const opacity = recency <= 3 ? 1 : recency <= 8 ? 0.7 : 0.45
 
-            return (
-              <motion.div
-                key={key}
-                initial={{ x: -6, scale: 0.98 }}
-                animate={{ x: 0, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.4 }}
-                style={{
-                  opacity,
-                  transition: 'opacity 0.4s ease',
-                  ...(recency <= 1 ? { background: 'var(--surface, rgba(30,41,59,0.2))' } : {}),
-                }}
-                className="flex items-center gap-1 min-h-[24px] px-1.5 py-0.5 rounded-md"
-              >
-                <div className="flex-1 min-w-0 text-[11px] leading-snug flex flex-wrap items-center gap-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {renderLogMessage(entry.msg, playerInfos)}
-                </div>
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
-        <div ref={bottomRef} />
+      {/* Scrollable entries */}
+      <div ref={scrollRef} className={`overflow-y-auto flex-1 ${isLeft ? 'p-2' : 'p-2'}`}>
+        <div className="flex flex-col">
+          <AnimatePresence initial={false}>
+            {entries.map((entry, i) => {
+              const key = `${entry.ts}-${entry.msg.slice(0, 24)}`
+              const recency = totalEntries - i
+              const opacity = recency <= 3 ? 1 : recency <= 8 ? 0.75 : 0.5
+              const isNewest = recency <= 1
+
+              return (
+                <motion.div
+                  key={key}
+                  initial={{ x: -6, scale: 0.98 }}
+                  animate={{ x: 0, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.4 }}
+                  style={{
+                    opacity,
+                    transition: 'opacity 0.4s ease',
+                    ...(isNewest ? { background: 'var(--surface, rgba(30,41,59,0.2))' } : {}),
+                  }}
+                  className="flex items-start gap-1.5 min-h-[22px] px-1.5 py-0.5 rounded-md"
+                >
+                  <span
+                    className="text-[9px] font-mono shrink-0 mt-px"
+                    style={{ color: 'var(--text-dim)', opacity: 0.6 }}
+                  >
+                    {formatTimestamp(entry.ts)}
+                  </span>
+                  <div className="flex-1 min-w-0 text-[11px] leading-snug flex flex-wrap items-center gap-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {renderLogMessage(entry.msg, playerInfos)}
+                  </div>
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )
