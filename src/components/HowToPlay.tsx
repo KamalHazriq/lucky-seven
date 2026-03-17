@@ -1,165 +1,28 @@
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from '@/components/ui/accordion'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'large' }) {
   const [open, setOpen] = useState(false)
-
-  const modal = (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
-          onClick={() => setOpen(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.95, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative bg-slate-800 border border-slate-600 rounded-2xl w-full max-w-4xl shadow-2xl max-h-[88vh] overflow-y-auto overscroll-contain"
-          >
-            {/* Header */}
-            <div className="sticky top-0 z-20 bg-slate-800 border-b border-slate-700/50 rounded-t-2xl px-5 py-3 sm:px-6 sm:py-4 flex items-center justify-between">
-              <h2 className="text-xl sm:text-2xl font-bold text-amber-300">
-                Lucky Seven Rulebook
-              </h2>
-              <button
-                onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1 rounded-lg hover:bg-slate-700/50"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-5 space-y-4 text-sm text-slate-300">
-              {/* Top 2-col: Overview + Basic Gameplay side-by-side on desktop */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Game Overview */}
-                <section className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 space-y-2 text-slate-400">
-                  <h3 className="font-bold text-emerald-400 text-base">Game Overview</h3>
-                  <p>Lucky Seven is a strategic card game where players aim for the <span className="text-amber-300 font-medium">lowest score</span>.</p>
-                  <ul className="space-y-1">
-                    <li><span className="text-slate-300 font-medium">Players:</span> 2-8 players</li>
-                    <li><span className="text-slate-300 font-medium">Objective:</span> Lowest total score wins</li>
-                    <li><span className="text-slate-300 font-medium">Hand:</span> 3 face-down cards each</li>
-                    <li><span className="text-slate-300 font-medium">End:</span> Draw pile runs out</li>
-                  </ul>
-                </section>
-
-                {/* Basic Gameplay */}
-                <section className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 space-y-3 text-slate-400">
-                  <h3 className="font-bold text-emerald-400 text-base">Basic Gameplay</h3>
-                  <div>
-                    <p className="text-slate-300 font-medium mb-1.5">Turn Structure:</p>
-                    <ol className="list-decimal list-inside space-y-1 ml-1">
-                      <li>Draw from pile <span className="text-slate-500">OR</span> take discard</li>
-                      <li>Choose: <span className="text-slate-300">Swap</span>, <span className="text-slate-300">Discard</span>, or <span className="text-slate-300">Use Power</span></li>
-                      <li>Old card goes to discard pile</li>
-                      <li>Turn passes to next player</li>
-                    </ol>
-                  </div>
-                  <div className="border-t border-slate-700/50 pt-2">
-                    <p className="text-slate-300 font-medium mb-1">Card Values:</p>
-                    <ul className="space-y-0.5 ml-1 text-xs">
-                      <li><span className="text-amber-300 font-medium">7 = 0 pts</span> (best card!)</li>
-                      <li>A = 1, 2-6 &amp; 8-9 = face value</li>
-                      <li>10, J, Q, K, Joker = 10 pts (with powers)</li>
-                    </ul>
-                  </div>
-                </section>
-              </div>
-
-              {/* Power Cards — 2-col grid */}
-              <section>
-                <h3 className="font-bold text-emerald-400 text-base mb-2">Power Cards</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3 border-l-[3px] border-l-amber-400">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-amber-400">Jack</span>
-                      <span className="text-slate-500 text-xs">Peek All</span>
-                    </div>
-                    <p className="text-slate-400 text-xs">View all 3 of your face-down cards</p>
-                  </div>
-
-                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3 border-l-[3px] border-l-purple-400">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-purple-400">Queen</span>
-                      <span className="text-slate-500 text-xs">Swap</span>
-                    </div>
-                    <p className="text-slate-400 text-xs">Swap any two unlocked cards between players</p>
-                  </div>
-
-                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3 border-l-[3px] border-l-red-400">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-red-400">King</span>
-                      <span className="text-slate-500 text-xs">Lock</span>
-                    </div>
-                    <p className="text-slate-400 text-xs">Lock any card — prevents swapping</p>
-                  </div>
-
-                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3 border-l-[3px] border-l-cyan-400">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-cyan-400">10</span>
-                      <span className="text-slate-500 text-xs">Unlock</span>
-                    </div>
-                    <p className="text-slate-400 text-xs">Unlock a previously locked card</p>
-                  </div>
-
-                  <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-3 border-l-[3px] border-l-fuchsia-400 sm:col-span-2">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-fuchsia-400">Joker</span>
-                      <span className="text-slate-500 text-xs">Chaos</span>
-                    </div>
-                    <p className="text-slate-400 text-xs">Randomly shuffle an opponent's unlocked cards</p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Bottom 2-col: Locked Cards + Strategy */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <section className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 text-slate-400">
-                  <h3 className="font-bold text-emerald-400 text-base mb-2">Locked Cards</h3>
-                  <ul className="space-y-1.5">
-                    <li>Locked cards can't be swapped or peeked</li>
-                    <li>Shows a <span className="text-red-400 font-medium">lock icon</span> overlay</li>
-                    <li>Use a <span className="text-cyan-400 font-medium">10</span> to unlock them</li>
-                    <li>Hover or long-press to see who locked it</li>
-                  </ul>
-                </section>
-
-                <section className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 text-slate-400">
-                  <h3 className="font-bold text-emerald-400 text-base mb-2">Strategy Tips</h3>
-                  <ul className="space-y-1.5 list-disc list-inside">
-                    <li>Track which cards you've peeked</li>
-                    <li><span className="text-amber-300 font-medium">7s = 0 pts</span> — lock them!</li>
-                    <li>Queen swap to give opponents high cards</li>
-                    <li>Joker chaos disrupts peeked knowledge</li>
-                    <li>Sometimes discarding a power is better</li>
-                  </ul>
-                </section>
-              </div>
-
-              {/* How to Win */}
-              <section className="bg-amber-950/30 border border-amber-500/25 rounded-xl p-4 text-amber-200/80">
-                <h3 className="font-bold text-amber-300 text-base mb-1.5">How to Win</h3>
-                <ul className="space-y-1">
-                  <li>Have the <span className="text-amber-200 font-medium">lowest total score</span> when the draw pile runs out</li>
-                  <li><span className="text-amber-200 font-medium">7s</span> are your best friend (0 points each)</li>
-                  <li>Strategic use of powers gives you the edge</li>
-                </ul>
-              </section>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
 
   return (
     <>
@@ -177,13 +40,151 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 cursor-pointer transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 cursor-pointer transition-colors"
         >
           How to Play
         </button>
       )}
 
-      {createPortal(modal, document.body)}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[88vh] flex flex-col overflow-hidden">
+          <DialogHeader className="px-5 pt-5 pb-0">
+            <DialogTitle className="text-xl sm:text-2xl text-center sm:text-left">
+              Lucky Seven Rulebook
+            </DialogTitle>
+            <DialogDescription className="sm:text-left">
+              Everything you need to know to play and win
+            </DialogDescription>
+          </DialogHeader>
+
+          <Separator className="mt-3" />
+
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="px-5 py-4 space-y-4 text-sm text-muted-foreground">
+              {/* Top 2-col: Overview + Basic Gameplay */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Card className="p-4 space-y-2">
+                  <h3 className="font-bold text-emerald-400 text-base">Game Overview</h3>
+                  <p>Lucky Seven is a strategic card game where players aim for the <span className="text-primary font-medium">lowest score</span>.</p>
+                  <ul className="space-y-1">
+                    <li><span className="text-foreground font-medium">Players:</span> 2–8 players</li>
+                    <li><span className="text-foreground font-medium">Objective:</span> Lowest total score wins</li>
+                    <li><span className="text-foreground font-medium">Hand:</span> 3 face-down cards each</li>
+                    <li><span className="text-foreground font-medium">End:</span> Draw pile runs out</li>
+                  </ul>
+                </Card>
+
+                <Card className="p-4 space-y-3">
+                  <h3 className="font-bold text-emerald-400 text-base">Basic Gameplay</h3>
+                  <div>
+                    <p className="text-foreground font-medium mb-1.5">Turn Structure:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-1">
+                      <li>Draw from pile <span className="text-muted-foreground/60">OR</span> take discard</li>
+                      <li>Choose: <span className="text-foreground">Swap</span>, <span className="text-foreground">Discard</span>, or <span className="text-foreground">Use Power</span></li>
+                      <li>Old card goes to discard pile</li>
+                      <li>Turn passes to next player</li>
+                    </ol>
+                  </div>
+                  <Separator />
+                  <div>
+                    <p className="text-foreground font-medium mb-1">Card Values:</p>
+                    <ul className="space-y-0.5 ml-1 text-xs">
+                      <li><span className="text-primary font-medium">7 = 0 pts</span> (best card!)</li>
+                      <li>A = 1, 2–6 &amp; 8–9 = face value</li>
+                      <li>10, J, Q, K, Joker = 10 pts (with powers)</li>
+                    </ul>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Power Cards */}
+              <div>
+                <h3 className="font-bold text-emerald-400 text-base mb-2">Power Cards</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {([
+                    { rank: 'Jack', power: 'Peek All', desc: 'View all 3 of your face-down cards', color: 'amber', border: 'border-l-amber-400' },
+                    { rank: 'Queen', power: 'Swap', desc: 'Swap any two unlocked cards between players', color: 'purple', border: 'border-l-purple-400' },
+                    { rank: 'King', power: 'Lock', desc: 'Lock any card — prevents swapping', color: 'red', border: 'border-l-red-400' },
+                    { rank: '10', power: 'Unlock', desc: 'Unlock a previously locked card', color: 'cyan', border: 'border-l-cyan-400' },
+                    { rank: 'Joker', power: 'Chaos', desc: "Randomly shuffle an opponent's unlocked cards", color: 'fuchsia', border: 'border-l-fuchsia-400', span: true },
+                  ] as const).map((card) => (
+                    <Card
+                      key={card.rank}
+                      className={`p-3 border-l-[3px] ${card.border} ${card.span ? 'sm:col-span-2' : ''}`}
+                    >
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`font-bold text-${card.color}-400`}>{card.rank}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border-subtle text-muted-foreground">
+                          {card.power}
+                        </Badge>
+                      </div>
+                      <p className="text-xs">{card.desc}</p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Accordion sections for deeper content */}
+              <Accordion type="multiple" className="rounded-xl border border-border-subtle bg-surface-panel overflow-hidden">
+                <AccordionItem value="locked" className="border-border-subtle px-4">
+                  <AccordionTrigger className="text-foreground hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-400 text-base">&#x1F512;</span>
+                      Locked Cards
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="space-y-1.5 text-muted-foreground">
+                      <li>Locked cards can't be swapped or peeked</li>
+                      <li>Shows a <span className="text-red-400 font-medium">lock icon</span> overlay</li>
+                      <li>Use a <span className="text-cyan-400 font-medium">10</span> to unlock them</li>
+                      <li>Hover or long-press to see who locked it</li>
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="strategy" className="border-border-subtle px-4">
+                  <AccordionTrigger className="text-foreground hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400 text-base">&#x1F9E0;</span>
+                      Strategy Tips
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="space-y-1.5 list-disc list-inside text-muted-foreground">
+                      <li>Track which cards you've peeked</li>
+                      <li><span className="text-primary font-medium">7s = 0 pts</span> — lock them!</li>
+                      <li>Queen swap to give opponents high cards</li>
+                      <li>Joker chaos disrupts peeked knowledge</li>
+                      <li>Sometimes discarding a power is better</li>
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              {/* How to Win — highlighted card */}
+              <Card className="p-4 border-primary/25 bg-amber-950/20">
+                <h3 className="font-bold text-primary text-base mb-1.5">How to Win</h3>
+                <ul className="space-y-1 text-amber-200/80">
+                  <li>Have the <span className="text-amber-200 font-medium">lowest total score</span> when the draw pile runs out</li>
+                  <li><span className="text-amber-200 font-medium">7s</span> are your best friend (0 points each)</li>
+                  <li>Strategic use of powers gives you the edge</li>
+                </ul>
+              </Card>
+            </div>
+          </ScrollArea>
+
+          <Separator />
+
+          <DialogFooter className="px-5 py-3 justify-center sm:justify-center">
+            <DialogClose asChild>
+              <Button variant="outline" className="h-10 px-8 rounded-xl">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
