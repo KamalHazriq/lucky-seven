@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Accordion,
   AccordionItem,
@@ -112,7 +111,7 @@ export default function PatchNotesModal({ open, onClose, onOpenFeedback }: Patch
         <Separator className="mt-3" />
 
         {/* Content */}
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-5 py-3">
             <Accordion type="multiple" defaultValue={[allVersions[0]?.version ?? '']} className="space-y-1.5">
               {allVersions.map((release) => (
@@ -154,7 +153,7 @@ export default function PatchNotesModal({ open, onClose, onOpenFeedback }: Patch
               ))}
             </Accordion>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
         <Separator />

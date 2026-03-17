@@ -9,7 +9,6 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Accordion,
   AccordionItem,
@@ -59,7 +58,7 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
 
           <Separator className="mt-3" />
 
-          <ScrollArea className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="px-5 py-4 space-y-4 text-sm text-muted-foreground">
               {/* Top 2-col: Overview + Basic Gameplay */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -172,7 +171,7 @@ export default function HowToPlay({ variant = 'link' }: { variant?: 'link' | 'la
                 </ul>
               </Card>
             </div>
-          </ScrollArea>
+          </div>
 
           <Separator />
 

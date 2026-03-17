@@ -610,7 +610,7 @@ export default function Game() {
                 />
 
                 {/* Center: Draw + Staging + Discard piles */}
-                <div className="pile-zone absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
+                <div className="pile-zone absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-5 z-10">
                   <div className={`text-center${canDraw ? ' pile-interactive' : ''}`} ref={drawPileRef}>
                     <p className="text-[10px] text-muted-foreground mb-1">Draw</p>
                     <div className="pile-stack">
