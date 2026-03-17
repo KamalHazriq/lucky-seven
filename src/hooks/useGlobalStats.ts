@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { incrementVisits, getGlobalStats } from '../lib/supabaseGameService'
+import { trackEvent } from '../lib/analytics'
 
 export interface GlobalStats {
   gamesPlayed: number
   totalVisits: number
   lastGameAt: number | null
+  pageViews: number
+  gamesFinished: number
 }
 
-const INITIAL: GlobalStats = { gamesPlayed: 0, totalVisits: 0, lastGameAt: null }
+const INITIAL: GlobalStats = { gamesPlayed: 0, totalVisits: 0, lastGameAt: null, pageViews: 0, gamesFinished: 0 }
 
 /**
  * Fetch global game statistics from Supabase (single read, no live listener).
@@ -19,7 +22,7 @@ export function useGlobalStats() {
   const [stats, setStats] = useState<GlobalStats>(INITIAL)
   const [loading, setLoading] = useState(true)
 
-  // Increment total visits once per page load
+  // Increment total visits + track page view once per session
   const [visitCounted] = useState(() => {
     // Use a session flag so we only count once per tab/session
     if (sessionStorage.getItem('lucky7_visit_counted')) return false
@@ -30,6 +33,7 @@ export function useGlobalStats() {
   useEffect(() => {
     if (!visitCounted) return
     incrementVisits()
+    trackEvent('page_view')
   }, [visitCounted])
 
   // Single read instead of live listener — stats rarely change mid-session

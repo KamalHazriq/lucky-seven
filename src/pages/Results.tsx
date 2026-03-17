@@ -9,6 +9,7 @@ import { writeGameSummary, playAgain, joinGame } from '../lib/supabaseGameServic
 import CardView from '../components/CardView'
 import VersionLabel from '../components/VersionLabel'
 import { playSfx } from '../lib/sfx'
+import { trackEvent } from '../lib/analytics'
 import type { PlayerScore } from '../lib/types'
 
 // ─── Confetti (lightweight, no external deps) ──────────────────
@@ -136,6 +137,7 @@ export default function Results() {
     if (scores.length < game.playerOrder.length) return // wait for all reveals
     summaryWritten.current = true
     writeGameSummary(gameId, scores, game)
+    trackEvent('game_finished', { player_count: game.playerOrder.length, turns: game.actionVersion }, gameId)
   }, [gameId, game, user, scores])
 
 
@@ -331,6 +333,7 @@ export default function Results() {
                 const myColorKey = myPlayer?.colorKey
                 const maxP = game?.maxPlayers ?? 4
                 const targetId = await playAgain(gameId, myName, maxP, game?.settings ?? {}, myColorKey)
+                trackEvent('rematch_clicked', {}, gameId)
                 navigate(`/lobby/${targetId}`)
               } catch (e) {
                 toast.error((e as Error).message)

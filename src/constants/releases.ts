@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = 'v1.9.0'
+export const CURRENT_VERSION = 'v1.8.3'
 
 export interface ReleaseNote {
   version: string
@@ -9,8 +9,41 @@ export interface ReleaseNote {
 
 export const RELEASES: ReleaseNote[] = [
   {
-    version: 'v1.9.0',
-    title: 'Jack Rework & Dev Tools',
+    version: 'v1.8.3',
+    title: 'Supabase Migration',
+    date: '17 March 2026',
+    sections: [
+      {
+        heading: 'Backend',
+        items: [
+          'Full backend migration from Firebase to Supabase (Postgres + Realtime)',
+          'Row Level Security (RLS) on all tables — identity-scoped reads, server-side writes',
+          'All game actions handled via SECURITY DEFINER RPCs (no direct table writes from client)',
+          'Anonymous authentication preserved — no sign-up required',
+          'Realtime subscriptions via Postgres Changes for live game updates',
+        ],
+      },
+      {
+        heading: 'Security',
+        items: [
+          'Hidden cards (draw pile + opponent hands) are invisible to clients via RLS policies',
+          'Dev mode access gated by server-side code verification',
+          'All write operations validated server-side with auth checks',
+        ],
+      },
+      {
+        heading: 'Performance',
+        items: [
+          'Auth race condition fixed — subscriptions wait for JWT before fetching',
+          'iOS safe-area support enabled (viewport-fit=cover)',
+          'Social meta tags added for invite link previews',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.8.2',
+    title: 'Jack Rework',
     date: '16 March 2026',
     sections: [
       {
@@ -25,17 +58,6 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'UI / UX',
         items: [
           'Feedback button added to Patch Notes modal footer',
-          'Dev tools panel redesigned with grouped sections: Visibility, Debug, Session',
-          'Collapsible accordion-style tools for cards, draw pile, and game state',
-          'Clean permission-aware rendering — only shows tools you have access to',
-        ],
-      },
-      {
-        heading: 'Developer',
-        items: [
-          'Dev mode activation moved to feedback modal for better concealment',
-          'Rate limiting: max 5 activation attempts per minute',
-          'Old keyboard shortcut and watermark click removed',
         ],
       },
     ],
@@ -100,11 +122,11 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Game Flow Clarity',
         items: [
-          'Selection confirm banner now shows specific swap summary (e.g. "Confirm swap: Kamal\'s #1 ↔ Sara\'s #2")',
+          'Selection confirm banner now shows specific swap summary (e.g. "Confirm swap: Kamal\'s #1 \u2194 Sara\'s #2")',
           'Peek reveal duration increased from 1.2s to 2s for better readability',
           'Turn indicator shows pulsing green dot when it\'s your turn',
           'Action phase text is now context-aware based on held card state',
-          '"FINAL ROUND" banner appears when a player calls end — shows who called it',
+          '"FINAL ROUND" banner appears when a player calls end \u2014 shows who called it',
           'Action highlight labels larger and more readable on table layout',
         ],
       },
@@ -122,7 +144,7 @@ export const RELEASES: ReleaseNote[] = [
         items: [
           'GameLog wrapped in React.memo to prevent re-renders on unrelated state changes',
           'hasAnyLocks computation memoized to avoid recalculating every render',
-          'All animations GPU-accelerated via transform/opacity — no layout thrashing',
+          'All animations GPU-accelerated via transform/opacity \u2014 no layout thrashing',
         ],
       },
     ],
@@ -144,7 +166,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Results Celebration',
         items: [
-          'Canvas confetti burst when all players reveal — two bursts from left/right with 160 particles',
+          'Canvas confetti burst when all players reveal \u2014 two bursts from left/right with 160 particles',
           'New celebrate SFX: ascending 5-tone fanfare with harmonics',
           'Improved winner display: "Shared Win! X & Y are the champions!" for ties, "X wins!" for solo winner',
           'Tiebreaker: most sevens wins among tied players; if still tied, shared win',
@@ -160,7 +182,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Lobby',
         items: [
-          'Color picker now shows ring highlight and avatar color instantly on pick — no waiting for Firestore round-trip',
+          'Color picker now shows ring highlight and avatar color instantly on pick \u2014 no waiting for round-trip',
           'Optimistic pendingColorKey state: updates UI immediately, cleared when server confirms, reverted on conflict',
           'Auto-assign first available color on lobby entry with instant visual feedback',
         ],
@@ -199,7 +221,7 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Vote Kick',
         items: [
           'Vote kick now requires 3+ players (hidden for 2-player games)',
-          'Timer pauses during active vote kick — resumes with remaining time when vote resolves',
+          'Timer pauses during active vote kick \u2014 resumes with remaining time when vote resolves',
           'actionVersion increments on vote start/resolve to prevent timer race conditions',
           'Kicked player sees a dedicated "You\'ve been kicked!" screen',
         ],
@@ -241,7 +263,7 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Play Again',
         items: [
           'All players are now auto-redirected to the new lobby when anyone clicks Play Again',
-          'No more having to independently click Play Again — the whole group stays together',
+          'No more having to independently click Play Again \u2014 the whole group stays together',
         ],
       },
       {
@@ -254,7 +276,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Lobby Color Picker',
         items: [
-          'Taken colors now show a clear ✕ overlay instead of just dimming',
+          'Taken colors now show a clear \u2715 overlay instead of just dimming',
           'Makes unavailable colors immediately obvious at a glance',
         ],
       },
@@ -268,9 +290,9 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Turn Timer',
         items: [
-          'Configurable turn timer: Off, 30s, 60s, 90s, or 120s — set when creating a game',
-          'Live countdown bar below the turn indicator (green → amber → red)',
-          'Critical pulse animation on the timer when ≤5 seconds remain',
+          'Configurable turn timer: Off, 30s, 60s, 90s, or 120s \u2014 set when creating a game',
+          'Live countdown bar below the turn indicator (green \u2192 amber \u2192 red)',
+          'Critical pulse animation on the timer when \u22645 seconds remain',
           'Timer resets when the turn advances to the next player',
         ],
       },
@@ -287,7 +309,7 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Vote-Kick',
         items: [
           'Any player can initiate a vote to kick another player via the Settings menu',
-          'All players see a modal with vote progress — majority required to kick',
+          'All players see a modal with vote progress \u2014 majority required to kick',
           'Voting "No" immediately cancels the vote to prevent griefing',
           'Kicked player is removed, turn advances if needed, host transfers if needed',
         ],
@@ -296,9 +318,8 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Technical',
         items: [
           'Auto-skip uses actionVersion guard so only one client triggers the skip',
-          'All timer operations are client-side with Date.now() — no server timestamps needed',
-          'Vote-kick data stored on game doc — real-time updates for all players',
-          'Firestore rules updated to allow afkStrikes field on player docs',
+          'All timer operations are client-side with Date.now() \u2014 no server timestamps needed',
+          'Vote-kick data stored on game doc \u2014 real-time updates for all players',
         ],
       },
     ],
@@ -311,10 +332,10 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Unique Player Colors',
         items: [
-          '16 high-contrast colors in the lobby picker — readable on dark felt UI',
-          'Colors are "booked" — no two players can pick the same color',
+          '16 high-contrast colors in the lobby picker \u2014 readable on dark felt UI',
+          'Colors are "booked" \u2014 no two players can pick the same color',
           'Taken colors appear dimmed with tooltip showing who took them',
-          'Color selection uses Firestore transactions to prevent race conditions',
+          'Color selection uses server-side validation to prevent race conditions',
         ],
       },
       {
@@ -338,9 +359,9 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Security',
         items: [
-          'Firestore rules restrict player doc updates to safe fields only',
+          'Server-side rules restrict player doc updates to safe fields only',
           'Players can only modify: displayName, colorKey, connected, locks, lockedBy',
-          'Prevents overwriting other players\' data through direct Firestore calls',
+          'Prevents overwriting other players\' data through direct API calls',
         ],
       },
     ],
@@ -374,7 +395,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Home Screen',
         items: [
-          'Game Statistics section: Games Played and Total Visits — universal across all devices via Firestore',
+          'Game Statistics section: Games Played and Total Visits \u2014 universal across all devices',
           'Strategy Tips placeholder section with 4 tips (Coming Soon)',
           'More floating background card suits with higher visibility',
         ],
@@ -395,7 +416,7 @@ export const RELEASES: ReleaseNote[] = [
         items: [
           'Fixed remote discard-take animation timing in classic layout',
           'Fixed unused import build errors (SPRING_TAP, setDoc, getSeatColor)',
-          'Fixed leaveGame redundant ternary and missing Firestore read-before-write',
+          'Fixed leaveGame redundant ternary and missing read-before-write',
           'Selection mode and choreography properly reset on leave',
         ],
       },
@@ -410,10 +431,10 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Top Bar Redesign',
         items: [
           'Professional 3-zone layout: game info (left), turn strip (center), controls (right)',
-          'Copyable room code in the top bar — click to copy instantly',
+          'Copyable room code in the top bar \u2014 click to copy instantly',
           'Compact turn queue in the top bar on desktop, full version below on mobile',
           'Consistent icon button sizing with the new topbar-btn class',
-          'No wrap, no overlap, no layout shift — fixed height header',
+          'No wrap, no overlap, no layout shift \u2014 fixed height header',
         ],
       },
       {
@@ -422,14 +443,14 @@ export const RELEASES: ReleaseNote[] = [
           'Rewritten getSeatPositions with pile-zone avoidance and spacing validation',
           'Table zone uses 70-80% viewport height (no more fixed pixel heights)',
           'Safe layout stack: banners/announcements push content down instead of overlapping',
-          'Table layout disabled on mobile (<768px) — forced to classic',
+          'Table layout disabled on mobile (<768px) \u2014 forced to classic',
           'Validated seat spacing: dev warnings if seats are too close',
         ],
       },
       {
         heading: 'Premium Card Motion',
         items: [
-          'Slow, floaty flying cards — 1.4-1.7s arcs with gentle easing and 1.03x scale peak',
+          'Slow, floaty flying cards \u2014 1.4-1.7s arcs with gentle easing and 1.03x scale peak',
           'GPU-optimized transforms (translate x/y offsets, willChange: transform)',
           'Subtle rotation tilt during flight for organic feel',
           'Enhanced staging slot: gentler float (2.8s cycle), drop shadow, smoother entry',
@@ -441,9 +462,9 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Swap Visibility',
         items: [
           'Queen swap highlights both involved slots with actor-color pulse rings',
-          'Swap labels show swap partner near each slot (e.g. "↔ Kamal #2")',
+          'Swap labels show swap partner near each slot (e.g. "\u2194 Kamal #2")',
           'Labels and highlights auto-clear after 2 seconds',
-          'No card identity leaks — labels show position only, not card values',
+          'No card identity leaks \u2014 labels show position only, not card values',
         ],
       },
       {
@@ -459,8 +480,8 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Shareability',
         items: [
-          'Copy Link button in the lobby — share a direct room URL',
-          'Invite Friends button — copies a formatted message with code + link',
+          'Copy Link button in the lobby \u2014 share a direct room URL',
+          'Invite Friends button \u2014 copies a formatted message with code + link',
           'Room code is still copyable by clicking in both lobby and game',
           'Clipboard utility with fallback for older browsers',
         ],
@@ -478,12 +499,11 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Quota Protection',
         items: [
-          'Game log bounded at 50 entries — older entries auto-pruned',
+          'Game log bounded at 50 entries \u2014 older entries auto-pruned',
           'Chat queries limited to last 50 messages',
           'Presence writes throttled to once per 60 seconds',
           'Lazy chat subscription (mobile: on open, desktop: after first render)',
           'Game finish summary analytics (one write per game)',
-          'README now includes Quota Notes with scaling estimates',
         ],
       },
       {
@@ -512,7 +532,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Table Layout',
         items: [
-          'Wider seat spacing for 5-7 player games — no more card overlap',
+          'Wider seat spacing for 5-7 player games \u2014 no more card overlap',
           'Better two-row seat strategy: sides + top arc',
           'Taller table container with proportional heights per player count',
           'Reduced panel widths for 6+ players to prevent collision',
@@ -554,7 +574,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Animation Engine',
         items: [
-          'Floaty, premium flying card motion — 1.4–1.8s gentle arcs with subtle rotation',
+          'Floaty, premium flying card motion \u2014 1.4\u20131.8s gentle arcs with subtle rotation',
           'Gentle cubic-bezier easing (0.22, 1, 0.36, 1) for a slow, poker-table feel',
           '20-step bezier curves with scale lift and organic tilt during flight',
           'Enhanced drop shadows for depth during flight',
@@ -566,13 +586,13 @@ export const RELEASES: ReleaseNote[] = [
           'New "In play" staging slot between Draw and Discard piles',
           'Discard takes fly to staging area first, then to your hand on swap',
           'Staged card floats gently with a subtle hover animation',
-          'Staging is purely visual — no Firestore writes, reconstructs on refresh',
+          'Staging is purely visual \u2014 no server writes, reconstructs on refresh',
         ],
       },
       {
         heading: 'Card Choreography',
         items: [
-          'Multi-step animation sequences: discard → staging → slot → discard',
+          'Multi-step animation sequences: discard \u2192 staging \u2192 slot \u2192 discard',
           'Draw pile draws fly face-down to your panel (no identity leaks)',
           'Swapped-out cards fly to discard pile with flip reveal',
           '3D discard flip animation when a new card becomes the discard top',
@@ -606,7 +626,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Table Layout',
         items: [
-          'Hand-tuned seat positions for 1–7 opponents with no overlaps',
+          'Hand-tuned seat positions for 1\u20137 opponents with no overlaps',
           'Better spacing with safe-area clamping (header, sides, local player zone)',
           'Improved height scaling per player count',
         ],
@@ -630,7 +650,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Action Bar',
         items: [
-          'Inline Action Bar replaces the drawn-card modal on desktop — swap, discard, and use powers without leaving the board',
+          'Inline Action Bar replaces the drawn-card modal on desktop \u2014 swap, discard, and use powers without leaving the board',
           'Keyboard hints [1][2][3] and [Esc] shown on desktop for quick actions',
           'Selection mode: power flows (peek, swap, lock, unlock, rearrange) work inline with slot highlighting',
           'Toggle between Action Bar and Modal UI modes via the top bar',
@@ -691,7 +711,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Gameplay',
         items: [
-          'Pile draws can now be dismissed — minimize the modal and resume via the banner',
+          'Pile draws can now be dismissed \u2014 minimize the modal and resume via the banner',
           'Discard draws show an explicit "Cancel Take" button to return the card',
           'Chat opens by default on desktop; preference saved in localStorage',
           'Chat rate limit enforced at 1 message per 2 seconds',
@@ -724,7 +744,7 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Chat & Social',
         items: [
           'Chat bubbles: see other players\' latest messages floating above their panels',
-          'Bubbles auto-fade after 4 seconds — no extra database usage',
+          'Bubbles auto-fade after 4 seconds \u2014 no extra database usage',
           'Hardened chat security: messages validated server-side (userId + text length)',
         ],
       },
@@ -732,7 +752,7 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Gameplay Clarity',
         items: [
           'Queue numbers (#1, #2, #3...) now shown beside each player\'s name',
-          '"Pile draw — no undo" label on drawn card modal for pile draws',
+          '"Pile draw \u2014 no undo" label on drawn card modal for pile draws',
           'Resume banner: tap to return to your drawn card after using a power',
         ],
       },
@@ -741,7 +761,7 @@ export const RELEASES: ReleaseNote[] = [
         items: [
           'Feedback form now available on the Home screen (was lobby only)',
           '5-second cooldown between feedback submissions to prevent spam',
-          'Strengthened Firestore security rules across all collections',
+          'Strengthened security rules across all collections',
         ],
       },
     ],
@@ -755,7 +775,7 @@ export const RELEASES: ReleaseNote[] = [
         heading: 'Gameplay',
         items: [
           'Support for 5-8 players with deck multiplier (1x, 1.5x, 2x decks)',
-          'Cards drawn from the pile can no longer be undone — commit to your draw!',
+          'Cards drawn from the pile can no longer be undone \u2014 commit to your draw!',
           'Power guide: tap the ? button to see what each power card does this game',
           'Cancel flow fix: pressing "Back" on a power modal returns to your drawn card without wasting it',
         ],
@@ -817,7 +837,7 @@ export const RELEASES: ReleaseNote[] = [
       {
         heading: 'Multiplayer',
         items: [
-          'Real-time multiplayer powered by Firebase',
+          'Real-time multiplayer powered by Supabase',
           'Lobby system with 6-character join codes \u2014 share and play instantly',
           '2-8 players per game',
         ],
