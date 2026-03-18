@@ -184,7 +184,9 @@ export default function Game() {
   const isDrawPhase = isMyTurn && turnPhase === 'draw'
   const isActionPhase = isMyTurn && turnPhase === 'action'
   const myPlayer = user ? players[user.uid] : null
-  const myLocks = (myPlayer?.locks ?? [false, false, false]) as [boolean, boolean, boolean]
+  const myLocks = (myPlayer?.locks ?? [false, false, false]) as boolean[]
+  const cardsPerPlayer = game?.settings?.cardsPerPlayer ?? 3
+  const noMemoryMode = game?.settings?.noMemoryMode ?? false
   const powerAssignments = game?.settings?.powerAssignments ?? DEFAULT_GAME_SETTINGS.powerAssignments
   const spentPowerCardIds = game?.spentPowerCardIds ?? {}
   const myKnown = privateState?.known ?? {}
@@ -248,6 +250,8 @@ export default function Game() {
     confirmSelection, setStampOverlays,
     discardTop: game?.discardTop ?? null,
     peekAllowsOpponent: game?.settings?.peekAllowsOpponent ?? false,
+    noMemoryMode,
+    cardsPerPlayer,
   })
 
   // Player order with local player first (for modals)
@@ -702,6 +706,7 @@ export default function Game() {
                         swapLabels={swapLabels[pid] ?? null}
                         stampOverlay={stampOverlays[pid] ?? null}
                         chaosAnimation={!!chaosAnimations[pid]}
+                        cardsPerPlayer={cardsPerPlayer}
                         devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                         {...selectionProps}
                       />
@@ -743,6 +748,7 @@ export default function Game() {
                     swapLabels={swapLabels[user.uid] ?? null}
                     stampOverlay={stampOverlays[user.uid] ?? null}
                     chaosAnimation={!!chaosAnimations[user.uid]}
+                    cardsPerPlayer={cardsPerPlayer}
                     devShowAllCards={devMode.isDevMode && (devMode.privileges?.canSeeAllCards ?? false)}
                     {...selectionProps}
                   />
@@ -816,6 +822,7 @@ export default function Game() {
                       swapLabels={swapLabels[pid] ?? null}
                       stampOverlay={stampOverlays[pid] ?? null}
                       chaosAnimation={!!chaosAnimations[pid]}
+                      cardsPerPlayer={cardsPerPlayer}
                       devAllHands={devMode.isDevMode && devMode.privileges?.canSeeAllCards ? devMode.allPlayerHands : null}
                       {...selectionProps}
                     />
@@ -913,6 +920,7 @@ export default function Game() {
                 swapLabels={swapLabels[user.uid] ?? null}
                 stampOverlay={stampOverlays[user.uid] ?? null}
                 chaosAnimation={!!chaosAnimations[user.uid]}
+                cardsPerPlayer={cardsPerPlayer}
                 devShowAllCards={devMode.isDevMode && (devMode.privileges?.canSeeAllCards ?? false)}
                 {...selectionProps}
               />

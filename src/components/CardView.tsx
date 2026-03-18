@@ -99,9 +99,9 @@ function CardView({
   }, [showTooltip])
 
   // ─── Font sizes per card size ───
-  const suitFontSize = size === 'lg' ? '1.6rem' : size === 'md' ? '1.25rem' : '0.95rem'
-  const rankFontSize = size === 'lg' ? '0.7rem' : size === 'md' ? '0.6rem' : '0.45rem'
-  const cornerSuitSize = size === 'lg' ? '0.55rem' : size === 'md' ? '0.45rem' : '0.35rem'
+  const suitFontSize = size === 'lg' ? '1.8rem' : size === 'md' ? '1.5rem' : '1.1rem'
+  const rankFontSize = size === 'lg' ? '0.85rem' : size === 'md' ? '0.75rem' : '0.58rem'
+  const cornerSuitSize = size === 'lg' ? '0.65rem' : size === 'md' ? '0.58rem' : '0.45rem'
   const cornerTop = size === 'lg' ? '3px' : '2px'
   const cornerLeft = size === 'lg' ? '4px' : '3px'
 
@@ -216,11 +216,12 @@ function CardView({
 
               {/* Rank below suit */}
               <span
-                className="font-extrabold leading-none"
+                className={`${card.rank === 'J' || card.rank === 'Q' || card.rank === 'K' ? 'font-black' : 'font-extrabold'} leading-none`}
                 style={{
                   color: suitColor(card),
-                  fontSize: size === 'lg' ? '0.75rem' : size === 'md' ? '0.6rem' : '0.5rem',
+                  fontSize: size === 'lg' ? '0.9rem' : size === 'md' ? '0.78rem' : '0.6rem',
                   marginTop: '1px',
+                  fontStyle: card.rank === 'J' || card.rank === 'Q' || card.rank === 'K' ? 'italic' : 'normal',
                 }}
               >
                 {card.rank}

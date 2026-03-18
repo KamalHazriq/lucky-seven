@@ -208,6 +208,24 @@ export default function Lobby() {
     }
   }
 
+  const handleSetCardsPerPlayer = async (n: 3 | 4) => {
+    if (!gameId) return
+    try {
+      await updateGameSettings(gameId, { cardsPerPlayer: n })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const handleSetNoMemoryMode = async (enabled: boolean) => {
+    if (!gameId) return
+    try {
+      await updateGameSettings(gameId, { noMemoryMode: enabled })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -569,6 +587,49 @@ export default function Lobby() {
                         {game.settings.turnSeconds === 0
                           ? 'No time limit per turn'
                           : `${game.settings.turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
+                      </p>
+                    </div>
+
+                    {/* Cards Per Player */}
+                    <div className="ls-form-group">
+                      <Label className="text-muted-foreground">Cards Per Player</Label>
+                      <div className="flex gap-2">
+                        {([3, 4] as (3 | 4)[]).map((n) => (
+                          <motion.button
+                            key={n}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleSetCardsPerPlayer(n)}
+                            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                              (game.settings.cardsPerPlayer ?? 3) === n
+                                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                            }`}
+                          >
+                            {n} cards
+                          </motion.button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Cards dealt to each player</p>
+                    </div>
+
+                    {/* No Memory Mode */}
+                    <div className="ls-form-group">
+                      <Label className="text-muted-foreground">No Memory Mode</Label>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handleSetNoMemoryMode(!(game.settings.noMemoryMode ?? false))}
+                        className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                          (game.settings.noMemoryMode ?? false)
+                            ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        {(game.settings.noMemoryMode ?? false) ? 'On — peek is temporary' : 'Off — peek is remembered'}
+                      </motion.button>
+                      <p className="text-[10px] text-muted-foreground">
+                        {(game.settings.noMemoryMode ?? false) ? 'Peeked cards hide again after 5s' : 'Peeked cards stay visible to you'}
                       </p>
                     </div>
 

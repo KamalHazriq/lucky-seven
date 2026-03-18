@@ -87,6 +87,8 @@ export default function Home() {
   const [deckSize, setDeckSize] = useState<DeckSize>(DEFAULT_GAME_SETTINGS.deckSize)
   const [turnSeconds, setTurnSeconds] = useState<TurnSeconds>(DEFAULT_GAME_SETTINGS.turnSeconds)
   const [peekAllowsOpponent, setPeekAllowsOpponent] = useState(DEFAULT_GAME_SETTINGS.peekAllowsOpponent)
+  const [cardsPerPlayer, setCardsPerPlayer] = useState<3 | 4>(DEFAULT_GAME_SETTINGS.cardsPerPlayer)
+  const [noMemoryMode, setNoMemoryMode] = useState(DEFAULT_GAME_SETTINGS.noMemoryMode)
 
   const updateAssignment = (key: PowerRankKey, value: PowerEffectType) => {
     setAssignments((prev) => ({ ...prev, [key]: value }))
@@ -103,6 +105,8 @@ export default function Home() {
         deckSize,
         turnSeconds,
         peekAllowsOpponent,
+        cardsPerPlayer,
+        noMemoryMode,
       })
       trackEvent('create_game', { player_count: maxPlayers, deck_size: deckSize, turn_seconds: turnSeconds }, gameId)
       navigate(`/lobby/${gameId}`)
@@ -353,6 +357,49 @@ export default function Home() {
                     </div>
                     <p className="text-[10px] text-muted-foreground">
                       {turnSeconds === 0 ? 'No time limit per turn' : `${turnSeconds}s per turn — AFK players get auto-skipped, then kicked`}
+                    </p>
+                  </div>
+
+                  {/* Cards Per Player */}
+                  <div className="ls-form-group">
+                    <Label className="text-muted-foreground">Cards Per Player</Label>
+                    <div className="flex gap-2">
+                      {([3, 4] as (3 | 4)[]).map((n) => (
+                        <motion.button
+                          key={n}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setCardsPerPlayer(n)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                            cardsPerPlayer === n
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {n} cards
+                        </motion.button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Cards dealt to each player</p>
+                  </div>
+
+                  {/* No Memory Mode */}
+                  <div className="ls-form-group">
+                    <Label className="text-muted-foreground">No Memory Mode</Label>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setNoMemoryMode(!noMemoryMode)}
+                      className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        noMemoryMode
+                          ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30'
+                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {noMemoryMode ? 'On — peek is temporary' : 'Off — peek is remembered'}
+                    </motion.button>
+                    <p className="text-[10px] text-muted-foreground">
+                      {noMemoryMode ? 'Revealed cards hide again after 5s — no persistent knowledge' : 'Peeked cards stay visible to you'}
                     </p>
                   </div>
 
