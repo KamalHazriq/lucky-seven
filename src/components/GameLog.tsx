@@ -73,13 +73,19 @@ function GameLog({ log, players, position = 'bottom' }: GameLogProps) {
               return (
                 <motion.div
                   key={key}
-                  initial={{ x: -6, scale: 0.98 }}
-                  animate={{ x: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30, mass: 0.4 }}
-                  style={{
-                    opacity,
-                    transition: 'opacity 0.4s ease',
-                    ...(isNewest ? { background: 'var(--surface, rgba(30,41,59,0.2))' } : {}),
+                  initial={{ x: -8, scale: 0.97, opacity: 0 }}
+                  animate={isNewest
+                    ? {
+                        x: 0, scale: 1, opacity,
+                        backgroundColor: ['rgba(251,191,36,0.12)', 'rgba(251,191,36,0.06)', 'transparent'],
+                      }
+                    : { x: 0, scale: 1, opacity }
+                  }
+                  transition={{
+                    x: { type: 'spring', stiffness: 440, damping: 28, mass: 0.4 },
+                    scale: { type: 'spring', stiffness: 440, damping: 28, mass: 0.4 },
+                    opacity: { duration: 0.22 },
+                    backgroundColor: { duration: 1.6, ease: 'easeOut' },
                   }}
                   className="flex items-start gap-1.5 min-h-[22px] px-1.5 py-0.5 rounded-md"
                 >

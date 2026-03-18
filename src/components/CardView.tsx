@@ -3,8 +3,8 @@ import { usePerformanceMode } from '../hooks/usePerformanceMode'
 import { motion, type Transition } from 'framer-motion'
 
 /** Shared spring configs for premium buttery-smooth motion */
-const SPRING_HOVER: Transition = { type: 'spring', stiffness: 350, damping: 22, mass: 0.6 }
-const SPRING_FLIP: Transition  = { type: 'spring', stiffness: 160, damping: 20, mass: 0.9 }
+const SPRING_HOVER: Transition = { type: 'spring', stiffness: 380, damping: 20, mass: 0.55 }
+const SPRING_FLIP: Transition  = { type: 'spring', stiffness: 180, damping: 18, mass: 0.85 }
 import type { Card, LockInfo } from '../lib/types'
 import { suitColor } from '../lib/deck'
 
@@ -266,9 +266,14 @@ function CardView({
       {/* King lock overlay — visible on locked cards */}
       {locked && (
         showFace ? (
-          <div className="absolute top-0.5 right-0.5 z-10 pointer-events-none flex items-center justify-center w-5 h-5 bg-red-900/80 rounded-full shadow-md">
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 20, mass: 0.4 }}
+            className="absolute top-0.5 right-0.5 z-10 pointer-events-none flex items-center justify-center w-5 h-5 bg-red-900/80 rounded-full shadow-md"
+          >
             <span className="text-[10px] leading-none">🔒</span>
-          </div>
+          </motion.div>
         ) : (
           <div className="absolute inset-0 rounded-xl bg-red-900/25 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none">
             <div className="flex flex-col items-center">
@@ -304,9 +309,14 @@ function CardView({
       )}
 
       {known && !faceUp && (
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full z-10">
+        <motion.span
+          initial={{ scale: 0, opacity: 0, y: 4 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 460, damping: 18, mass: 0.5 }}
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full z-10"
+        >
           Known
-        </span>
+        </motion.span>
       )}
 
       {label && (

@@ -285,7 +285,15 @@ function PlayerPanel({
           }
 
           const slotWrapper = (child: React.ReactNode) => (
-            <div key={i} className={`relative${chaosAnimation ? ' chaos-shuffle' : ''}`} data-slot={i} style={chaosAnimation ? { animationDelay: `${i * 80}ms` } as React.CSSProperties : undefined}>
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10, scale: 0.88 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24, mass: 0.7, delay: i * 0.07 }}
+              className={`relative${chaosAnimation ? ' chaos-shuffle' : ''}`}
+              data-slot={i}
+              style={chaosAnimation ? { animationDelay: `${i * 80}ms` } as React.CSSProperties : undefined}
+            >
               {child}
 
               {/* Effect overlay (action highlights) */}
@@ -356,11 +364,19 @@ function PlayerPanel({
               )}
 
               {/* Lock badge — always at z-30 so it's visible above every overlay */}
-              {isLocked && (
-                <div className="absolute top-0.5 right-0.5 z-30 pointer-events-none w-5 h-5 bg-red-900/95 rounded-full flex items-center justify-center shadow-md border border-red-500/50">
-                  <span className="text-[10px] leading-none select-none">🔒</span>
-                </div>
-              )}
+              <AnimatePresence>
+                {isLocked && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 18, mass: 0.4 }}
+                    className="absolute top-0.5 right-0.5 z-30 pointer-events-none w-5 h-5 bg-red-900/95 rounded-full flex items-center justify-center shadow-md border border-red-500/50"
+                  >
+                    <span className="text-[10px] leading-none select-none">🔒</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Known card badge for face-down cards (visible to all in selection) */}
               {isKnown && !isLocalPlayer && inSelectionMode && (
@@ -368,7 +384,7 @@ function PlayerPanel({
                   Known
                 </span>
               )}
-            </div>
+            </motion.div>
           )
 
           // Show face-up if: local player knows own card, dev mode shows all, or local player peeked this opponent slot

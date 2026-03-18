@@ -316,7 +316,18 @@ export default function Results() {
 
                 <div className="flex gap-2 justify-center">
                   {score.hand.map((card, i) => (
-                    <CardView key={i} card={card} faceUp size="md" />
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 14, scale: 0.84, rotateY: -10 }}
+                      animate={{ opacity: 1, y: 0, scale: 1, rotateY: 0 }}
+                      transition={{
+                        type: 'spring', stiffness: 260, damping: 20,
+                        delay: rank * 0.12 + 0.18 + i * 0.09,
+                      }}
+                      style={{ perspective: '600px' }}
+                    >
+                      <CardView card={card} faceUp size="md" />
+                    </motion.div>
                   ))}
                 </div>
               </motion.div>
