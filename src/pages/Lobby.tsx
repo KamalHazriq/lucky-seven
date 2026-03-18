@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useGame } from '../hooks/useGame'
 import { startGame, updatePlayerProfile, leaveLobby, updateGameSettings } from '../lib/supabaseGameService'
+import { trackEvent } from '../lib/analytics'
 import type { TurnSeconds, PowerRankKey, PowerEffectType } from '../lib/types'
 import { ALL_EFFECT_TYPES } from '../lib/types'
 import VersionLabel from '../components/VersionLabel'
@@ -114,6 +115,7 @@ export default function Lobby() {
     if (!gameId) return
     try {
       await startGame(gameId)
+      trackEvent('start_game', { player_count: playerList.length }, gameId)
     } catch (e) {
       toast.error((e as Error).message)
     }

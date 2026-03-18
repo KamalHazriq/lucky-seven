@@ -7,6 +7,7 @@ import {
   subscribeAllPrivate,
   subscribeDrawPile,
 } from '../lib/supabaseGameService'
+import { trackEvent } from '../lib/analytics'
 
 export interface UseDevModeReturn {
   /** Whether dev mode is currently active for this user */
@@ -74,6 +75,7 @@ export function useDevMode(
     setError(null)
     try {
       await activateDevModeFn(gameId, code)
+      trackEvent('dev_mode_activated', {}, gameId)
     } catch (e) {
       const msg = (e as { message?: string }).message ?? 'Activation failed'
       setError(msg)
